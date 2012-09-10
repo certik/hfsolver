@@ -2,7 +2,7 @@ include_directories(${PROJECT_BINARY_DIR}/src)
 
 macro(ADDTEST name)
     add_executable(${name} ${name}.f90)
-    target_link_libraries(${name} hfsolver int2 lapack blas)
+    target_link_libraries(${name} hfsolver ${LIBINT_LIBS} ${LAPACK_LIBS})
     add_test(${name} ${PROJECT_BINARY_DIR}/${name})
 endmacro(ADDTEST)
 

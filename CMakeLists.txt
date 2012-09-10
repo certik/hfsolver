@@ -8,9 +8,6 @@ project(hfsolver)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-set(WITH_LIBINT yes
-    CACHE BOOL "Build with libint (http://sourceforge.net/p/libint/) support")
-
 # Make sure that CMAKE_BUILD_TYPE is either Debug or Release:
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug
@@ -42,6 +39,24 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fopenmp")
 endif ()
 
+# ------------------------------------------------------------
+# hfsolver dependencies:
+
+# Lapack
+set(LAPACK_LIBS lapack blas)
+
+# libint2
+set(WITH_LIBINT yes
+    CACHE BOOL "Build with libint (http://sourceforge.net/p/libint/) support")
+
+if(WITH_LIBINT)
+    set(LIBINT_LIBS int2)
+else()
+    set(LIBINT_LIBS)
+endif()
+
+# ------------------------------------------------------------
+
 enable_testing()
 
 add_subdirectory(src)
@@ -63,4 +78,8 @@ else ()
     message("C++ compiler flags    : ${CMAKE_CXX_FLAGS_RELEASE}")
 endif ()
 message("Installation prefix: ${CMAKE_INSTALL_PREFIX}")
+message("LAPACK_LIBS: ${LAPACK_LIBS}")
 message("WITH_LIBINT: ${WITH_LIBINT}")
+if(WITH_LIBINT)
+    message("LIBINT_LIBS: ${LIBINT_LIBS}")
+endif()
