@@ -822,7 +822,7 @@ real(dp), allocatable :: dd(:, :)
 integer, allocatable :: intindex(:, :, :, :)
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
-print *, "Calculating Slater integrals..."
+print *, "Calculating Slater integrals with screening..."
 Lmax = ubound(nbfl, 1)
 ndof = sum(nbfl)
 m = ndof*(ndof+1)/2
