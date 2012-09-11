@@ -2,7 +2,7 @@ include_directories(${PROJECT_BINARY_DIR}/src)
 
 macro(ADDTEST name)
     add_executable(${name} ${name}.f90)
-    target_link_libraries(${name} hfsolver ${LIBINT_LIBS} ${LAPACK_LIBS})
+    target_link_libraries(${name} hfsolver erd ${LIBINT_LIBS} ${LAPACK_LIBS})
     add_test(${name} ${PROJECT_BINARY_DIR}/${name})
 endmacro(ADDTEST)
 
@@ -36,3 +36,5 @@ ADDTEST(test_fe_ra)
 ADDTEST(test_fe_ra2)
 ADDTEST(test_gaussians_atoms)
 ADDTEST(test_gaussians_molecules)
+
+ADDTEST(test_erd)
