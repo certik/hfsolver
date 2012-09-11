@@ -73,10 +73,10 @@ Ekin = kinetic_energy(nbfl, P_, T)
 call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
 call printlam(nbfl, lam, Ekin, Etot)
 
-call assert(abs(Etot - (-130.72798254_dp)) < 1e-8_dp)
-call assert(abs(Ekin - ( 128.62107834_dp)) < 1e-8_dp)
-call assert(all(abs(lam(:2, 0) - [-33.19441156_dp, -2.35633119_dp]) < 1e-8_dp))
-call assert(all(abs(lam(:2, 1) - [ -1.27607614_dp,  0.41171944_dp]) < 1e-8_dp))
-call assert(all(abs(lam(:2, 2) - [  0.13657083_dp,  3.25873422_dp]) < 1e-8_dp))
+call assert(abs(Etot - (-111.48549451_dp)) < 1e-8_dp)
+call assert(abs(Ekin - ( 127.39804645_dp)) < 1e-8_dp)
+call assert(all(abs(lam(:2, 0) - [-32.30334010_dp, -1.54928044_dp]) < 1e-8_dp))
+call assert(all(abs(lam(:2, 1) - [ -0.48653876_dp,  1.04661195_dp]) < 1e-8_dp))
+call assert(all(abs(lam(:2, 2) - [  0.68438184_dp,  4.14891624_dp]) < 1e-8_dp))
 
 end program
