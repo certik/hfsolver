@@ -3,7 +3,7 @@ program test_sto_be6
 ! Calculates the results for the STO article
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_sto_screen
+use sto, only: stoints2, slater_sto_screen, sto_V_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
@@ -60,6 +60,7 @@ do j = 1, size(Dlist)
     print *, "D =", D
     print *, "total  DOFs =", ndof
     call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
+    call sto_V_screen(Z, nbfl, nl, zl, V, D)
     call slater_sto_screen(nbfl, nl, zl, slater, D)
 
     H = T + V
