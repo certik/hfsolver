@@ -50,6 +50,9 @@ set(LAPACK_LIBS
     )
 
 include_directories($ENV{SPKG_LOCAL}/include/libint2)
+
+add_subdirectory(erd)
+
 add_library(hfsolver ${SRC})
 
 add_subdirectory(tests)
