@@ -1,7 +1,7 @@
 program test_sto_ne6
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe, slater_sto_screen, &
+use sto, only: stoints2, get_basis2, slater_sto_screen, &
     sto_V_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV

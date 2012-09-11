@@ -7,7 +7,7 @@ program test_sto_be5
 ! of Chemical Physics, 57(3), 1169–1184. doi:10.1063/1.1678374
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe, slater_sto_screen
+use sto, only: stoints2, get_basis2, slater_sto_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &

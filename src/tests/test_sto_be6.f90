@@ -3,7 +3,7 @@ program test_sto_be6
 ! Calculates the results for the STO article
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe, slater_sto_screen
+use sto, only: stoints2, get_basis2, slater_sto_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &

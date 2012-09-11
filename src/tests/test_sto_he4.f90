@@ -7,7 +7,7 @@ program test_sto_he4
 ! of Chemical Physics, 57(3), 1169–1184. doi:10.1063/1.1678374
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe
+use sto, only: stoints2, get_basis2, slater_sto_gauss
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
@@ -59,7 +59,7 @@ allocate(slater(m*(m+1)/2, 0:2*Lmax))
 allocate(slater2(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater2)
 ! We calculate the slater integrals using Gauss-Laguerre quadrature:
-call slater_fe(nbfl, nl, zl, slater)
+call slater_sto_gauss(nbfl, nl, zl, slater)
 ! This test is crucial: it tests that the numerical and analytical integrals
 ! agree to very high accuracy:
 call assert(all(abs(slater2-slater) < 1e-9_dp))

@@ -12,7 +12,7 @@ use openmp, only: omp_get_thread_num
 use debye, only: Vk => Sk
 implicit none
 private
-public get_basis, get_basis2, stoints, stoints2, get_values, slater_fe, &
+public get_basis, get_basis2, stoints, stoints2, get_values, slater_sto_gauss, &
     slater_sto_screen, sto_V_screen
 
 ! Array of factorials: fact(n) = n!
@@ -485,8 +485,7 @@ end if
 end subroutine
 
 
-! TODO: rename this, as it doesn't use FE, just the Gaussian integration
-subroutine slater_fe(nbfl, nlist, zetalist, slater_)
+subroutine slater_sto_gauss(nbfl, nlist, zetalist, slater_)
 ! Just like stoints2, but only the slater integral and uses the Gaussian
 ! integration to do it.
 integer, intent(in) :: nbfl(0:), nlist(:, 0:)
