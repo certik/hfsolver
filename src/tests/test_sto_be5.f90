@@ -7,7 +7,7 @@ program test_sto_be5
 ! of Chemical Physics, 57(3), 1169–1184. doi:10.1063/1.1678374
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe, slater_fe_screen
+use sto, only: stoints2, get_basis2, slater_sto_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
@@ -55,7 +55,7 @@ n = maxval(nbfl)
 ndof = sum(nbfl)
 print *, "total  DOFs =", ndof
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
-call slater_fe_screen(nbfl, nl, zl, slater, D)
+call slater_sto_screen(nbfl, nl, zl, slater, D)
 
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 
