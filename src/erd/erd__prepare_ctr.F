@@ -126,7 +126,7 @@ C
          DOUBLE PRECISION   NORMD  (1:NPGTOD)
          DOUBLE PRECISION   RHO    (1:NIJ+NKL)
          DOUBLE PRECISION   RHOAB  (1:NIJ)
-         DOUBLE PRECISION   RHOCD  (1:NIJ)
+         DOUBLE PRECISION   RHOCD  (1:NKL)
          double precision   rho_temp(1:nij+nkl)
          double precision   rho_temp2(1:nij+nkl)
 
