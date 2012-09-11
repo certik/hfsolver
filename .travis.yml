@@ -7,6 +7,6 @@ before_script:
   - cmake -DWITH_LIBINT=no .
   - make
 script:
-  - ctest
+  - ctest --output-on-failure
 notifications:
   email: false
