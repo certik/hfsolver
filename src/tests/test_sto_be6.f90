@@ -24,8 +24,8 @@ integer :: n, Z, Nscf, Lmax, ndof, i, j, l, u
 real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp) :: D
-real(dp), parameter :: Dlist(*) = [10._dp, 20._dp, 100._dp, 200._dp, &
-    1e4_dp, 1e6_dp]
+real(dp), parameter :: Dlist(*) = [1._dp, 10._dp, 100._dp, &
+    1e4_dp, 1e6_dp, -1._dp]
 
 Lmax = 2
 allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
@@ -56,12 +56,16 @@ open(newunit=u, file="be.log", status="replace")
 do j = 1, size(Dlist)
     print *
     print *, "-----------------------------------------------------"
-    D = Dlist(j)
-    print *, "D =", D
     print *, "total  DOFs =", ndof
     call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
-    call sto_V_screen(Z, nbfl, nl, zl, V, D)
-    call slater_sto_screen(nbfl, nl, zl, slater, D)
+    D = Dlist(j)
+    if (D < 0) then
+        print *, "D = oo (Coulomb case)"
+    else
+        print *, "D =", D
+        call sto_V_screen(Z, nbfl, nl, zl, V, D)
+        call slater_sto_screen(nbfl, nl, zl, slater, D)
+    end if
 
     H = T + V
 
