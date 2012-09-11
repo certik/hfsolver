@@ -1,7 +1,7 @@
 program test_sto_ne4
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe
+use sto, only: stoints2, get_basis2, slater_sto_gauss
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
@@ -58,7 +58,7 @@ allocate(slater(m*(m+1)/2, 0:2*Lmax))
 allocate(slater2(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater2)
 ! We calculate the slater integrals using Gauss-Laguerre quadrature:
-call slater_fe(nbfl, nl, zl, slater)
+call slater_sto_gauss(nbfl, nl, zl, slater)
 ! The accuracy here is a little lower:
 call assert(all(abs(slater2-slater) < 5e-8_dp))
 ! The 4s state agrees to 1e-8, the 5s state only to 1.6e-7. All other states

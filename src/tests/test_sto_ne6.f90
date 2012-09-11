@@ -1,7 +1,8 @@
-program test_sto_ne5
+program test_sto_ne6
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_sto_screen
+use sto, only: stoints2, get_basis2, slater_sto_screen, &
+    sto_V_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
@@ -32,14 +33,14 @@ focc(:2, 0) = [2, 2]
 focc(:1, 1) = [6]
 nbfl(0) = 5
 nl(:5, 0) = [1, 1, 2, 2, 2]
-zl(:5, 0) = [0.938786D+01, 0.159775D+02, 0.369309D+01, 0.840711D+01, &
-    0.240628D+01]
+zl(:5, 0) = [0.986120D+01, 0.167831D+02, 0.387930D+01, 0.883100D+01, &
+    0.252760D+01]
 nbfl(1) = 4
 nl(:4, 1) = [2, 2, 2, 2]
-zl(:4, 1) = [0.244759D+01, 0.449687D+01, 0.166828D+01, 0.934007D+01]
+zl(:4, 1) = [0.257100D+01, 0.472360D+01, 0.175240D+01, 0.981100D+01]
 nbfl(2) = 3
 nl(:3, 2) = [3, 3, 4]
-zl(:3, 2) = [0.395080D+01, 0.120542D+01, 0.745549D+01]
+zl(:3, 2) = [0.415000D+01, 0.126620D+01, 0.783140D+01]
 
 ! All zetas are scaled:
 !zl(:, 1:) = zl(:, 1:) * 0.952_dp
@@ -58,7 +59,8 @@ m = ndof*(ndof+1)/2
 allocate(slater(m*(m+1)/2, 0:2*Lmax))
 allocate(slater2(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater2)
-D = 20._dp
+D = 3._dp
+call sto_V_screen(Z, nbfl, nl, zl, V, D)
 call slater_sto_screen(nbfl, nl, zl, slater, D)
 
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
@@ -71,10 +73,10 @@ Ekin = kinetic_energy(nbfl, P_, T)
 call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
 call printlam(nbfl, lam, Ekin, Etot)
 
-call assert(abs(Etot - (-130.72798254_dp)) < 1e-8_dp)
-call assert(abs(Ekin - ( 128.62107834_dp)) < 1e-8_dp)
-call assert(all(abs(lam(:2, 0) - [-33.19441156_dp, -2.35633119_dp]) < 1e-8_dp))
-call assert(all(abs(lam(:2, 1) - [ -1.27607614_dp,  0.41171944_dp]) < 1e-8_dp))
-call assert(all(abs(lam(:2, 2) - [  0.13657083_dp,  3.25873422_dp]) < 1e-8_dp))
+call assert(abs(Etot - (-111.48549451_dp)) < 1e-8_dp)
+call assert(abs(Ekin - ( 127.39804645_dp)) < 1e-8_dp)
+call assert(all(abs(lam(:2, 0) - [-32.30334010_dp, -1.54928044_dp]) < 1e-8_dp))
+call assert(all(abs(lam(:2, 1) - [ -0.48653876_dp,  1.04661195_dp]) < 1e-8_dp))
+call assert(all(abs(lam(:2, 2) - [  0.68438184_dp,  4.14891624_dp]) < 1e-8_dp))
 
 end program
