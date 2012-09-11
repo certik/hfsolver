@@ -173,14 +173,14 @@ integer :: nbatch, nfirst
 integer :: i, j, k, l, counter
 logical :: can_compute
 
-print *, "Start"
-print *, "shell:", ishell, jshell, kshell, lshell
-print *, "lambda:", ilambda, jlambda, klambda, llambda
-print *, "prim:", nprima, nprimb, nprimc, nprimd
-print *, coefa
-print *, coefb
-print *, coefc
-print *, coefd
+!print *, "Start"
+!print *, "shell:", ishell, jshell, kshell, lshell
+!print *, "lambda:", ilambda, jlambda, klambda, llambda
+!print *, "prim:", nprima, nprimb, nprimc, nprimd
+!print *, coefa
+!print *, coefb
+!print *, coefc
+!print *, coefd
 screen = .false.
 spheric = .false.
 x1 = A(1); y1 = A(2); z1 = A(3)
@@ -206,10 +206,10 @@ call ERD__GENER_ERI_BATCH(size(icore), size(zcore), &
             alpha, cc, ccbeg, ccend, &
             spheric, screen, icore, &
                 nbatch, nfirst, zcore)
-print *, "Done"
-print *, "nbatch =", NBATCH
-print *, "nfirst =", NFIRST
-print *, "size(r) =", size(r)
+!print *, "Done"
+!print *, "nbatch =", NBATCH
+!print *, "nfirst =", NFIRST
+!print *, "size(r) =", size(r)
 if (nbatch == 0) then
     ! All integrals are zero
     return
@@ -230,7 +230,7 @@ do l = lshell, lshell + (llambda+1)*(llambda+2)/2-1
 ! TODO: handle this somehow:
 !    if (.not. can_compute) cycle
 
-    print *, "setting:", i, j, k, l, ijkl2intindex(i, j, k, l), zcore(nfirst+counter)
+!    print *, "setting:", i, j, k, l, ijkl2intindex(i, j, k, l), zcore(nfirst+counter)
     r(ijkl2intindex(i,j,k,l)) = zcore(nfirst+counter)
     counter = counter + 1
 end do
