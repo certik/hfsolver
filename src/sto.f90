@@ -13,7 +13,7 @@ use debye, only: Vk => Sk
 implicit none
 private
 public get_basis, get_basis2, stoints, stoints2, get_values, slater_fe, &
-    slater_sto_screen
+    slater_sto_screen, sto_V_screen
 
 ! Array of factorials: fact(n) = n!
 ! You have to call calc_factorials() to initialize it first.
@@ -80,6 +80,15 @@ real(dp), intent(in) :: zeta(:)
 integer, intent(in) :: i, j
 r = -Z * sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
         fact(n(i)+n(j)-1) / (zeta(i)+zeta(j))**(n(i)+n(j))
+end function
+
+real(dp) function potential_screen(n, zeta, Z, i, j, D) result(r)
+integer, intent(in) :: n(:), Z
+real(dp), intent(in) :: zeta(:)
+integer, intent(in) :: i, j
+real(dp), intent(in) :: D
+r = -Z * sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
+        fact(n(i)+n(j)-1) / (zeta(i)+zeta(j)+1/D)**(n(i)+n(j))
 end function
 
 real(dp) function kinetic(n, zeta, l, i, j) result(r)
@@ -257,6 +266,32 @@ end do
 !$omp end do
 !$omp end parallel
 !print *
+end subroutine
+
+subroutine sto_V_screen(Z, nbfl, nlist, zetalist, V, D)
+! Calculates the potential matrix V with Debye screening
+integer, intent(in) :: Z
+integer, intent(in) :: nbfl(0:), nlist(:, 0:)
+real(dp), intent(in) :: zetalist(:, 0:)
+real(dp), allocatable, intent(out) :: V(:, :, :)
+real(dp), intent(in) :: D ! Debye screening parameter
+integer ::  n, l, mu, nu, Lmax
+! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
+call calc_factorials(maxval(nlist)*4-1, fact)
+! Precalculate the radial integrals
+Lmax = ubound(nbfl, 1)
+n = maxval(nbfl)
+allocate(V(n, n, 0:Lmax))
+V = 0
+print *, "Calculating V with screening ...."
+do l = 0, ubound(nbfl, 1)
+    do mu = 1, nbfl(l)
+        do nu = 1, nbfl(l)
+            V(mu, nu, l) = potential_screen(nlist(:, l), zetalist(:, l), &
+                Z, mu, nu, D)
+        end do
+    end do
+end do
 end subroutine
 
 real(dp) function factor(l1, l1p, l2, l2p, m1, m1p, m2, m2p, k) result(r)
