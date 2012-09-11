@@ -1,7 +1,7 @@
 program test_sto_ne5
 
 use types, only: dp
-use sto, only: stoints2, get_basis2, slater_fe, slater_fe_screen
+use sto, only: stoints2, get_basis2, slater_fe, slater_sto_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
@@ -59,7 +59,7 @@ allocate(slater(m*(m+1)/2, 0:2*Lmax))
 allocate(slater2(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater2)
 D = 20._dp
-call slater_fe_screen(nbfl, nl, zl, slater, D)
+call slater_sto_screen(nbfl, nl, zl, slater, D)
 
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 

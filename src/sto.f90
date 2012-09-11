@@ -13,7 +13,7 @@ use debye, only: Vk => Sk
 implicit none
 private
 public get_basis, get_basis2, stoints, stoints2, get_values, slater_fe, &
-    slater_fe_screen
+    slater_sto_screen
 
 ! Array of factorials: fact(n) = n!
 ! You have to call calc_factorials() to initialize it first.
@@ -773,14 +773,13 @@ contains
 
 end function
 
-! TODO: rename this, as it doesn't use FE, just the Gaussian integration
-subroutine slater_fe_screen(nbfl, nlist, zetalist, slater_, D)
+subroutine slater_sto_screen(nbfl, nlist, zetalist, slater_, D)
 ! Just like stoints2, but only the slater integral and uses the Gaussian
-! integration to do it.
+! integration to do it. Uses Debye screening.
 integer, intent(in) :: nbfl(0:), nlist(:, 0:)
 real(dp), intent(in) :: zetalist(:, 0:)
 real(dp), allocatable, intent(out) :: slater_(:, :)
-real(dp), intent(in) :: D
+real(dp), intent(in) :: D ! Debye screening length
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: n, i, j, k, l, k_, ijkl, Lmax, ndof, m
