@@ -8,16 +8,50 @@ use scf, only: ijkl2intindex
 use basis_aux, only: get_2ints_size
 implicit none
 private
-public normalize, read_basis, get_basis, get_cartesian_shell, getstart, &
+public norm_prim, read_basis, get_basis, get_cartesian_shell, getstart, &
         gaussints, get_2ints_size
 
 contains
 
-elemental real(dp) function normalize(l, m, n, alpha) result(norm)
+elemental real(dp) function norm_prim(l, m, n, alpha) result(norm)
 integer, intent(in) :: l, m, n
 real(dp), intent(in) :: alpha
 norm = sqrt(2**(2*(l+m+n)+1.5)*alpha**(l+m+n+1.5_dp) / &
     fact2(2*l-1)/fact2(2*m-1)/fact2(2*n-1)/pi**(1.5_dp))
+end function
+
+pure real(dp) function norm_contr(l, m, n, alpha, coef) result(norm)
+! Calculates the normalization coefficient of a contracted GTO specified by (l,
+! m, n) and (alpha, coef) pairs. The "coef" here is given with regards to
+! *unnormalized* primitive GTOs, so the normalized contracted GTO is then given
+! by:
+!     norm_contr * sum_i coef(i) * GTO(l, m, n, alpha(i))
+!
+! Note: if there is only one primitive GTO in the contraction (that is,
+! size(alpha)==size(coef)==1), then norm_contr() is equivalent to
+! norm_prim(), that is, norm_contr = norm_prim / coef(1):
+!
+!    norm_contr * coef(1) * GTO(l, m, n, alpha(1)) =
+!       = norm_prim / coef(1) * coef(1) * GTO(l, m, n, alpha(1)) =
+!       = norm_prim * GTO(l, m, n, alpha(1))
+!
+! (l, m, n) of the contracted GTO:
+integer, intent(in) :: l, m, n
+! Alpha exponents of primitive GTOs:
+real(dp), intent(in) :: alpha(:)
+! Coefficients with regards to *unnormalized* primitive GTOs:
+real(dp), intent(in) :: coef(:)
+real(dp) :: L_, S
+integer :: i, j
+L_ = l + m + n
+S = 0
+do i = 1, size(alpha)
+    do j = 1, size(alpha)
+        S = S + coef(i)*coef(j)/(alpha(i)+alpha(j))**(L_+3._dp/2)
+    end do
+end do
+norm = 1/pi**(3._dp/4) * sqrt(2**L_/ fact2(2*l-1)/fact2(2*m-1)/fact2(2*n-1)) / &
+    sqrt(S)
 end function
 
 pure recursive real(dp) function fact2(n) result(r)
@@ -108,7 +142,7 @@ end select
 end function
 
 ! Primitive gaussian is described by (l, m, n), norm, coef, alpha,
-! (xcenter, ycenter, zcenter). The normalization is given by normalize(), which
+! (xcenter, ycenter, zcenter). The normalization is given by norm_prim(), which
 ! is just a simple formula. The "coef" is used as a coefficient in the
 ! contracted gaussian:
 !
@@ -317,7 +351,7 @@ do
         !print *, i, k, iprim
         coef(i1:i2) = c(iprim:iprim+nprim(i)-1)
         alpha(i1:i2) = zeta(iprim:iprim+nprim(i)-1)
-        normp(i1:i2) = normalize(power(1, i), power(2, i), power(3, i), &
+        normp(i1:i2) = norm_prim(power(1, i), power(2, i), power(3, i), &
             alpha(i1:i2))
         i = i + 1
     end do
@@ -325,41 +359,30 @@ do
     if (i > n) exit
 end do
 coef = coef*normp
-call fix_normalization(nprim, istart, center, power, coef, alpha)
+call fix_normalization(nprim, istart, power, coef, alpha)
 end subroutine
 
-subroutine fix_normalization(nprim, istart, center, power, coef, alpha)
+subroutine fix_normalization(nprim, istart, power, coef, alpha)
 ! Determines the correct normalization using the overlap integral.
 ! The result is saved in 'coef'.
 integer, intent(in), allocatable :: nprim(:)
 integer, intent(in), allocatable :: istart(:)
-real(dp), intent(in), allocatable :: center(:, :)
 integer, intent(in), allocatable :: power(:, :)
+! Coefficients with regards to *unnormalized* primitive gaussians
 real(dp), intent(inout), allocatable :: coef(:)
 real(dp), intent(in), allocatable :: alpha(:)
-real(dp) :: S(size(nprim), size(nprim))
-integer, dimension(size(power, 2)) :: lpower, mpower, npower
-real(dp), dimension(size(center, 2)) :: xcenter, ycenter, zcenter
+integer, dimension(size(power, 2)) :: l, m, n
 integer :: i, i1, i2
-! The contracted functions must be normalized using the overlap integral,
-! currently we calculate the whole S matrix, but we only need the diagonal
-! entries.
-lpower = power(1, :)
-mpower = power(2, :)
-npower = power(3, :)
-xcenter = center(1, :)
-ycenter = center(2, :)
-zcenter = center(3, :)
-call getS(size(nprim), nprim, istart-1, &
-    xcenter, ycenter, zcenter, &
-    lpower, mpower, npower, size(coef), coef, alpha, S)
+real(dp) :: norm
+l = power(1, :)
+m = power(2, :)
+n = power(3, :)
 do i = 1, size(nprim)
     if (nprim(i) > 1) then
-        ! If contracted, then divide all corresponding primitive gaussians by
-        ! the sqrt of the overlap integral
         i1 = istart(i)
         i2 = i1 + nprim(i)-1
-        coef(i1:i2) = coef(i1:i2) / sqrt(S(i, i))
+        norm = norm_contr(l(i), m(i), n(i), alpha(i1:i2), coef(i1:i2))
+        coef(i1:i2) = coef(i1:i2) * norm
     end if
 end do
 end subroutine
