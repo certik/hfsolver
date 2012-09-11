@@ -108,28 +108,43 @@ end select
 end function
 
 ! Primitive gaussian is described by (l, m, n), norm, coef, alpha,
-! (xcenter, ycenter, zcenter).
-! Contracted gaussian is described by "nprim" primitive gaussians.
-! lambda = l+m+n (0=S, 1=P, 2=D, 3=F, ...) is angular momentum/orbital quantum
-! number.
-! The basis set file contains pairs of:
-! (lambda, contracted gaussian)
-! for each atom. For example the 6-31G** basis contains:
-!   He: (S, S, P)           # i.e. 1s, 2s, 2p
-!   Be: (S, S, P, S, P, D)  # i.e. 1s, 2s, 2p, 3s, 3p, 3d
-! To each "S, P, D, F" there is one contracted gaussian, which is described for
-! example by:
+! (xcenter, ycenter, zcenter). The normalization is given by normalize(), which
+! is just a simple formula. The "coef" is used as a coefficient in the
+! contracted gaussian:
+!
+! Contracted gaussian is described by "nprim" primitive gaussians with the same
+! (l, m, n). For example with nprim=6, we can have:
 !           1264.58570000           0.00194480
 !            189.93681000           0.01483510
 !             43.15908900           0.07209060
 !             12.09866300           0.23715420
 !              3.80632320           0.46919870
 !              1.27289030           0.35652020
-! This corresponds to 6 primitive gaussians (alpha, coef) pairs. The
-! normalization of *contracted* gaussians has to be computed using the overlap
-! matrix (so that it has 1.0 on the diagonal).
-! Each contracted gaussian of orbital quantum number "lambda" is actually a
-! shell of contracted Gaussians. Two options are used:
+! This corresponds to 6 primitive gaussians (alpha, coef) pairs. Contraction
+! can also have just one primitive gaussian (nprim=1).
+! Important note: the coefficients above are given relative to *normalized*
+! primitive gaussians (this is the standard). So one first has to normalize the
+! primitive gaussian, then multiply by the coefficient and only then normalize
+! the whole contracted gaussian as described below.
+!
+! lambda = l+m+n (0=S, 1=P, 2=D, 3=F, ...) is angular momentum/orbital quantum
+! number.
+! The basis set file contains pairs of (lambda, contracted gaussian)
+! for each atom. For example the 6-31G** basis contains:
+!   He: (S, S, P)           # i.e. 1s, 2s, 2p
+!   Be: (S, S, P, S, P, D)  # i.e. 1s, 2s, 2p, 3s, 3p, 3d
+! To each "S, P, D, F" there is one contracted gaussian, which is described for
+! example by the (alpha, coef) pairs above.
+! Normalization of a contracted gaussian is so that the overlap integral is 1
+! (for example the overlap matrix S must have 1.0 on the diagonal).
+! More info at [2].
+! The contracted gaussian is given by (l, m, n), norm, (xcenter, ycenter,
+! zcenter) and "nprim" pairs of (alpha, coef).
+!
+! Shell is a set of contracted Gaussians for all possible combinations of (l, m
+! n) for the given lambda. All other parameters stay the same, so the shell is
+! given by: lambda, norm, (xcenter, ycenter, zcenter) and "nprim" pairs of
+! (alpha, coef). There are two possibilities:
 !
 ! 1) Cartesian Gaussians shell: there are (lambda+1)*(lambda+2)/2 contracted
 ! gaussians (all combinations of (n, l, m) so that lambda=n+l+m)
@@ -158,6 +173,8 @@ end function
 ! [1] Schlegel, H. B., & Frisch, M. J. (1995). Transformation Between Cartesian
 ! and Pure Spherical Harmonic Gaussians. International Journal of Quantum
 ! Chemistry, 54(2), 83-87.
+!
+! [2] http://www.files.chem.vt.edu/chem-dept/valeev/docs/ints.pdf
 
 subroutine get_basis(atZ, at_xyz, nprim, istart, center, power, coef, alpha)
 ! Returns the basis in a form suitable for calculations.
