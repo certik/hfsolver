@@ -98,19 +98,19 @@ norm = sqrt(2**(2*(l+m+n)+1.5)*alpha**(l+m+n+1.5_dp) / &
     fact2(2*l-1)/fact2(2*m-1)/fact2(2*n-1)/pi**(1.5_dp))
 end function
 
-pure real(dp) function norm_contr(l, m, n, alpha, coef) result(norm)
+pure real(dp) function norm_contr(l, m, n, alpha, coefu) result(norm)
 ! Calculates the normalization coefficient of a contracted GTO specified by (l,
-! m, n) and (alpha, coef) pairs. The "coef" here is given with regards to
-! *unnormalized* primitive GTOs, so the normalized contracted GTO is then given
-! by:
-!     norm_contr * sum_i coef(i) * GTO(l, m, n, alpha(i))
+! m, n) and (alpha, coefu) pairs. The "coefu" here is given with regards to
+! *unnormalized* primitive GTOs (thus the "u" in "coefu"), so the normalized
+! contracted GTO is then given by:
+!     norm_contr * sum_i coefu(i) * GTO(l, m, n, alpha(i))
 !
 ! Note: if there is only one primitive GTO in the contraction (that is,
-! size(alpha)==size(coef)==1), then norm_contr() is equivalent to
-! norm_prim(), that is, norm_contr = norm_prim / coef(1):
+! size(alpha)==size(coefu)==1), then norm_contr() is equivalent to
+! norm_prim(), that is, norm_contr = norm_prim / coefu(1):
 !
-!    norm_contr * coef(1) * GTO(l, m, n, alpha(1)) =
-!       = norm_prim / coef(1) * coef(1) * GTO(l, m, n, alpha(1)) =
+!    norm_contr * coefu(1) * GTO(l, m, n, alpha(1)) =
+!       = norm_prim / coefu(1) * coefu(1) * GTO(l, m, n, alpha(1)) =
 !       = norm_prim * GTO(l, m, n, alpha(1))
 !
 ! (l, m, n) of the contracted GTO:
@@ -118,14 +118,14 @@ integer, intent(in) :: l, m, n
 ! Alpha exponents of primitive GTOs:
 real(dp), intent(in) :: alpha(:)
 ! Coefficients with regards to *unnormalized* primitive GTOs:
-real(dp), intent(in) :: coef(:)
+real(dp), intent(in) :: coefu(:)
 real(dp) :: L_, S
 integer :: i, j
 L_ = l + m + n
 S = 0
 do i = 1, size(alpha)
     do j = 1, size(alpha)
-        S = S + coef(i)*coef(j)/(alpha(i)+alpha(j))**(L_+3._dp/2)
+        S = S + coefu(i)*coefu(j)/(alpha(i)+alpha(j))**(L_+3._dp/2)
     end do
 end do
 norm = 1/pi**(3._dp/4) * sqrt(2**L_/ fact2(2*l-1)/fact2(2*m-1)/fact2(2*n-1)) / &
@@ -288,7 +288,7 @@ real(dp), intent(in) :: at_xyz(:, :)
 ! gaussian
 integer, intent(out), allocatable :: nprim(:)
 ! For the i-th contracted gaussian, the indices i1=istart(i) and
-! i2=i1+nprim(i)-1 give all the primitive gaussians: coef(i1:i2) and
+! i2=i1+nprim(i)-1 give all the primitive gaussians given by coef(i1:i2) and
 ! alpha(i1:i2)
 integer, intent(out), allocatable :: istart(:)
 ! center(:, i) are the xyz coordinates of the i-th contracted gaussian
@@ -425,14 +425,14 @@ coef = coef*normp
 call fix_normalization(nprim, istart, power, coef, alpha)
 end subroutine
 
-subroutine fix_normalization(nprim, istart, power, coef, alpha)
+subroutine fix_normalization(nprim, istart, power, coefu, alpha)
 ! Determines the correct normalization using the overlap integral.
-! The result is saved in 'coef'.
+! The result is saved in 'coefu'.
 integer, intent(in), allocatable :: nprim(:)
 integer, intent(in), allocatable :: istart(:)
 integer, intent(in), allocatable :: power(:, :)
 ! Coefficients with regards to *unnormalized* primitive gaussians
-real(dp), intent(inout), allocatable :: coef(:)
+real(dp), intent(inout), allocatable :: coefu(:)
 real(dp), intent(in), allocatable :: alpha(:)
 integer, dimension(size(power, 2)) :: l, m, n
 integer :: i, i1, i2
@@ -444,8 +444,8 @@ do i = 1, size(nprim)
     if (nprim(i) > 1) then
         i1 = istart(i)
         i2 = i1 + nprim(i)-1
-        norm = norm_contr(l(i), m(i), n(i), alpha(i1:i2), coef(i1:i2))
-        coef(i1:i2) = coef(i1:i2) * norm
+        norm = norm_contr(l(i), m(i), n(i), alpha(i1:i2), coefu(i1:i2))
+        coefu(i1:i2) = coefu(i1:i2) * norm
     end if
 end do
 end subroutine
