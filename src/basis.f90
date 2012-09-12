@@ -1,4 +1,82 @@
 module basis
+
+! Gaussian Type Orbitals (GTO) basis utilities.
+
+! Primitive gaussian is described by (l, m, n), norm, coef, alpha,
+! (xcenter, ycenter, zcenter). The normalization is given by norm_prim(), which
+! is just a simple formula. The "coef" is used as a coefficient in the
+! contracted gaussian:
+!
+! Contracted gaussian is described by "nprim" primitive gaussians with the same
+! (l, m, n). For example with nprim=6, we can have:
+!           1264.58570000           0.00194480
+!            189.93681000           0.01483510
+!             43.15908900           0.07209060
+!             12.09866300           0.23715420
+!              3.80632320           0.46919870
+!              1.27289030           0.35652020
+! This corresponds to 6 primitive gaussians (alpha, coef) pairs. Contraction
+! can also have just one primitive gaussian (nprim=1).
+! Important note: the coefficients above are given relative to *normalized*
+! primitive gaussians (this is the standard). So one first has to normalize the
+! primitive gaussian, then multiply by the coefficient and only then normalize
+! the whole contracted gaussian as described below.
+!
+! lambda = l+m+n (0=S, 1=P, 2=D, 3=F, ...) is angular momentum/orbital quantum
+! number.
+! The basis set file contains pairs of (lambda, contracted gaussian)
+! for each atom. For example the 6-31G** basis contains:
+!   He: (S, S, P)           # i.e. 1s, 2s, 2p
+!   Be: (S, S, P, S, P, D)  # i.e. 1s, 2s, 2p, 3s, 3p, 3d
+! To each "S, P, D, F" there is one contracted gaussian, which is described for
+! example by the (alpha, coef) pairs above.
+! Normalization of a contracted gaussian is so that the overlap integral is 1
+! (for example the overlap matrix S must have 1.0 on the diagonal).
+! More info at [2].
+! The contracted gaussian is given by (l, m, n), norm, (xcenter, ycenter,
+! zcenter) and "nprim" pairs of (alpha, coef).
+!
+! Shell is a set of contracted Gaussians for all possible combinations of (l, m
+! n) for the given lambda. All other parameters stay the same, so the shell is
+! given by: lambda, norm, (xcenter, ycenter, zcenter) and "nprim" pairs of
+! (alpha, coef). There are two possibilities:
+!
+! 1) Cartesian Gaussians shell: there are (lambda+1)*(lambda+2)/2 contracted
+! gaussians (all combinations of (n, l, m) so that lambda=n+l+m)
+!
+! 2) Spherical Gaussians shell: there are 2*lambda+1 contracted gaussians (all
+! combinations of "m" for the given l=lambda for the spherical harmonic Y_lm)
+!
+! l    2l+1     (l+1)(l+1)/2   =decomposition in l      sum of 2l+1
+! 0s     1           1              0                   1            =  1
+! 1p     3           3              1                     3          =  3
+! 2d     5           6              0,2                 1 + 5        =  6
+! 3f     7          10              1,3                   3 + 7      = 10
+! 4g     9          15              0,2,4               1 + 5 + 9    = 15
+! 5h    11          21              1,3,5                 3 + 7 + 11 = 21
+!
+! So for l = 0, 1 the number of basis functions is the same, but for l >= 2 the
+! Cartesian Gaussians have more functions. The homogeneous polynomials of order
+! "n" in (x, y, z) span the symmetric (n+1)(n+2)/2-dimensional reducible
+! representation of the U(3) group. The spherical harmonics Y_lm span the 2l+1
+! dimensional irreducible representation of the SO(3) group, which is a
+! subgroup of U(3).  From the table above, s, p is the same, cartesian d is
+! composed of five spherical d and one s (total of 6 functions), cartesian h is
+! composed of three p, seven f and eleven h (total 21 functions).  See [1] for
+! more info.
+!
+! [1] Schlegel, H. B., & Frisch, M. J. (1995). Transformation Between Cartesian
+! and Pure Spherical Harmonic Gaussians. International Journal of Quantum
+! Chemistry, 54(2), 83-87.
+!
+! [2] http://www.files.chem.vt.edu/chem-dept/valeev/docs/ints.pdf
+
+
+! In this file, we only use Cartesian GTO and each shell has exactly
+! (lambda+1)*(lambda+2)/2 contracted GTO. The ordering of the (n, l, m)
+! triplets is given by the get_cartesian_shell() function.
+
+
 use types, only: dp
 use constants, only: pi
 use utils, only: stop_error, lowcase, str, assert
@@ -83,6 +161,52 @@ integer, allocatable, intent(out) :: nprim(:)
 ! contracted Gaussian, the next nprim(2) correspond to the second
 ! contracted Gaussian and so on.
 real(dp), allocatable, intent(out) :: c(:), zeta(:)
+!
+! Important note: the coefficients c(:) are with respect to *normalized*
+! primitive GTO.
+!
+! Example:
+! --------
+!
+! Given the part of input file for Lithium (Z=3):
+!
+! 3
+! 6
+! S 6
+!             642.41892000           0.00214260
+!              96.79851500           0.01620890
+!              22.09112100           0.07731560
+!               6.20107030           0.24578600
+!               1.93511770           0.47018900
+!               0.63673580           0.34547080
+! S 3
+!               2.32491840          -0.03509170
+!               0.63243060          -0.19123280
+!               0.07905340           1.08398780
+! P 3
+!               2.32491840           0.00894150
+!               0.63243060           0.14100950
+!               0.07905340           0.94536370
+! S 1
+!               0.03596200           1.00000000
+! P 1
+!               0.03596200           1.00000000
+! D 1
+!               0.20000000           1.00000000
+!
+! There are 6 shells and the output arrays will be:
+!
+! L     = [0, 0, 1, 0, 1, 2]
+! nprim = [6, 3, 3, 1, 1, 1]
+! zeta  = [642.41892000, 96.79851500, ..., 0.03596200, 0.20000000]
+! c     = [0.00214260, 0.01620890, ..., 1.00000000, 1.00000000]
+!
+! The coefficients c(:) are with respect to normalized GTOs. From this it
+! follows that primitive GTO corresponding to nprim(i)=1 will have a
+! coefficient equal to 1.0. In order to obtain coefficients with respect to
+! unnormalized GTOs, one has to multiply each c(:) by the norm factor (in
+! general there will be no "1.0"s).
+
 integer :: u, ZZ, ios
 open(newunit=u, file="p631ss.txt", status="old") ! 6-31G**
 do
@@ -148,74 +272,6 @@ select case(lowcase(s))
 end select
 end function
 
-! Primitive gaussian is described by (l, m, n), norm, coef, alpha,
-! (xcenter, ycenter, zcenter). The normalization is given by norm_prim(), which
-! is just a simple formula. The "coef" is used as a coefficient in the
-! contracted gaussian:
-!
-! Contracted gaussian is described by "nprim" primitive gaussians with the same
-! (l, m, n). For example with nprim=6, we can have:
-!           1264.58570000           0.00194480
-!            189.93681000           0.01483510
-!             43.15908900           0.07209060
-!             12.09866300           0.23715420
-!              3.80632320           0.46919870
-!              1.27289030           0.35652020
-! This corresponds to 6 primitive gaussians (alpha, coef) pairs. Contraction
-! can also have just one primitive gaussian (nprim=1).
-! Important note: the coefficients above are given relative to *normalized*
-! primitive gaussians (this is the standard). So one first has to normalize the
-! primitive gaussian, then multiply by the coefficient and only then normalize
-! the whole contracted gaussian as described below.
-!
-! lambda = l+m+n (0=S, 1=P, 2=D, 3=F, ...) is angular momentum/orbital quantum
-! number.
-! The basis set file contains pairs of (lambda, contracted gaussian)
-! for each atom. For example the 6-31G** basis contains:
-!   He: (S, S, P)           # i.e. 1s, 2s, 2p
-!   Be: (S, S, P, S, P, D)  # i.e. 1s, 2s, 2p, 3s, 3p, 3d
-! To each "S, P, D, F" there is one contracted gaussian, which is described for
-! example by the (alpha, coef) pairs above.
-! Normalization of a contracted gaussian is so that the overlap integral is 1
-! (for example the overlap matrix S must have 1.0 on the diagonal).
-! More info at [2].
-! The contracted gaussian is given by (l, m, n), norm, (xcenter, ycenter,
-! zcenter) and "nprim" pairs of (alpha, coef).
-!
-! Shell is a set of contracted Gaussians for all possible combinations of (l, m
-! n) for the given lambda. All other parameters stay the same, so the shell is
-! given by: lambda, norm, (xcenter, ycenter, zcenter) and "nprim" pairs of
-! (alpha, coef). There are two possibilities:
-!
-! 1) Cartesian Gaussians shell: there are (lambda+1)*(lambda+2)/2 contracted
-! gaussians (all combinations of (n, l, m) so that lambda=n+l+m)
-!
-! 2) Spherical Gaussians shell: there are 2*lambda+1 contracted gaussians (all
-! combinations of "m" for the given l=lambda for the spherical harmonic Y_lm)
-!
-! l    2l+1     (l+1)(l+1)/2   =decomposition in l      sum of 2l+1
-! 0s     1           1              0                   1            =  1
-! 1p     3           3              1                     3          =  3
-! 2d     5           6              0,2                 1 + 5        =  6
-! 3f     7          10              1,3                   3 + 7      = 10
-! 4g     9          15              0,2,4               1 + 5 + 9    = 15
-! 5h    11          21              1,3,5                 3 + 7 + 11 = 21
-!
-! So for l = 0, 1 the number of basis functions is the same, but for l >= 2 the
-! Cartesian Gaussians have more functions. The homogeneous polynomials of order
-! "n" in (x, y, z) span the symmetric (n+1)(n+2)/2-dimensional reducible
-! representation of the U(3) group. The spherical harmonics Y_lm span the 2l+1
-! dimensional irreducible representation of the SO(3) group, which is a
-! subgroup of U(3).  From the table above, s, p is the same, cartesian d is
-! composed of five spherical d and one s (total of 6 functions), cartesian h is
-! composed of three p, seven f and eleven h (total 21 functions).  See [1] for
-! more info.
-!
-! [1] Schlegel, H. B., & Frisch, M. J. (1995). Transformation Between Cartesian
-! and Pure Spherical Harmonic Gaussians. International Journal of Quantum
-! Chemistry, 54(2), 83-87.
-!
-! [2] http://www.files.chem.vt.edu/chem-dept/valeev/docs/ints.pdf
 
 subroutine get_basis(atZ, at_xyz, nprim, istart, center, power, coef, alpha)
 ! Returns the basis in a form suitable for calculations.
@@ -293,8 +349,8 @@ end subroutine
 subroutine get_basis_atom(Z, xyz, nprim, istart, center, power, coef, alpha)
 ! Returns the basis for the atom Z in a form suitable for calculations.
 !
-! The input are the atom coordinates and number (Z, xyz)
-! the output are arrays "nprim, istart, center, power"
+! The input are the atomic number 'Z' and coordinates 'xyz'.
+! The output are the arrays "nprim, istart, center, power"
 ! describing each basis function (=contracted gaussian), as well as 'coef' and
 ! 'alpha' arrays describing the primitive gaussians.
 !
