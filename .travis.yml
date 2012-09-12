@@ -7,6 +7,6 @@ before_script:
   - cmake -DWITH_LIBINT=no .
   - make
 script:
-  - ctest --output-on-failure
+  - ctest --output-on-failure -E test_sto_mg6
 notifications:
   email: false
