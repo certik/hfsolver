@@ -272,156 +272,75 @@ end select
 end function
 
 
-subroutine get_basis(atZ, at_xyz, nprim, istart, center, power, coef, alpha)
-! Returns the basis in a form suitable for calculations.
-!
+subroutine get_basis(atZ, at_xyz, L, nprim, center, coef, alpha)
+! Returns the basis as a list of *shells*.
+
 ! The input are atomic coordinates and numbers (atZ, at_xyz),
-! the output are arrays "nprim, istart, center, power"
-! describing each basis function (=contracted gaussian), as well as 'coef' and
-! 'alpha' arrays describing the primitive gaussians.
-!
-integer, intent(in) :: atZ(:) ! atomic numbers
+! The output are arrays "L(i), nprim(i), center(i)"
+! describing i-th shell. The arrays "coef, alpha" contain the primitive GTOs of
+! all shells together in consecutive order. In order to obtain coef, alpha
+! for the i-th shell, do:
+!     istart = getstart(nprim)
+!     print *,  coef(istart(i):istart(i)+nprim(i)-1)
+!     print *, alpha(istart(i):istart(i)+nprim(i)-1)
+
+integer, intent(in) :: atZ(:) ! atZ(i) is the atomic number of the i-th atom
 ! at_xyz(:, i) are (x,y,z) coordinates of the i-th atom
 real(dp), intent(in) :: at_xyz(:, :)
-! nprim(i) is the number of primitive gaussians for the i-th contracted
-! gaussian
+! L(i) is the lambda of the i-th shell
+integer, intent(out), allocatable :: L(:)
+! nprim(i) is the number of primitive GTO in the i-th shell:
 integer, intent(out), allocatable :: nprim(:)
-! For the i-th contracted gaussian, the indices i1=istart(i) and
-! i2=i1+nprim(i)-1 give all the primitive gaussians given by coef(i1:i2) and
-! alpha(i1:i2)
-integer, intent(out), allocatable :: istart(:)
-! center(:, i) are the xyz coordinates of the i-th contracted gaussian
+! center(:, i) are the xyz coordinates of the i-th shell
 real(dp), intent(out), allocatable :: center(:, :)
-! The power(:, i) are the (l,m,n) powers of the i-th contracted gaussian ---
-! all functions in the given shell are always given consecutively using the
-! get_cartesian_shell() ordering
-integer, intent(out), allocatable :: power(:, :)
-! The coefficients (including normalization) and alpha's of primitive gaussians
+! The coefficients (with regards to normalized GTO) and alpha's of primitive
+! gaussians:
 real(dp), intent(out), allocatable :: coef(:), alpha(:)
 
 ! Max length of the temporary arrays:
 integer, parameter :: N = 10000
-integer, allocatable :: at_nprim(:)
-integer, allocatable :: at_istart(:)
+integer, allocatable :: at_nprim(:), at_L(:)
 real(dp), allocatable :: at_center(:, :)
-integer, allocatable :: at_power(:, :)
 real(dp), allocatable :: at_coef(:), at_alpha(:)
+integer :: tmp_L(N)
 integer :: tmp_nprim(N)
-integer :: tmp_istart(N)
 real(dp) :: tmp_center(3, N)
-integer :: tmp_power(3, N)
 real(dp) :: tmp_coef(N), tmp_alpha(N)
-integer :: i
-integer :: nc ! the number of contracted gaussians (basis functions)
-integer :: np ! the number of primitive gaussians
-integer :: atc, atp ! number of contracted/primitive gaussians on an atom
+integer :: i, j
+integer :: nc, np, atc, atp
 nc = 0
 np = 0
 do i = 1, size(atZ)
-    call get_basis_atom(atZ(i), at_xyz(:, i), at_nprim, at_istart, at_center, &
-        at_power, at_coef, at_alpha)
+    call read_basis(atZ(i), at_L, at_nprim, at_coef, at_alpha)
+    allocate(at_center(3, size(at_L)))
+    do j = 1, size(at_L)
+        at_center(:, j) = at_xyz(:, i)
+    end do
+
     atc = size(at_nprim)
     atp = size(at_coef)
     if (nc+atc > N .or. np+atp > N) then
         call stop_error("get_basis() internal error: Increase N")
     end if
+    tmp_L(nc+1:nc+atc) = at_L
     tmp_nprim(nc+1:nc+atc) = at_nprim
-    ! We need to shift the istart array:
-    tmp_istart(nc+1:nc+atc) = at_istart + np
     tmp_center(:, nc+1:nc+atc) = at_center
-    tmp_power(:, nc+1:nc+atc) = at_power
+
     tmp_coef(np+1:np+atp) = at_coef
     tmp_alpha(np+1:np+atp) = at_alpha
+
     nc = nc + atc
     np = np + atp
+    deallocate(at_center)
 end do
-allocate(nprim(nc), istart(nc), center(3, nc), power(3, nc))
+allocate(L(nc), nprim(nc), center(3, nc))
 allocate(coef(np), alpha(np))
+L = tmp_L(:nc)
 nprim = tmp_nprim(:nc)
-istart = tmp_istart(:nc)
 center = tmp_center(:, :nc)
-power = tmp_power(:, :nc)
+
 coef = tmp_coef(:np)
 alpha = tmp_alpha(:np)
-end subroutine
-
-subroutine get_basis_atom(Z, xyz, nprim, istart, center, power, coef, alpha)
-! Returns the basis for the atom Z in a form suitable for calculations.
-!
-! The input are the atomic number 'Z' and coordinates 'xyz'.
-! The output are the arrays "nprim, istart, center, power"
-! describing each basis function (=contracted gaussian), as well as 'coef' and
-! 'alpha' arrays describing the primitive gaussians.
-!
-integer, intent(in) :: Z ! atomic number
-! (x,y,z) coordinates of the i-th atom
-real(dp), intent(in) :: xyz(:)
-! nprim(i) is the number of primitive gaussians for the i-th contracted
-! gaussian
-integer, intent(out), allocatable :: nprim(:)
-! For the i-th contracted gaussian, the indices i1=istart(i) and
-! i2=i1+nprim(i)-1 give all the primitive gaussians: coef(i1:i2) and
-! alpha(i1:i2)
-integer, intent(out), allocatable :: istart(:)
-! center(:, i) are the xyz coordinates of the i-th contracted gaussian
-real(dp), intent(out), allocatable :: center(:, :)
-! The power(:, i) are the (l,m,n) powers of the i-th contracted gaussian ---
-! all functions in the given shell are always given consecutively using the
-! get_cartesian_shell() ordering
-integer, intent(out), allocatable :: power(:, :)
-! The coefficients (including normalization) and alpha's of primitive gaussians
-real(dp), intent(out), allocatable :: coef(:), alpha(:)
-
-real(dp), allocatable :: normp(:)
-integer, allocatable :: lindex(:), nprimitives(:)
-real(dp), allocatable :: c(:), zeta(:)
-integer :: n, n2, i, iprim, iprim2, lambda, i1, i2, k
-
-call read_basis(Z, lindex, nprimitives, c, zeta)
-n = sum((lindex+1)*(lindex+2)/2)
-allocate(nprim(n), istart(n), power(3, n), center(3, n))
-do i = 1, n
-    center(:, i) = xyz
-end do
-i = 0
-iprim2 = 1
-! This do loop creates the arrays describing contracted gaussians (those are
-! the actual basis functions) -- there are k = (l+1)*(l+2)/2 contracted
-! gaussians in the "Cartesian shell" for the given "l".
-do iprim = 1, size(nprimitives)
-    i = i + 1
-    k = (lindex(iprim)+1)*(lindex(iprim)+2)/2
-    nprim(i:i+k-1) = nprimitives(iprim)
-    call get_cartesian_shell(lindex(iprim), power(1, i:i+k-1), &
-        power(2, i:i+k-1), power(3, i:i+k-1))
-    i = i + k - 1
-end do
-! For each contracted gaussian above, we need to keep track of the individual
-! primitive gaussians. Below we create lists of all primitive gaussians and the
-! istart() array for accessing it.
-istart = getstart(nprim)
-n2 = istart(n) + nprim(n) - 1
-allocate(normp(n2), coef(n2), alpha(n2))
-iprim = 1
-i = 1
-do
-    lambda = sum(power(:, i))
-    ! Loop over all "l" for the given Cartesian shell
-    do k = 1, (lambda+1)*(lambda+2)/2
-        i1 = istart(i)
-        i2 = i1 + nprim(i) - 1
-        !print *, i, k, iprim
-        coef(i1:i2) = c(iprim:iprim+nprim(i)-1)
-        alpha(i1:i2) = zeta(iprim:iprim+nprim(i)-1)
-        normp(i1:i2) = norm_prim(power(1, i), power(2, i), power(3, i), &
-            alpha(i1:i2))
-        i = i + 1
-    end do
-    iprim = iprim + nprim(i-1)
-    if (i > n) exit
-end do
-coef = coef*normp
-call fix_normalization(nprim, istart, power, coef, alpha)
 end subroutine
 
 subroutine fix_normalization(nprim, istart, power, coefu, alpha)
@@ -511,16 +430,19 @@ real(dp), allocatable, intent(out) :: S(:, :), & ! Overlap matrix
     V(:, :), &  ! Potential matrix
     int2(:)     ! Two particle integrals indexed using ijkl2intindex()
 
-integer :: i
+integer :: Nelec
 
-integer :: n, m
+integer, allocatable :: L(:)
 integer, allocatable :: nprim(:)
 integer, allocatable :: istart(:)
-real(dp), allocatable :: center(:, :)
-integer, allocatable :: power(:, :)
 real(dp), allocatable :: coef(:), alpha(:)
 
-integer :: Nelec
+integer :: i
+integer :: n, m
+
+real(dp), allocatable :: center(:, :)
+integer, allocatable :: power(:, :)
+
 
 integer, allocatable :: lpower(:), mpower(:), npower(:)
 real(dp), allocatable :: xcenter(:), ycenter(:), zcenter(:)
@@ -529,7 +451,7 @@ real(dp), dimension(size(atno)) :: xatom, yatom, zatom
 Nelec = sum(atno)
 
 print *, "Creating the basis..."
-call get_basis(atno, xyz, nprim, istart, center, power, coef, alpha)
+call get_basis(atno, xyz, L, nprim, center, coef, alpha)
 n = size(nprim)
 print "(a)", "----------------------------------------------------------"
 print "(a)", "Center     Atomic              Coordinates (a.u.)"
