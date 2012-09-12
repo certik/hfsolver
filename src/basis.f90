@@ -63,29 +63,34 @@ else
 end if
 end function
 
-subroutine read_basis(Z, lindex, nprimitives, c, zeta)
-! Reads the basis from the file
+subroutine read_basis(Z, L, nprim, c, zeta)
+! Reads the basis corresponding to the atom Z from the file.
+! Currently it reads the 6-31G** basis.
 ! This function doesn't do any transformation on the basis, so it only returns
-! the set of contracted gaussians shells, that are specified on the basis file.
+! the set of contracted GTO shells, that are specified in the basis file.
+
 integer, intent(in) :: Z ! atomic number
-integer, allocatable, intent(out) :: lindex(:)
-! The contracted gaussian L number
-integer, allocatable, intent(out) :: nprimitives(:)
-! The number of primitive gaussians that compose the given contracted gaussian.
-! size(nprimitives) == size(lindex)
-real(dp), allocatable, intent(out) :: c(:), zeta(:)
-! coefficients and zeta of the primitive gaussians
-! size(c) == size(zeta), the first nprimitives(1) correspond to the first
-! contracted Gaussian, the next nprimitives(2) correspond to the second
+
+! The contracted gaussian L number. L(i) is the L number of the i-th shell:
+integer, allocatable, intent(out) :: L(:)
+
+! nprim(i) is the number of primitive GTO that compose the given contracted GTO
+! of the i-th shell. size(nprim) == size(L)
+integer, allocatable, intent(out) :: nprim(:)
+
+! Coefficients and zeta of the primitive gaussians.
+! size(c) == size(zeta), the first nprim(1) correspond to the first
+! contracted Gaussian, the next nprim(2) correspond to the second
 ! contracted Gaussian and so on.
+real(dp), allocatable, intent(out) :: c(:), zeta(:)
 integer :: u, ZZ, ios
-open(newunit=u, file="p631ss.txt", status="old")
+open(newunit=u, file="p631ss.txt", status="old") ! 6-31G**
 do
     read(u, *, iostat=ios) ZZ
     if (ios /= 0) then
         call stop_error("read_basis: atom Z=" // str(Z) // " not found")
     end if
-    call read_atom(u, lindex, nprimitives, c, zeta)
+    call read_atom(u, L, nprim, c, zeta)
     if (ZZ == Z) then
         close(u)
         return
@@ -93,21 +98,23 @@ do
 end do
 end subroutine
 
-subroutine read_atom(u, lindex, nprimitives, c, zeta)
+subroutine read_atom(u, L, nprim, c, zeta)
+! Reads the basis of one atom from the file "u".
+! The meaning of L, nprim, c and zeta is the same as in read_basis().
 integer, intent(in) :: u
-integer, allocatable, intent(out) :: lindex(:), nprimitives(:)
+integer, allocatable, intent(out) :: L(:), nprim(:)
 real(dp), allocatable, intent(out) :: c(:), zeta(:)
 integer, parameter :: MAX_FCN = 100
 real(dp), dimension(MAX_FCN) :: c_tmp, zeta_tmp
-character :: L
+character :: Ltmp
 integer :: r, i, j, idx
 read(u, *) r
-allocate(lindex(r), nprimitives(r))
+allocate(L(r), nprim(r))
 idx = 0
 do i = 1, r
-    read(u, *) L, nprimitives(i)
-    lindex(i) = str2l(L)
-    do j = 1, nprimitives(i)
+    read(u, *) Ltmp, nprim(i)
+    L(i) = str2l(Ltmp)
+    do j = 1, nprim(i)
         idx = idx + 1
         if (idx > MAX_FCN) call stop_error("read_atom: increase MAX_FCN")
         read(u, *) zeta_tmp(idx), c_tmp(idx)
