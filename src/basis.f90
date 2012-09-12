@@ -422,6 +422,71 @@ do i = 2, size(nprim)
 end do
 end function
 
+subroutine shells2contracted_gto(s_L, s_nprim, s_center, s_coef, s_alpha, &
+    nprim, center, power, istart, coef, alpha)
+! Converts basis in terms of shell to a basis in terms of contracted GTO
+
+! Basis in terms of shells:
+integer, intent(in) :: s_L(:)
+integer, intent(in) :: s_nprim(:)
+real(dp), intent(in) :: s_center(:, :)
+real(dp), intent(in) :: s_coef(:), s_alpha(:)
+
+! Basis in terms of contracted GTO:
+integer, allocatable, intent(out) :: nprim(:)
+real(dp), allocatable, intent(out) :: center(:, :)
+integer, allocatable, intent(out) :: power(:, :)
+integer, allocatable, intent(out) :: istart(:)
+real(dp), allocatable, intent(out) :: coef(:), alpha(:)
+
+integer, allocatable :: lpower(:), mpower(:), npower(:)
+integer, allocatable :: s_istart(:)
+real(dp), allocatable :: normp(:)
+integer :: i, j, n, c, m, n2, iprim, lambda, i1, i2, k
+
+allocate(s_istart(size(s_nprim)))
+s_istart = getstart(s_nprim)
+m = sum((s_L+1)*(s_L+2)/2) ! Total number of contracted GTO
+allocate(nprim(m), center(3, m), power(3, m), istart(m))
+c = 1
+do i = 1, size(s_nprim)
+    n = (s_L(i)+1)*(s_L(i)+2)/2  ! Number of contracted GTO in the shell
+    allocate(lpower(n), mpower(n), npower(n))
+    call get_cartesian_shell(s_L(i), lpower, mpower, npower)
+    nprim (   c:c+n-1) = s_nprim(i)
+    do j = 1, 3
+        center(j, c:c+n-1) = s_center(j, i)
+    end do
+    power (1, c:c+n-1) = lpower
+    power (2, c:c+n-1) = mpower
+    power (3, c:c+n-1) = npower
+    c = c + n
+    deallocate(lpower, mpower, npower)
+end do
+istart = getstart(nprim)
+n2 = istart(m) + nprim(m) - 1
+allocate(normp(n2), coef(n2), alpha(n2))
+iprim = 1
+i = 1
+do
+    lambda = sum(power(:, i))
+    ! Loop over all "l" for the given Cartesian shell
+    do k = 1, (lambda+1)*(lambda+2)/2
+        i1 = istart(i)
+        i2 = i1 + nprim(i) - 1
+        coef(i1:i2) = s_coef(iprim:iprim+nprim(i)-1)
+        alpha(i1:i2) = s_alpha(iprim:iprim+nprim(i)-1)
+        normp(i1:i2) = norm_prim(power(1, i), power(2, i), power(3, i), &
+            alpha(i1:i2))
+        i = i + 1
+    end do
+    iprim = iprim + nprim(i-1)
+    if (i > m) exit
+end do
+coef = coef*normp
+call fix_normalization(nprim, istart, power, coef, alpha)
+end subroutine
+
 subroutine gaussints(atno, xyz, S, T, V, int2)
 integer, intent(in) :: atno(:) ! Atomic numbers (Z)
 real(dp), intent(in) :: xyz(:, :) ! Atomic coordinates (3, :)
@@ -432,26 +497,32 @@ real(dp), allocatable, intent(out) :: S(:, :), & ! Overlap matrix
 
 integer :: Nelec
 
-integer, allocatable :: L(:)
+! Basis in terms of shells:
+integer, allocatable :: s_L(:)
+integer, allocatable :: s_nprim(:)
+real(dp), allocatable :: s_center(:, :)
+real(dp), allocatable :: s_coef(:), s_alpha(:)
+
+! Basis in terms of contracted GTO:
 integer, allocatable :: nprim(:)
+real(dp), allocatable :: center(:, :)
+real(dp), allocatable :: xcenter(:), ycenter(:), zcenter(:)
+integer, allocatable :: power(:, :)
+integer, allocatable :: lpower(:), mpower(:), npower(:)
 integer, allocatable :: istart(:)
 real(dp), allocatable :: coef(:), alpha(:)
+
+real(dp), dimension(size(atno)) :: xatom, yatom, zatom
 
 integer :: i
 integer :: n, m
 
-real(dp), allocatable :: center(:, :)
-integer, allocatable :: power(:, :)
-
-
-integer, allocatable :: lpower(:), mpower(:), npower(:)
-real(dp), allocatable :: xcenter(:), ycenter(:), zcenter(:)
-real(dp), dimension(size(atno)) :: xatom, yatom, zatom
-
 Nelec = sum(atno)
 
 print *, "Creating the basis..."
-call get_basis(atno, xyz, L, nprim, center, coef, alpha)
+call get_basis(atno, xyz, s_L, s_nprim, s_center, s_coef, s_alpha)
+call shells2contracted_gto(s_L, s_nprim, s_center, s_coef, s_alpha, &
+    nprim, center, power, istart, coef, alpha)
 n = size(nprim)
 print "(a)", "----------------------------------------------------------"
 print "(a)", "Center     Atomic              Coordinates (a.u.)"
