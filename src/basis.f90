@@ -86,8 +86,7 @@ use scf, only: ijkl2intindex
 use basis_aux, only: get_2ints_size
 implicit none
 private
-public norm_prim, read_basis, get_basis, get_cartesian_shell, getstart, &
-        gaussints, get_2ints_size
+public get_cartesian_shell, getstart, gaussints, get_2ints_size
 
 contains
 

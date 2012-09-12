@@ -2,11 +2,7 @@ module drivers
 use types, only: dp
 use scf, only: doscf, get_nuclear_energy
 use basis, only: gaussints
-use constants, only: pi, ang2bohr, Ha2eV
-use basis, only: get_basis, getstart, read_basis
-use utils, only: stop_error
-use mbpt, only: transform_int2, mbpt2, mbpt3, mbpt4
-use gf, only: find_pole_diag, find_poles
+use constants, only: Ha2eV
 implicit none
 private
 public rhf_gauss
