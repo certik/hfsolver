@@ -43,16 +43,17 @@ endif ()
 # hfsolver dependencies:
 
 # Lapack
-set(LAPACK_LIBS lapack blas)
+find_package(Lapack REQUIRED)
+set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 
 # libint2
 set(WITH_LIBINT yes
     CACHE BOOL "Build with libint (http://sourceforge.net/p/libint/) support")
 
 if(WITH_LIBINT)
-    set(LIBINT_LIBS int2)
-else()
-    set(LIBINT_LIBS)
+    find_package(Libint REQUIRED)
+    include_directories(${LIBINT_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${LIBINT_LIBRARIES})
 endif()
 
 # ------------------------------------------------------------
@@ -77,9 +78,11 @@ else ()
     message("C compiler flags      : ${CMAKE_C_FLAGS_RELEASE}")
     message("C++ compiler flags    : ${CMAKE_CXX_FLAGS_RELEASE}")
 endif ()
+message("LIBS: ${LIBS}")
 message("Installation prefix: ${CMAKE_INSTALL_PREFIX}")
-message("LAPACK_LIBS: ${LAPACK_LIBS}")
+message("LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
 message("WITH_LIBINT: ${WITH_LIBINT}")
 if(WITH_LIBINT)
-    message("LIBINT_LIBS: ${LIBINT_LIBS}")
+    message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
+    message("LIBINT_LIBRARIES: ${LIBINT_LIBRARIES}")
 endif()

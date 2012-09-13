@@ -44,12 +44,6 @@ else()
     )
 endif()
 
-set(LAPACK_LIBS
-    lapack
-    blas
-    )
-
-include_directories($ENV{SPKG_LOCAL}/include/libint2)
 add_library(hfsolver ${SRC})
 
 add_subdirectory(tests)
