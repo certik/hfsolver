@@ -12,8 +12,8 @@ before_install:
   - if [ "${TEST_LIBINT}" == "yes" ]; then
       git clone https://github.com/qsnake/libint.git;
       pushd libint;
-      ./configure --prefix=/usr;
-      make;
+      ./configure --prefix=/usr > conf_log;
+      make > make_log;
       sudo make install;
       popd;
     fi
