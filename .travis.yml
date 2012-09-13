@@ -3,10 +3,16 @@ python:
   - 2.7
 env:
   - TEST_LIBINT="no"
+  - TEST_SLOW="no"
+  - BUILD_TYPE="Debug"
 matrix:
   include:
     - python: 2.7
       env: TEST_LIBINT="yes"
+  include:
+    - python: 2.7
+      env: TEST_SLOW="yes"
+      env: BUILD_TYPE="Release"
 before_install:
   - sudo apt-get install gfortran liblapack-dev
   - if [ "${TEST_LIBINT}" == "yes" ]; then
@@ -18,9 +24,13 @@ before_install:
       popd;
     fi
 before_script:
-  - cmake -DWITH_LIBINT=${TEST_LIBINT} .
+  - cmake -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .
   - make
 script:
-  - ctest --output-on-failure -E test_sto_mg6
+  - if [ "${TEST_SLOW}" == "yes" ]; then
+      ctest --output-on-failure -L slow;
+    else
+      ctest --output-on-failure -LE slow;
+    fi
 notifications:
   email: false
