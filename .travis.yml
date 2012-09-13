@@ -2,17 +2,12 @@ language: python
 python:
   - 2.7
 env:
-  - TEST_LIBINT="no"
-  - TEST_SLOW="no"
-  - BUILD_TYPE="Debug"
-matrix:
-  include:
-    - python: 2.7
-      env: TEST_LIBINT="yes"
-  include:
-    - python: 2.7
-      env: TEST_SLOW="yes"
-      env: BUILD_TYPE="Release"
+  # Test all fast tests in Debug build:
+  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug"
+  # Test all fast tests in Debug build with libint:
+  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug"
+  # Test all slow tests in Release build (to make them run faster):
+  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release"
 before_install:
   - sudo apt-get install gfortran liblapack-dev
   - if [ "${TEST_LIBINT}" == "yes" ]; then
