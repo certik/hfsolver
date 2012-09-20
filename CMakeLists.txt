@@ -47,7 +47,7 @@ find_package(Lapack REQUIRED)
 set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 
 # libint2
-set(WITH_LIBINT yes
+set(WITH_LIBINT no
     CACHE BOOL "Build with libint (http://sourceforge.net/p/libint/) support")
 
 if(WITH_LIBINT)
