@@ -35,6 +35,54 @@ double lgamma(double x);
 #define FPMIN 1.0e-30
 #define SMALL 0.00000001
 
+/* This function calculates the integral Fm(t), it is based on [1], all
+   equations are references from there.
+
+   The idea is to use series expansion for F_maxm(t) and then the recursive
+   relation (24) downwards to calculate F_m(t) for m < maxm. For t >= maxt,
+   the series would take too many iterations to converge (for example with
+   maxt=20 and eps=1e-17, it could take longer than 82 iterations), so
+   we calculate F_0(t) directly and use (24) upwards.
+
+   [1] I. Shavitt: Methods in Computational Physics (Academic Press Inc., New
+   York, 1963), vol. 2
+*/
+
+double *Fm(int maxm, double t) {
+    double s, term, *F;
+    double maxt=20, eps=1e-17;
+    int m;
+    F = (double *)malloc((maxm+1)*sizeof(double));
+    if (t < maxt) {
+        // Series expansion for F_m(t), between equations (24) and (25)
+        // The worst case is with maxm=0, then after "m" iterations the "term"
+        // is:
+        //     term = (2t)^m / (2m+1)!!
+        // With t=20, it takes m=82 to get term smaller than 1e-17:
+        //     term = (2*20)^82 / (2*82+1)!! = 9.9104e-18 < 1e-17
+        // So in the worse case we will have 82 iterations.
+        term = 1.0 / (2*maxm + 1);
+        s = term;
+        m = 1;
+        while (fabs(term) > eps) {
+            term *= (2*t) / (2*maxm + 2 * m + 1);
+            s += term;
+            m++;
+        }
+        F[maxm] = s * exp(-t);
+        // Eq. (24) downwards:
+        for (m = maxm - 1; m >= 0; m--)
+            F[m] = (2*t*F[m + 1] + exp(-t)) / (2*m + 1);
+    } else {
+        // Eq. for F_0(t) on page 7:
+        F[0] = 0.5 * sqrt(M_PI/t) * erf(sqrt(t));
+        // Eq. (24) upwards, for t >= maxt=20, this converges well:
+        for (m = 0; m <= maxm - 1; m++)
+            F[m + 1] = ((2*m + 1)*F[m] - exp(-t)) / (2*t);
+    }
+    return F;
+}
+
 double fB(int i, int l1, int l2, double px, double ax, double bx, 
 		 int r, double g){
   return binomial_prefactor(i,l1,l2,px-ax,px-bx)*Bfunc(i,r,g);
@@ -85,7 +133,7 @@ double coulomb_repulsion(
 				int ld, int md, int nd, double alphad){
 
   double rab2, rcd2,rpq2,xp,yp,zp,xq,yq,zq,gamma1,gamma2,delta,sum;
-  double *Bx, *By, *Bz;
+  double *Bx, *By, *Bz, *F;
   int I,J,K;
 
   rab2 = dist2(xa,ya,za,xb,yb,zb);
@@ -104,16 +152,18 @@ double coulomb_repulsion(
   Bx = B_array(la,lb,lc,ld,xp,xa,xb,xq,xc,xd,gamma1,gamma2,delta);
   By = B_array(ma,mb,mc,md,yp,ya,yb,yq,yc,yd,gamma1,gamma2,delta);
   Bz = B_array(na,nb,nc,nd,zp,za,zb,zq,zc,zd,gamma1,gamma2,delta);
+  F = Fm(la+lb+lc+ld+ma+mb+mc+md+na+nb+nc+nd, 0.25*rpq2/delta);
 
   sum = 0.;
   for (I=0; I<la+lb+lc+ld+1;I++)
     for (J=0; J<ma+mb+mc+md+1;J++)
       for (K=0; K<na+nb+nc+nd+1;K++)
-	sum += Bx[I]*By[J]*Bz[K]*Fgamma(I+J+K,0.25*rpq2/delta);
+	sum += Bx[I]*By[J]*Bz[K]*F[I+J+K];
 
   free(Bx);
   free(By);
   free(Bz);  
+  free(F);
   
   return 2.*pow(M_PI,2.5)/(gamma1*gamma2*sqrt(gamma1+gamma2))
     *exp(-alphaa*alphab*rab2/gamma1) 
