@@ -43,3 +43,5 @@ ADDTEST(test_fe_ra)
 ADDTEST(test_fe_ra2)
 ADDTEST(test_gaussians_atoms)
 ADDTEST(test_gaussians_molecules)
+
+ADDTEST(test_fm)
