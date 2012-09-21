@@ -65,7 +65,7 @@ deallocate(moint2)
 ! MPQC:      -14.272 316 ! Wrong
 ! [2]:       -14.566 9
 ! GAMESS-UK: -14.569 853 664 5
-call assert(abs(Etot - (-14.56694426_dp)) < 1e-8_dp)
+call assert(abs(Etot - (-14.56694425_dp)) < 1e-8_dp)
 ! MPQC:      -0.042 703 ! Wrong
 ! [2]:       -0.029 5
 ! GAMESS-UK: -0.027 205 00
