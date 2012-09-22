@@ -83,6 +83,30 @@ double *Fm(int maxm, double t) {
     return F;
 }
 
+#define MAXFAC 100
+static double *fact_ = NULL;
+
+double fact_impl(int n)
+{
+    if (n <= 1) return 1;
+    return n*fact_impl(n-1);
+}
+
+void fact_init()
+{
+    int i;
+    fact_ = (double *)malloc(MAXFAC*sizeof(double));
+    for (i=0; i < MAXFAC; i++)
+        fact_[i] = fact_impl(i);
+}
+
+double fact(int n)
+{
+    if (fact_ == NULL) fact_init();
+    return fact_[n];
+}
+
+
 double fB(int i, int l1, int l2, double px, double ax, double bx, 
 		 int r, double g){
   return binomial_prefactor(i,l1,l2,px-ax,px-bx)*Bfunc(i,r,g);
@@ -325,11 +349,6 @@ double *A_array(int l1, int l2, double PA, double PB,
   return A;
 }
 
-
-int fact(int n){
-  if (n <= 1) return 1;
-  return n*fact(n-1);
-}
 
 int fact2(int n){ /* double factorial function = 1*3*5*...*n */
   if (n <= 1) return 1;
