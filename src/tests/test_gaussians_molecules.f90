@@ -62,7 +62,7 @@ call rhf_gauss([7, 7], reshape( &
     [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
 ! MPQC      -108.942 687
 ! [1]       -108.942         (Table 3.12, p. 192)
-call assert(abs(Etot - (-108.94268610_dp)) < eps)
+call assert(abs(Etot - (-108.94268654_dp)) < 1e-8_dp)
 ! [1] Table 3.16, page 196:
 call assert(abs(lam(5) - (-0.630_dp)) < 6e-4_dp)
 call assert(abs(lam(6) - (-0.612_dp)) < 6e-4_dp)
@@ -74,7 +74,7 @@ call rhf_gauss([8, 6], reshape( &
      0._dp, 0._dp, 2.132_dp], &
     [3, 2]), Nscf, 0.8_dp, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
 ! [1]       -112.737         (Table 3.12, p. 192)
-call assert(abs(Etot - (-112.73732053_dp)) < eps)
+call assert(abs(Etot - (-112.73732121_dp)) < 1e-8_dp)
 ! [1] Table 3.15, page 195:
 call assert(abs(lam(6) - (-0.633_dp)) < 6e-4_dp)
 call assert(abs(lam(7) - (-0.548_dp)) < 6e-4_dp)
@@ -101,7 +101,7 @@ deallocate(moint2)
 ! [1]       -40.202         (Table 3.13, p. 192)
 ! GAMESS-UK -40.201 700 347 4
 ! PyQuante vs libint: 3.4e-8
-call assert(abs(Etot - (-40.20170003_dp)) < eps)
+call assert(abs(Etot - (-40.20170036_dp)) < 1e-8_dp)
 ! [1] Table 3.17, page 198 says -0.543, probably a typo
 ! GAMESS-UK: -0.54451009
 call assert(abs(lam(5) - (-0.545_dp     )) < 6e-4_dp)
@@ -132,7 +132,7 @@ E2 = mbpt2(moint2, lam, Nelec/2)
 call print_energies(skip3=.true.)
 deallocate(moint2)
 ! GAMESS-UK: -40.201 704 77
-call assert(abs(Etot - (-40.20170447_dp)) < eps)
+call assert(abs(Etot - (-40.20170480_dp)) < 1e-8_dp)
 ! GAMESS-UK:  -0.168 150 19
 call assert(abs(E2 - (-0.16814994_dp)) < 1e-6_dp)
 
@@ -151,7 +151,7 @@ Egreen = find_pole_diag(5, moint2, lam, Nelec/2, 200, 1e-10_dp)
 deallocate(moint2)
 ! [1]       -56.195         (Table 3.13, p. 192)
 ! PyQuante vs libint: 5.0e-8
-call assert(abs(Etot - (-56.19457214_dp)) < eps)
+call assert(abs(Etot - (-56.19457246_dp)) < 1e-8_dp)
 ! [1] Table 3.17, page 198 says -0.421, but it is probably a typo.
 call assert(abs(lam(5) - (-0.41491596_dp)) < 1e-8_dp)
 ! GF:
@@ -178,7 +178,7 @@ deallocate(moint2)
 ! [1]       -76.023         (Table 3.13, p. 192)
 ! GAMESS-UK -76.023 158 7398
 ! PyQuante vs libint: 8.0e-8
-call assert(abs(Etot - (-76.02315816_dp)) < eps)
+call assert(abs(Etot - (-76.02315869_dp)) < 1e-8_dp)
 ! GAMESS-UK: -0.49714239
 ! [1] Table 3.17, page 198:
 call assert(abs(lam(5) - (-0.497_dp)) < 6e-4_dp)
@@ -204,7 +204,7 @@ Egreen = find_pole_diag(5, moint2, lam, Nelec/2, 200, 1e-10_dp)
 deallocate(moint2)
 ! [1]       -100.011         (Table 3.13, p. 192)
 ! PyQuante vs libint: 9.0e-8
-call assert(abs(Etot - (-100.01134740_dp)) < eps)
+call assert(abs(Etot - (-100.01134814_dp)) < 1e-8_dp)
 ! [1] Table 3.17, page 198:
 call assert(abs(lam(4) - (-0.627_dp)) < 6e-4_dp)
 call assert(abs(lam(5) - (-0.627_dp)) < 6e-4_dp)
