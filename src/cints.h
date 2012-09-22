@@ -16,8 +16,7 @@
  license. Please see the file LICENSE that is part of this
  distribution. 
  **************************************************************************/
-double fB(int i, int l1, int l2, double px, double ax, double bx, 
-	  int r, double g);
+
 double Bfunc(int i, int r, double g);
 double contr_coulomb(int ia, double *aexps, double *acoefs,
 			    double xa, double ya, double za, int la, int ma, int na, 
@@ -60,32 +59,16 @@ double nuclear_attraction(double x1, double y1, double z1,
 				 double x2, double y2, double z2,
 				 int l2, int m2, int n2, double alpha2,
 				 double x3, double y3, double z3);
-double A_term(int i, int r, int u, int l1, int l2,
-		     double PAx, double PBx, double CPx, double gamma);
 double *A_array(int l1, int l2, double PA, double PB,
 		       double CP, double g);
 
-int fact(int n);
-int fact2(int n);
 double dist2(double x1, double y1, double z1, 
 		    double x2, double y2, double z2);
-double dist(double x1, double y1, double z1, 
-		   double x2, double y2, double z2);
 double binomial_prefactor(int s, int ia, int ib, double xpa, double xpb);
-int binomial(int a, int b);
-
-double Fgamma(double m, double x);
-double gamm_inc(double a, double x);
 
 int ijkl2intindex(int i, int j, int k, int l);
 
-int fact_ratio2(int a, int b);
-
 double product_center_1D(double alphaa, double xa, 
 			 double alphab, double xb);
-
-/* Routines from Numerical Recipes */
-void gser(double *gamser, double a, double x, double *gln);
-void gcf(double *gammcf, double a, double x, double *gln);
 
 #endif
