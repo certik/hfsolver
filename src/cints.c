@@ -83,6 +83,24 @@ double *Fm(int maxm, double t) {
     return F;
 }
 
+#define MAXFAC 100
+static double fact_[MAXFAC];
+static double *fact = NULL;
+
+double fact_impl(int n)
+{
+    if (n <= 1) return 1;
+    return n*fact_impl(n-1);
+}
+
+void fact_init()
+{
+    int i;
+    fact = fact_;
+    for (i=0; i < MAXFAC; i++)
+        fact[i] = fact_impl(i);
+}
+
 double fB(int i, int l1, int l2, double px, double ax, double bx, 
 		 int r, double g){
   return binomial_prefactor(i,l1,l2,px-ax,px-bx)*Bfunc(i,r,g);
@@ -107,6 +125,7 @@ double contr_coulomb(int lena, double *aexps, double *acoefs,
 
   int i,j,k,l;
   double Jij = 0.,incr=0.;
+  if (fact == NULL) fact_init();
 
   for (i=0; i<lena; i++)
     for (j=0; j<lenb; j++)
@@ -211,6 +230,7 @@ double kinetic(double alpha1, int l1, int m1, int n1,
 	       double xb, double yb, double zb){
 
   double term0,term1,term2;
+  if (fact == NULL) fact_init();
   term0 = alpha2*(2*(l2+m2+n2)+3)*
     overlap(alpha1,l1,m1,n1,xa,ya,za,
 		   alpha2,l2,m2,n2,xb,yb,zb);
@@ -234,6 +254,7 @@ double overlap(double alpha1, int l1, int m1, int n1,
 		      double xa, double ya, double za,
 		      double alpha2, int l2, int m2, int n2,
 		      double xb, double yb, double zb){
+  if (fact == NULL) fact_init();
   /*Taken from THO eq. 2.12*/
   double rab2,gamma,xp,yp,zp,pre,wx,wy,wz;
 
@@ -271,6 +292,7 @@ double nuclear_attraction(double x1, double y1, double z1,
   int I,J,K;
   double gamma,xp,yp,zp,sum,rab2,rcp2;
   double *Ax,*Ay,*Az,*F;
+  if (fact == NULL) fact_init();
 
   gamma = alpha1+alpha2;
 
@@ -303,8 +325,8 @@ double A_term(int i, int r, int u, int l1, int l2,
 		     double PAx, double PBx, double CPx, double gamma){
   /* THO eq. 2.18 */
   return pow(-1,i)*binomial_prefactor(i,l1,l2,PAx,PBx)*
-    pow(-1,u)*fact(i)*pow(CPx,i-2*r-2*u)*
-    pow(0.25/gamma,r+u)/fact(r)/fact(u)/fact(i-2*r-2*u);
+    pow(-1,u)*fact[i]*pow(CPx,i-2*r-2*u)*
+    pow(0.25/gamma,r+u)/fact[r]/fact[u]/fact[i-2*r-2*u];
 }
 
 double *A_array(int l1, int l2, double PA, double PB,
@@ -325,11 +347,6 @@ double *A_array(int l1, int l2, double PA, double PB,
   return A;
 }
 
-
-int fact(int n){
-  if (n <= 1) return 1;
-  return n*fact(n-1);
-}
 
 int fact2(int n){ /* double factorial function = 1*3*5*...*n */
   if (n <= 1) return 1;
@@ -354,80 +371,7 @@ double binomial_prefactor(int s, int ia, int ib, double xpa, double xpb){
   return sum;
 } 
 
-int binomial(int a, int b){return fact(a)/(fact(b)*fact(a-b));}
-
-double Fgamma(double m, double x){
-  double val;
-  if (fabs(x) < SMALL) x = SMALL;
-  val = gamm_inc(m+0.5,x);
-  /* if (val < SMALL) return 0.; */ /* Gives a bug for D orbitals. */
-  return 0.5*pow(x,-m-0.5)*val; 
-}
-
-double gamm_inc(double a, double x){ /* Taken from NR routine gammap */
-  double gamser,gammcf,gln;
-  
-  assert (x >= 0.);
-  assert (a > 0.);
-  if (x < (a+1.0)) {
-    gser(&gamser,a,x,&gln);
-    return exp(gln)*gamser;
-  } else {
-    gcf(&gammcf,a,x,&gln);
-    return exp(gln)*(1.0-gammcf);
-  }
-}
- 
-void gser(double *gamser, double a, double x, double *gln){
-  int n;
-  double sum,del,ap;
-
-  *gln=lgamma(a);
-  if (x <= 0.0) {
-    assert(x>=0.);
-    *gamser=0.0;
-    return;
-  } else {
-    ap=a;
-    del=sum=1.0/a;
-    for (n=1;n<=ITMAX;n++) {
-      ++ap;
-      del *= x/ap;
-      sum += del;
-      if (fabs(del) < fabs(sum)*EPS) {
-	*gamser=sum*exp(-x+a*log(x)-(*gln));
-	return;
-      }
-    }
-    printf("a too large, ITMAX too small in routine gser");
-    return;
-  }
-}
- 
-void gcf(double *gammcf, double a, double x, double *gln){
-  int i;
-  double an,b,c,d,del,h;
-  
-  *gln=lgamma(a);
-  b=x+1.0-a;
-  c=1.0/FPMIN;
-  d=1.0/b;
-  h=d;
-  for (i=1;i<=ITMAX;i++) {
-    an = -i*(i-a);
-    b += 2.0;
-    d=an*d+b;
-    if (fabs(d) < FPMIN) d=FPMIN;
-    c=b+an/c;
-    if (fabs(c) < FPMIN) c=FPMIN;
-    d=1.0/d;
-    del=d*c;
-    h *= del;
-    if (fabs(del-1.0) < EPS) break;
-  }
-  assert(i<=ITMAX);
-  *gammcf=exp(-x+a*log(x)-(*gln))*h;
-}
+int binomial(int a, int b){return fact[a]/(fact[b]*fact[a-b]);}
 
 int ijkl2intindex(int i, int j, int k, int l){
   int tmp,ij,kl;
@@ -451,7 +395,7 @@ int ijkl2intindex(int i, int j, int k, int l){
   return ij*(ij+1)/2+kl;
 }
 
-int fact_ratio2(int a, int b){ return fact(a)/fact(b)/fact(a-2*b); }
+int fact_ratio2(int a, int b){ return fact[a]/fact[b]/fact[a-2*b]; }
 
 double product_center_1D(double alphaa, double xa, 
 			 double alphab, double xb){
