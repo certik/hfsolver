@@ -270,7 +270,7 @@ double nuclear_attraction(double x1, double y1, double z1,
 				 double x3, double y3, double z3){
   int I,J,K;
   double gamma,xp,yp,zp,sum,rab2,rcp2;
-  double *Ax,*Ay,*Az;
+  double *Ax,*Ay,*Az,*F;
 
   gamma = alpha1+alpha2;
 
@@ -284,16 +284,18 @@ double nuclear_attraction(double x1, double y1, double z1,
   Ax = A_array(l1,l2,xp-x1,xp-x2,xp-x3,gamma);
   Ay = A_array(m1,m2,yp-y1,yp-y2,yp-y3,gamma);
   Az = A_array(n1,n2,zp-z1,zp-z2,zp-z3,gamma);
+  F = Fm(l1+l2+m1+m2+n1+n2, rcp2*gamma);
 
   sum = 0.;
   for (I=0; I<l1+l2+1; I++)
     for (J=0; J<m1+m2+1; J++)
       for (K=0; K<n1+n2+1; K++)
-	sum += Ax[I]*Ay[J]*Az[K]*Fgamma(I+J+K,rcp2*gamma);
+	sum += Ax[I]*Ay[J]*Az[K]*F[I+J+K];
 
   free(Ax);
   free(Ay);
   free(Az);
+  free(F);
   return -2*M_PI/gamma*exp(-alpha1*alpha2*rab2/gamma)*sum;
 }
     
