@@ -38,7 +38,7 @@ deallocate(moint2)
 ! Jaguar:    -2.855 160
 ! [2]:       -2.855 2
 ! GAMESS-UK: -2.855 160 4262
-call assert(abs(Etot - (-2.85516040_dp)) < 1e-8_dp)
+call assert(abs(Etot - (-2.8551604262_dp)) < 1e-10_dp)
 ! MPQC:      -0.025 477
 ! Jaguar:    -0.025 477
 ! [2]:       -0.011 2
@@ -65,7 +65,7 @@ deallocate(moint2)
 ! MPQC:      -14.272 316 ! Wrong
 ! [2]:       -14.566 9
 ! GAMESS-UK: -14.569 853 664 5
-call assert(abs(Etot - (-14.56694425_dp)) < 1e-8_dp)
+call assert(abs(Etot - (-14.56694436_dp)) < 1e-8_dp)
 ! MPQC:      -0.042 703 ! Wrong
 ! [2]:       -0.029 5
 ! GAMESS-UK: -0.027 205 00
@@ -90,7 +90,7 @@ deallocate(moint2)
 ! MPQC:      -128.474 407
 ! GAMESS-UK: -128.474 406 519 9
 ! [2]:       -128.474 4
-call assert(abs(Etot - (-128.47440564_dp)) < 1e-7_dp)
+call assert(abs(Etot - (-128.4744065196_dp)) < 1e-10_dp)
 ! MPQC:        -0.150 316  ! Wrong
 ! [2]:         -0.151 8
 ! GAMESS-UK    -0.15176955
@@ -114,7 +114,7 @@ deallocate(moint2)
 ! PyQuante vs libint: 1.5e-7
 ! MPQC       -199.595 610 920 833
 ! GAMESS-UK  -199.595 610 917 0
-call assert(abs(Etot - (-199.59560957_dp)) < 2e-7_dp)
+call assert(abs(Etot - (-199.59561092_dp)) < 1e-8_dp)
 ! MPQC       -0.021 986 440 863
 ! GAMESS-UK  -0.028 462 86
 call assert(abs(E2 - (-0.02846287_dp)) < 1e-6_dp)
@@ -137,7 +137,7 @@ deallocate(moint2)
 ! PyQuante vs libint: 4.0e-7
 ! MPQC:      -526.773 744 920 946
 ! GAMESS-UK: -526.773 744 921 0
-call assert(abs(Etot - (-526.77374146_dp)) < 5e-7_dp)
+call assert(abs(Etot - (-526.77374492_dp)) < 1e-8_dp)
 ! MPQC:        -0.137308007079
 ! GAMESS-UK:   -0.14624537
 call assert(abs(E2 - (-0.06205272_dp)) < 1e-6_dp)
