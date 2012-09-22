@@ -192,8 +192,8 @@ subroutine Fm(maxm, t, F)
 ! This routine is tested for accuracy at least 1e-15. Tests reveal that for any
 ! "t" one can go up to maxm=50. For t<20 or t>200, one can go up to maxm=500.
 ! This range should be sufficient for most applications. Besides this range,
-! the accuracy might or might not be 1e-15. This test was done with maxt=20 and
-! eps=1e-17 below.
+! the accuracy might or might not be 1e-15. This test was done with maxt=20
+! below.
 !
 ! This function calculates the integral Fm(t), it is based on [1], all
 ! equations are references from there.
@@ -201,7 +201,7 @@ subroutine Fm(maxm, t, F)
 ! The idea is to use series expansion for F_maxm(t) and then the recursive
 ! relation (24) downwards to calculate F_m(t) for m < maxm. For t >= maxt, the
 ! series would take too many iterations to converge (for example with maxt=20
-! and eps=1e-17, it could take longer than 82 iterations), so we calculate
+! it could take longer than 82 iterations), so we calculate
 ! F_0(t) directly and use (24) upwards.
 !
 ! [1] I. Shavitt: Methods in Computational Physics (Academic Press Inc., New
@@ -211,7 +211,7 @@ real(dp), intent(in) :: t
 ! The array F(0:maxm) will be equal to F(m) = F_m(t) for m = 0..maxm
 real(dp), intent(out) :: F(0:)
 
-real(dp), parameter :: maxt=20, eps=1e-17_dp
+real(dp), parameter :: maxt=20
 real(dp) :: s, term
 integer :: m
 if (ubound(F, 1) /= maxm) call stop_error("Fm: invalid bounds on F")
@@ -225,8 +225,9 @@ if (t < maxt) then
     term = 1._dp / (2*maxm + 1)
     s = term
     m = 1
-    do while (abs(term) > eps)
+    do while (term/s > epsilon(1._dp))
         term = term * (2*t) / (2*maxm + 2 * m + 1)
+        ! "s" will only change if term/s > machine eps
         s = s + term
         m = m + 1
     end do
