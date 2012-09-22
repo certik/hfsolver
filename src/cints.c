@@ -84,7 +84,8 @@ double *Fm(int maxm, double t) {
 }
 
 #define MAXFAC 100
-static double *fact_ = NULL;
+static double fact_[MAXFAC];
+static double *fact = NULL;
 
 double fact_impl(int n)
 {
@@ -95,17 +96,10 @@ double fact_impl(int n)
 void fact_init()
 {
     int i;
-    fact_ = (double *)malloc(MAXFAC*sizeof(double));
+    fact = fact_;
     for (i=0; i < MAXFAC; i++)
-        fact_[i] = fact_impl(i);
+        fact[i] = fact_impl(i);
 }
-
-double fact(int n)
-{
-    if (fact_ == NULL) fact_init();
-    return fact_[n];
-}
-
 
 double fB(int i, int l1, int l2, double px, double ax, double bx, 
 		 int r, double g){
@@ -131,6 +125,7 @@ double contr_coulomb(int lena, double *aexps, double *acoefs,
 
   int i,j,k,l;
   double Jij = 0.,incr=0.;
+  if (fact == NULL) fact_init();
 
   for (i=0; i<lena; i++)
     for (j=0; j<lenb; j++)
@@ -235,6 +230,7 @@ double kinetic(double alpha1, int l1, int m1, int n1,
 	       double xb, double yb, double zb){
 
   double term0,term1,term2;
+  if (fact == NULL) fact_init();
   term0 = alpha2*(2*(l2+m2+n2)+3)*
     overlap(alpha1,l1,m1,n1,xa,ya,za,
 		   alpha2,l2,m2,n2,xb,yb,zb);
@@ -258,6 +254,7 @@ double overlap(double alpha1, int l1, int m1, int n1,
 		      double xa, double ya, double za,
 		      double alpha2, int l2, int m2, int n2,
 		      double xb, double yb, double zb){
+  if (fact == NULL) fact_init();
   /*Taken from THO eq. 2.12*/
   double rab2,gamma,xp,yp,zp,pre,wx,wy,wz;
 
@@ -295,6 +292,7 @@ double nuclear_attraction(double x1, double y1, double z1,
   int I,J,K;
   double gamma,xp,yp,zp,sum,rab2,rcp2;
   double *Ax,*Ay,*Az,*F;
+  if (fact == NULL) fact_init();
 
   gamma = alpha1+alpha2;
 
@@ -327,8 +325,8 @@ double A_term(int i, int r, int u, int l1, int l2,
 		     double PAx, double PBx, double CPx, double gamma){
   /* THO eq. 2.18 */
   return pow(-1,i)*binomial_prefactor(i,l1,l2,PAx,PBx)*
-    pow(-1,u)*fact(i)*pow(CPx,i-2*r-2*u)*
-    pow(0.25/gamma,r+u)/fact(r)/fact(u)/fact(i-2*r-2*u);
+    pow(-1,u)*fact[i]*pow(CPx,i-2*r-2*u)*
+    pow(0.25/gamma,r+u)/fact[r]/fact[u]/fact[i-2*r-2*u];
 }
 
 double *A_array(int l1, int l2, double PA, double PB,
@@ -373,7 +371,7 @@ double binomial_prefactor(int s, int ia, int ib, double xpa, double xpb){
   return sum;
 } 
 
-int binomial(int a, int b){return fact(a)/(fact(b)*fact(a-b));}
+int binomial(int a, int b){return fact[a]/(fact[b]*fact[a-b]);}
 
 int ijkl2intindex(int i, int j, int k, int l){
   int tmp,ij,kl;
@@ -397,7 +395,7 @@ int ijkl2intindex(int i, int j, int k, int l){
   return ij*(ij+1)/2+kl;
 }
 
-int fact_ratio2(int a, int b){ return fact(a)/fact(b)/fact(a-2*b); }
+int fact_ratio2(int a, int b){ return fact[a]/fact[b]/fact[a-2*b]; }
 
 double product_center_1D(double alphaa, double xa, 
 			 double alphab, double xb){
