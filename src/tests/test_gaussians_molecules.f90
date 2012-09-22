@@ -105,7 +105,7 @@ call assert(abs(Etot - (-40.20170036_dp)) < 1e-8_dp)
 ! [1] Table 3.17, page 198 says -0.543, probably a typo
 ! GAMESS-UK: -0.54451009
 call assert(abs(lam(5) - (-0.545_dp     )) < 6e-4_dp)
-call assert(abs(lam(5) - (-0.54451007_dp)) < 1e-8_dp)
+call assert(abs(lam(5) - (-0.54451008_dp)) < 1e-8_dp)
 ! E2:
 ! MPQC       -0.162 925  ! Wrong
 ! GAMESS-UK: -0.168 155 09
@@ -153,7 +153,7 @@ deallocate(moint2)
 ! PyQuante vs libint: 5.0e-8
 call assert(abs(Etot - (-56.19457246_dp)) < 1e-8_dp)
 ! [1] Table 3.17, page 198 says -0.421, but it is probably a typo.
-call assert(abs(lam(5) - (-0.41491596_dp)) < 1e-8_dp)
+call assert(abs(lam(5) - (-0.41491598_dp)) < 1e-8_dp)
 ! GF:
 ! [1]        0.353        (Table 7.4, page 407)
 call assert(abs(Egreen - (-0.35357570_dp)) < 1e-8_dp)
