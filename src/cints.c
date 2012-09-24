@@ -22,19 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if defined(_WIN32)
-double lgamma(double x);
-#endif
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-#define ITMAX 100
-#define EPS 3.0e-7
-#define FPMIN 1.0e-30
-#define SMALL 0.00000001
-
 void c_Fm(int *maxm, double *t, double *F);
 
 double *Fm(int maxm, double t) {
