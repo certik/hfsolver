@@ -8,7 +8,7 @@ implicit none
 real(dp), allocatable :: F(:), G(:)
 real(dp) :: x
 real(dp), parameter :: eps = 1e-15_dp
-real(dp), parameter :: eps_rel = 1e-14_dp
+real(dp), parameter :: eps_rel = 1e-12_dp
 real(dp), parameter :: xlist(*) = [1e-6_dp, 0.1_dp, 0.5_dp, 2._dp, 10._dp, &
     15._dp, 19._dp, 20._dp, 21._dp, 25._dp, 30._dp, 50._dp, 100._dp, 150._dp, &
     200._dp, 500._dp, 2000._dp, 20000._dp, 2e5_dp]
@@ -26,10 +26,11 @@ do i = 1, size(xlist)
         call asympt(maxm, x, F)
     end if
     call assert(abs(F(0) - 0.5_dp * sqrt(pi/x) * erf(sqrt(x))) < eps)
-    call assert(abs(F(0) - 0.5_dp * sqrt(pi/x) * erf(sqrt(x))) / F(0) < eps_rel)
+    call assert(abs(F(0) - 0.5_dp * sqrt(pi/x) * erf(sqrt(x))) / F(0) < 1e-14_dp)
     do m = 0, 500
         call Fm(m, x, G(:m))
         call assert(all(abs(G(:m) - F(:m)) < eps))
+        call assert(all(rel_error(F(:m), G(:m)) < eps_rel))
     end do
 end do
 
