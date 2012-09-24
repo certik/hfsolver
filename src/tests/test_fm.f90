@@ -59,4 +59,16 @@ do m = 0, maxm
 end do
 end subroutine
 
+real(dp) elemental function rel_error(a, b) result(r)
+real(dp), intent(in) :: a, b
+real(dp) :: m, d
+d = abs(a-b)
+m = max(abs(a), abs(b))
+if (d < tiny(1._dp)) then
+    r = 0
+else
+    r = d / m
+end if
+end function
+
 end program
