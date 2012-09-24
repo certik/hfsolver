@@ -213,7 +213,11 @@ real(dp), intent(out) :: F(0:)
 
 real(dp) :: s, term
 integer :: m
+if (maxm < 0 .or. maxm > 500) &
+    call stop_error("Fm: only works for 0 <= m <= 500")
+if (t < 0) call stop_error("Fm: only works for t >= 0")
 if (ubound(F, 1) /= maxm) call stop_error("Fm: invalid bounds on F")
+
 if (t < maxm + 0.5_dp) then
     ! Series expansion for F_m(t), between equations (24) and (25). The worst
     ! case is with maxm=0, then after "m" iterations the "term" is:
