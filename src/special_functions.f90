@@ -211,11 +211,10 @@ real(dp), intent(in) :: t
 ! The array F(0:maxm) will be equal to F(m) = F_m(t) for m = 0..maxm
 real(dp), intent(out) :: F(0:)
 
-real(dp), parameter :: maxt=20
 real(dp) :: s, term
 integer :: m
 if (ubound(F, 1) /= maxm) call stop_error("Fm: invalid bounds on F")
-if (t < maxt) then
+if (t < maxm + 0.5_dp) then
     ! Series expansion for F_m(t), between equations (24) and (25). The worst
     ! case is with maxm=0, then after "m" iterations the "term" is:
     !     term = (2t)^m / (2m+1)!!
@@ -232,14 +231,14 @@ if (t < maxt) then
         m = m + 1
     end do
     F(maxm) = s * exp(-t)
-    ! Eq. (24) downwards:
+    ! Eq. (24) downwards, for t < maxm+0.5, this converges well:
     do m = maxm-1, 0, -1
         F(m) = (2*t*F(m + 1) + exp(-t)) / (2*m + 1)
     end do
 else
     ! Eq. for F_0(t) on page 7:
     F(0) = 0.5_dp * sqrt(pi/t) * erf(sqrt(t))
-    ! Eq. (24) upwards, for t >= maxt=20, this converges well:
+    ! Eq. (24) upwards, for t >= maxm+0.5, this converges well:
     do m = 0, maxm-1
         F(m + 1) = ((2*m + 1)*F(m) - exp(-t)) / (2*t)
     end do
