@@ -189,20 +189,20 @@ subroutine Fm(maxm, t, F)
 !
 !     F_m(t) = \int_0^1 u^(2m) e^(-tu^2) du
 !
-! This routine is tested for accuracy at least 1e-15. Tests reveal that for any
-! "t" one can go up to maxm=50. For t<20 or t>200, one can go up to maxm=500.
-! This range should be sufficient for most applications. Besides this range,
-! the accuracy might or might not be 1e-15. This test was done with maxt=20
-! below.
+! And assigns the result to the array F(m) = F_m(t).
 !
-! This function calculates the integral Fm(t), it is based on [1], all
-! equations are references from there.
+! Conditions on max, t: 0 <= maxm <= 500, t >= 0.
 !
-! The idea is to use series expansion for F_maxm(t) and then the recursive
-! relation (24) downwards to calculate F_m(t) for m < maxm. For t >= maxt, the
-! series would take too many iterations to converge (for example with maxt=20
-! it could take longer than 82 iterations), so we calculate
-! F_0(t) directly and use (24) upwards.
+! This routine is tested for absolute accuracy 1e-15 and relative accuracy
+! 1e-12 for all maxm = 0..500 and all values "t" from the interval
+! 0 <= t <= 2e8.
+!
+! The algorithm is based on [1], all equations are references from there. The
+! idea is to use series expansion for F_maxm(t) and then the recursive relation
+! (24) downwards to calculate F_m(t) for m < maxm. For t >= maxm + 0.5, the
+! series would take too many iterations to converge and also the downwards
+! relation (24) becomes inaccurate, so we calculate F_0(t) directly and use
+! (24) upwards.
 !
 ! [1] I. Shavitt: Methods in Computational Physics (Academic Press Inc., New
 ! York, 1963), vol. 2
@@ -219,12 +219,8 @@ if (t < 0) call stop_error("Fm: only works for t >= 0")
 if (ubound(F, 1) /= maxm) call stop_error("Fm: invalid bounds on F")
 
 if (t < maxm + 0.5_dp) then
-    ! Series expansion for F_m(t), between equations (24) and (25). The worst
-    ! case is with maxm=0, then after "m" iterations the "term" is:
-    !     term = (2t)^m / (2m+1)!!
-    ! With t=20, it takes m=82 to get term smaller than 1e-17:
-    !     term = (2*20)^82 / (2*82+1)!! = 9.9104e-18 < 1e-17
-    ! So in the worse case we will have 82 iterations.
+    ! Series expansion for F_m(t), between equations (24) and (25).
+    ! Since (2*t)/(2*maxm+1) < 1, this will converge fast:
     term = 1._dp / (2*maxm + 1)
     s = term
     m = 1
