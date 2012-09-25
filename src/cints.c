@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// This function is implemented in Fortran:
 void c_Fm(int *maxm, double *t, double *F);
 
 double *Fm(int maxm, double t) {
