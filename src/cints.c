@@ -22,64 +22,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if defined(_WIN32)
-double lgamma(double x);
-#endif
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-#define ITMAX 100
-#define EPS 3.0e-7
-#define FPMIN 1.0e-30
-#define SMALL 0.00000001
-
-/* This function calculates the integral Fm(t), it is based on [1], all
-   equations are references from there.
-
-   The idea is to use series expansion for F_maxm(t) and then the recursive
-   relation (24) downwards to calculate F_m(t) for m < maxm. For t >= maxt,
-   the series would take too many iterations to converge (for example with
-   maxt=20 and eps=1e-17, it could take longer than 82 iterations), so
-   we calculate F_0(t) directly and use (24) upwards.
-
-   [1] I. Shavitt: Methods in Computational Physics (Academic Press Inc., New
-   York, 1963), vol. 2
-*/
+// This function is implemented in Fortran:
+void c_Fm(int *maxm, double *t, double *F);
 
 double *Fm(int maxm, double t) {
-    double s, term, *F;
-    double maxt=20, eps=1e-17;
-    int m;
+    double *F;
     F = (double *)malloc((maxm+1)*sizeof(double));
-    if (t < maxt) {
-        // Series expansion for F_m(t), between equations (24) and (25)
-        // The worst case is with maxm=0, then after "m" iterations the "term"
-        // is:
-        //     term = (2t)^m / (2m+1)!!
-        // With t=20, it takes m=82 to get term smaller than 1e-17:
-        //     term = (2*20)^82 / (2*82+1)!! = 9.9104e-18 < 1e-17
-        // So in the worse case we will have 82 iterations.
-        term = 1.0 / (2*maxm + 1);
-        s = term;
-        m = 1;
-        while (fabs(term) > eps) {
-            term *= (2*t) / (2*maxm + 2 * m + 1);
-            s += term;
-            m++;
-        }
-        F[maxm] = s * exp(-t);
-        // Eq. (24) downwards:
-        for (m = maxm - 1; m >= 0; m--)
-            F[m] = (2*t*F[m + 1] + exp(-t)) / (2*m + 1);
-    } else {
-        // Eq. for F_0(t) on page 7:
-        F[0] = 0.5 * sqrt(M_PI/t) * erf(sqrt(t));
-        // Eq. (24) upwards, for t >= maxt=20, this converges well:
-        for (m = 0; m <= maxm - 1; m++)
-            F[m + 1] = ((2*m + 1)*F[m] - exp(-t)) / (2*t);
-    }
+    c_Fm(&maxm, &t, F);
     return F;
 }
 
