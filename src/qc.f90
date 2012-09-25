@@ -1,4 +1,6 @@
 module qc
+use iso_c_binding, only: c_int, c_double
+use special_functions, only: Fm
 implicit none
 
 
@@ -50,7 +52,7 @@ interface
 
     subroutine getInts(nbf, nprim, istart, xcenter, ycenter, zcenter, &
         lpower, mpower, npower, n2, coef, alpha, &
-        Ints) bind(c,name="getInts")
+        Ints) bind(c, name="getInts")
     use iso_c_binding, only: c_int, c_double
     implicit none
     integer(c_int), value, intent(in) :: nbf, n2
@@ -82,5 +84,14 @@ interface
     end function
 
 end interface
+
+contains
+
+subroutine c_Fm(maxm, t, F) bind(c, name="c_Fm")
+integer(c_int), intent(in) :: maxm
+real(c_double), intent(in) :: t
+real(c_double), intent(out) :: F(0:maxm)
+call Fm(maxm, t, F)
+end subroutine
 
 end module
