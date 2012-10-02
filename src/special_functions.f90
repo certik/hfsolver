@@ -5,7 +5,8 @@ use constants, only: i_, pi
 use utils, only: stop_error
 implicit none
 private
-public wigner3j, getgaunt, getgauntr, Fm
+public wigner3j, getgaunt, getgauntr, Fm, Inu_asympt_sum, Inu_series, &
+    Knu_asympt_sum
 
 contains
 

@@ -3,10 +3,12 @@ use types, only: dp
 use debye_potential, only: V0, V1, V2, V3, V4, qp
 use debye_potential_series, only: S0, S1, S2, S3, S4
 use utils, only: stop_error, str
+use constants, only: pi
+use special_functions, only: Inu_asympt_sum, Inu_series, Knu_asympt_sum
 implicit none
 
 private
-public Vk, Sk
+public Vk, Sk, Vk2
 
 contains
 
@@ -87,6 +89,25 @@ select case (k)
 end select
 res_ = res_ * exp(-alpha) / rmax
 res = real(res_, dp)
+end function
+
+real(dp) function Vk2(k, D, r1, r2) result(r)
+! Uses the modified Bessel functions
+integer, intent(in) :: k
+real(dp), intent(in) :: D, r1, r2
+real(dp) :: rmin, rmax, a, b, C
+rmin = r2
+rmax = r1
+a = Knu_asympt_sum(k+0.5_dp, rmax/D) * sqrt(pi/(2*rmax/D))
+if (rmin/D > -log(epsilon(1._dp))/2) then
+    b = Inu_asympt_sum(k+0.5_dp, rmin/D) / sqrt(2*pi*rmin/D)
+    C = exp((rmin-rmax)/D)
+else
+    a = a * exp(-rmax/D)
+    b = Inu_series(k+0.5_dp, rmin/D)
+    C = 1
+end if
+r = (2*k+1)*C*a*b/sqrt(rmin*rmax)
 end function
 
 end module
