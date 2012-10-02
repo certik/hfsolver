@@ -367,25 +367,34 @@ do l = 0, maxk-1
 end do
 end subroutine
 
+real(dp) elemental function esinh(x) result(r)
+real(dp), intent(in) :: x
+r = sinh(x) / exp(x)
+end function
+
+real(dp) elemental function ecosh(x) result(r)
+real(dp), intent(in) :: x
+r = cosh(x) / exp(x)
+end function
+
 real(dp) function Inu_formula2(k, x) result(r)
 integer, intent(in) :: k
 real(dp), intent(in) :: x
 select case (k)
     case (0)
-        r = sinh(x)
+        r = esinh(x)
     case (1)
-        r = -sinh(x)/x + cosh(x)
+        r = -esinh(x)/x + ecosh(x)
     case (2)
-        r = (3/x**2 + 1)*sinh(x) - 3*cosh(x)/x
+        r = (3/x**2 + 1)*esinh(x) - 3*ecosh(x)/x
     case (3)
-        r = -(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)
+        r = -(15/x**3 + 6/x)*esinh(x) + (15/x**2 + 1)*ecosh(x)
     case (4)
-        r = (110/x**4 + 45/x**2 + 1)*sin(x) - (110/x**3 + 10/x)*cosh(x)
+        r = (110/x**4 + 45/x**2 + 1)*esinh(x) - (110/x**3 + 10/x)*ecosh(x)
     case default
         call stop_error("k = " // str(k) // " not implemented.")
 end select
 r = r * sqrt(2/(pi*x))
-r = r / exp(x)
 end function
 
 end module

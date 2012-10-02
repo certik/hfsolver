@@ -5,7 +5,7 @@ use debye_potential_series, only: S0, S1, S2, S3, S4
 use utils, only: stop_error, str
 use constants, only: pi
 use special_functions, only: Inu_asympt_sum, Inu_series, Knu_asympt_sum, &
-    Inu_formula, Knu_formula
+    Inu_formula, Knu_formula, Inu_formula2
 implicit none
 
 private
