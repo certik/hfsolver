@@ -10,6 +10,7 @@ use utils, only: loadtxt
 use openmp, only: omp_get_thread_num
 !use debye, only: Vk
 use debye, only: Vk => Sk
+!use debye, only: Vk => Vk2
 implicit none
 private
 public get_basis, get_basis2, stoints, stoints2, get_values, slater_sto_gauss, &
