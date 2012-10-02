@@ -2,11 +2,11 @@ module special_functions
 ! Special functions
 use types, only: dp
 use constants, only: i_, pi
-use utils, only: stop_error
+use utils, only: stop_error, str
 implicit none
 private
 public wigner3j, getgaunt, getgauntr, Fm, Inu_asympt_sum, Inu_series, &
-    Knu_asympt_sum, Inu_formula, Knu_formula
+    Knu_asympt_sum, Inu_formula, Knu_formula, Inu_formula2
 
 contains
 
@@ -366,5 +366,26 @@ do l = 0, maxk-1
     I(l + 1) = I(l-1) - (2*l + 1)*I(l)/x
 end do
 end subroutine
+
+real(dp) function Inu_formula2(k, x) result(r)
+integer, intent(in) :: k
+real(dp), intent(in) :: x
+select case (k)
+    case (0)
+        r = sinh(x)
+    case (1)
+        r = -sinh(x)/x + cosh(x)
+    case (2)
+        r = (3/x**2 + 1)*sinh(x) - 3*cosh(x)/x
+    case (3)
+        r = -(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)
+    case (4)
+        r = (110/x**4 + 45/x**2 + 1)*sin(x) - (110/x**3 + 10/x)*cosh(x)
+    case default
+        call stop_error("k = " // str(k) // " not implemented.")
+end select
+r = r * sqrt(2/(pi*x))
+r = r / exp(x)
+end function
 
 end module
