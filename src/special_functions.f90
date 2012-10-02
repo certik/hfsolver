@@ -5,7 +5,8 @@ use constants, only: i_, pi
 use utils, only: stop_error
 implicit none
 private
-public wigner3j, getgaunt, getgauntr, Fm
+public wigner3j, getgaunt, getgauntr, Fm, Inu_asympt_sum, Inu_series, &
+    Knu_asympt_sum
 
 contains
 
@@ -244,5 +245,91 @@ else
     end do
 endif
 end subroutine
+
+
+real(dp) function Knu_asympt_sum(nu, x) result(s)
+! If nu = k + 1/2 for k = 0, 1, 2, ..., then the series terminates (the result
+! is a polynomial) and this function returns an exact result for all "x".
+real(dp), intent(in) :: nu, x
+real(dp) :: term, max_term
+integer :: k
+term = 1
+s = term
+max_term = abs(term)
+k = 1
+do while (term/s > epsilon(1._dp))
+    term = term * (4*nu**2-(2*k-1)**2)/(8*k*x)
+    if (abs(term) > max_term) max_term = abs(term)
+    if (max_term > 1e100_dp) then
+        call stop_error("Knu asymptotic series does not converge.")
+    end if
+    s = s + term
+    k = k + 1
+end do
+
+if (max_term / abs(s) > 1) then
+    call stop_error("Knu asymptotic series lost too many significant digits.")
+end if
+end function
+
+real(dp) function Inu_asympt_sum(nu, x) result(s)
+! If nu = k + 1/2 for k = 0, 1, 2, ..., then the series terminates (the result
+! is a polynomial), however, unlike Knu_asympt_sum(), this polynomial is only
+! valid asymptotically. The exact result contains functions sinh(x) and
+! cosh(x). As such, sinh(x)/exp(x) = cosh(x)/exp(x) = 1/2 for
+! x > -log(epsilon(1._dp))/2. Then this function returns exact result for the
+! given floating point precision for all x satisfying the inequality.
+real(dp), intent(in) :: nu, x
+real(dp) :: term, max_term
+integer :: k
+term = 1
+s = term
+max_term = abs(term)
+k = 1
+do while (term/s > epsilon(1._dp))
+    term = - term * (4*nu**2-(2*k-1)**2)/(8*k*x)
+    if (abs(term) > max_term) max_term = abs(term)
+    if (max_term > 1e100_dp) then
+        call stop_error("Inu asymptotic series does not converge.")
+    end if
+    s = s + term
+    k = k + 1
+end do
+
+if (max_term / abs(s) > 1) then
+    call stop_error("Inu asymptotic series lost too many significant digits.")
+end if
+end function
+
+real(dp) function hyp0f1(a, x) result(s)
+real(dp), intent(in) :: a, x
+real(dp) :: term, max_term
+integer :: k
+term = 1
+s = term
+max_term = abs(term)
+k = 1
+do while (term/s > epsilon(1._dp))
+    term = term * x/(k*(a+k-1))
+    if (abs(term) > max_term) max_term = abs(term)
+    if (max_term > 1e100_dp) then
+        call stop_error("hyp0f1: series does not converge.")
+    end if
+    s = s + term
+    k = k + 1
+end do
+
+if (max_term / abs(s) > 1) then
+    call stop_error("hyp0f1: series lost too many significant digits.")
+end if
+end function
+
+
+real(dp) function Inu_series(nu, x) result(r)
+! Returns the modified Bessel function of the first kind using the series
+! expansion around x=0.
+real(dp), intent(in) :: nu, x
+r = (x/2)**nu / gamma(nu+1) * hyp0f1(nu+1, x**2/4)
+end function
 
 end module
