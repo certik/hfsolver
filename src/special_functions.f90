@@ -245,4 +245,59 @@ else
 endif
 end subroutine
 
+
+real(dp) function Knu_asympt_sum(nu, x) result(s)
+! If nu = k + 1/2 for k = 0, 1, 2, ..., then the series terminates (the result
+! is a polynomial) and this function returns an exact result for all "x".
+real(dp), intent(in) :: nu, x
+real(dp) :: term, max_term
+integer :: k
+term = 1
+s = term
+max_term = abs(term)
+k = 1
+do while (term/s > epsilon(1._dp))
+    term = term * (4*nu**2-(2*k-1)**2)/(8*k*x)
+    if (abs(term) > max_term) max_term = abs(term)
+    if (max_term > 1e100_dp) then
+        call stop_error("Knu asymptotic series does not converge.")
+    end if
+    s = s + term
+    k = k + 1
+end do
+
+if (max_term / abs(s) > 1) then
+    call stop_error("Knu asymptotic series lost too many significant digits.")
+end if
+end function
+
+real(dp) function Inu_asympt_sum(nu, x) result(s)
+! If nu = k + 1/2 for k = 0, 1, 2, ..., then the series terminates (the result
+! is a polynomial), however, unlike Knu_asympt_sum(), this polynomial is only
+! valid asymptotically. The exact result contains functions sinh(x) and
+! cosh(x). As such, sinh(x)/exp(x) = cosh(x)/exp(x) = 1/2 for
+! x > -log(epsilon(1._dp))/2. Then this function returns exact result for the
+! given floating point precision for all x satisfying the inequality.
+real(dp), intent(in) :: nu, x
+real(dp) :: term, max_term
+integer :: k
+term = 1
+s = term
+max_term = abs(term)
+k = 1
+do while (term/s > epsilon(1._dp))
+    term = - term * (4*nu**2-(2*k-1)**2)/(8*k*x)
+    if (abs(term) > max_term) max_term = abs(term)
+    if (max_term > 1e100_dp) then
+        call stop_error("Inu asymptotic series does not converge.")
+    end if
+    s = s + term
+    k = k + 1
+end do
+
+if (max_term / abs(s) > 1) then
+    call stop_error("Inu asymptotic series lost too many significant digits.")
+end if
+end function
+
 end module
