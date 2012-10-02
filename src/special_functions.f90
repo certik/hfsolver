@@ -6,7 +6,7 @@ use utils, only: stop_error
 implicit none
 private
 public wigner3j, getgaunt, getgauntr, Fm, Inu_asympt_sum, Inu_series, &
-    Knu_asympt_sum
+    Knu_asympt_sum, Inu_formula, Knu_formula
 
 contains
 
