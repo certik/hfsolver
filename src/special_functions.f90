@@ -267,7 +267,7 @@ do while (term/s > epsilon(1._dp))
     k = k + 1
 end do
 
-if (max_term / abs(s) > 1) then
+if (max_term / abs(s) > 10) then
     call stop_error("Knu asymptotic series lost too many significant digits.")
 end if
 end function
@@ -296,7 +296,7 @@ do while (term/s > epsilon(1._dp))
     k = k + 1
 end do
 
-if (max_term / abs(s) > 1) then
+if (max_term / abs(s) > 10) then
     call stop_error("Inu asymptotic series lost too many significant digits.")
 end if
 end function
@@ -319,7 +319,7 @@ do while (term/s > epsilon(1._dp))
     k = k + 1
 end do
 
-if (max_term / abs(s) > 1) then
+if (max_term / abs(s) > 10) then
     call stop_error("hyp0f1: series lost too many significant digits.")
 end if
 end function
