@@ -390,7 +390,7 @@ select case (k)
     case (3)
         r = -(15/x**3 + 6/x)*esinh(x) + (15/x**2 + 1)*ecosh(x)
     case (4)
-        r = (110/x**4 + 45/x**2 + 1)*esinh(x) - (110/x**3 + 10/x)*ecosh(x)
+        r = (105/x**4 + 45/x**2 + 1)*esinh(x) - (105/x**3 + 10/x)*ecosh(x)
     case default
         call stop_error("k = " // str(k) // " not implemented.")
 end select
