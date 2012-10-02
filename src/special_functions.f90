@@ -300,4 +300,35 @@ if (max_term / abs(s) > 1) then
 end if
 end function
 
+real(dp) function hyp0f1(a, x) result(s)
+real(dp), intent(in) :: a, x
+real(dp) :: term, max_term
+integer :: k
+term = 1
+s = term
+max_term = abs(term)
+k = 1
+do while (term/s > epsilon(1._dp))
+    term = term * x/(k*(a+k-1))
+    if (abs(term) > max_term) max_term = abs(term)
+    if (max_term > 1e100_dp) then
+        call stop_error("hyp0f1: series does not converge.")
+    end if
+    s = s + term
+    k = k + 1
+end do
+
+if (max_term / abs(s) > 1) then
+    call stop_error("hyp0f1: series lost too many significant digits.")
+end if
+end function
+
+
+real(dp) function Inu_series(nu, x) result(r)
+! Returns the modified Bessel function of the first kind using the series
+! expansion around x=0.
+real(dp), intent(in) :: nu, x
+r = (x/2)**nu / gamma(nu+1) * hyp0f1(nu+1, x**2/4)
+end function
+
 end module
