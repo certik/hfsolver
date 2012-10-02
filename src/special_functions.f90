@@ -332,4 +332,39 @@ real(dp), intent(in) :: nu, x
 r = (x/2)**nu / gamma(nu+1) * hyp0f1(nu+1, x**2/4)
 end function
 
+subroutine Knu_formula(maxk, x, K)
+! Returns K(k) = K_{k+1/2}(x) / exp(-x) for k=-1,0,1,...,maxk.
+integer, intent(in) :: maxk
+real(dp), intent(in) :: x
+real(dp), intent(out) :: K(-1:)
+integer :: l
+K(-1) = sqrt(pi/(2*x))
+K(0) = K(-1)
+do l = 0, maxk-1
+    ! K_{nu+1} = K_{nu-1} + 2*nu*K_nu/x
+    K(l + 1) = K(l-1) + (2*l + 1)*K(l)/x
+end do
+end subroutine
+
+subroutine Inu_formula(maxk, x, I)
+! Returns I(k) = I_{k+1/2}(x) / exp(x) for k=-1,0,1,...,maxk.
+integer, intent(in) :: maxk
+real(dp), intent(in) :: x
+real(dp), intent(out) :: I(-1:)
+integer :: l
+I(-1) = (1+exp(-2*x)) / sqrt(2*pi*x)
+! I(0) = (1-exp(-2*x)) / sqrt(2*pi*x)
+if (x > -log(epsilon(1._dp))/2) then
+    ! (1-exp(-2*x)) = 1 in floating point precission
+    I(0) = 1 / sqrt(2*pi*x)
+else
+    ! (1-exp(-2*x)) = 2*sinh(x)/exp(x) to avoid cancellation
+    I(0) = sqrt(2/(pi*x)) * sinh(x)/exp(x)
+end if
+do l = 0, maxk-1
+    ! I_{nu+1} = I_{nu-1} - 2*nu*I_nu/x
+    I(l + 1) = I(l-1) - (2*l + 1)*I(l)/x
+end do
+end subroutine
+
 end module
