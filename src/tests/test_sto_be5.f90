@@ -72,6 +72,6 @@ call printlam(nbfl, lam, Ekin, Etot)
 call assert(abs(Etot - (-14.85506928_dp)) < 1e-8_dp)
 call assert(all(abs(lam(:2, 0) - [-4.86840102_dp, -0.44663327_dp]) < 1e-8_dp))
 call assert(all(abs(lam(:2, 1) - [-0.11392548_dp,  0.18282851_dp]) < 1e-8_dp))
-call assert(all(abs(lam(:2, 2) - [ 0.40729751_dp, 25.10908155_dp]) < 1e-8_dp))
+call assert(all(abs(lam(:2, 2) - [ 0.40729751_dp, 25.10908153_dp]) < 1e-8_dp))
 
 end program

@@ -4,11 +4,12 @@ use debye_potential, only: V0, V1, V2, V3, V4, qp
 use debye_potential_series, only: S0, S1, S2, S3, S4
 use utils, only: stop_error, str
 use constants, only: pi
-use special_functions, only: Inu_asympt_sum, Inu_series, Knu_asympt_sum
+use special_functions, only: Inu_asympt_sum, Inu_series, Knu_asympt_sum, &
+    Inu_formula, Knu_formula, Inu_formula2, Knu_formula2
 implicit none
 
 private
-public Vk, Sk, Vk2
+public Vk, Sk, Vk2, Vk3
 
 contains
 
@@ -107,6 +108,19 @@ else
     b = Inu_series(k+0.5_dp, rmin/D)
     C = 1
 end if
+r = (2*k+1)*C*a*b/sqrt(rmin*rmax)
+end function
+
+real(dp) function Vk3(k, D, r1, r2) result(r)
+! Uses the modified Bessel functions
+integer, intent(in) :: k
+real(dp), intent(in) :: D, r1, r2
+real(dp) :: rmin, rmax, a, b, C
+rmin = r2
+rmax = r1
+b = Inu_formula2(k, rmin/D)
+a = Knu_formula2(k, rmax/D)
+C = exp((rmin-rmax)/D)
 r = (2*k+1)*C*a*b/sqrt(rmin*rmax)
 end function
 

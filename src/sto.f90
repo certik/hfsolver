@@ -8,9 +8,11 @@ use hartree_screening, only: hartree_y
 use special_functions, only: wigner3j, getgaunt
 use utils, only: loadtxt
 use openmp, only: omp_get_thread_num
+use quadrature, only: gauss_pts, gauss_wts
 !use debye, only: Vk
-use debye, only: Vk => Sk
+!use debye, only: Vk => Sk
 !use debye, only: Vk => Vk2
+use debye, only: Vk => Vk3
 implicit none
 private
 public get_basis, get_basis2, stoints, stoints2, get_values, slater_sto_gauss, &
@@ -22,6 +24,9 @@ real(dp), allocatable :: fact(:)
 
 ! only used in spec()
 real(dp), allocatable :: xiq(:), wtq(:)
+! only used in spec3()
+integer, parameter :: Nq = 64
+real(dp), allocatable :: xiq3(:), wtq3(:)
 
 contains
 
@@ -495,8 +500,22 @@ real(dp), allocatable, intent(out) :: slater_(:, :)
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: m, n, i, j, k, l, k_, ijkl, ndof, Lmax
+real(dp), allocatable :: d(:, :)
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
+if (.not. allocated(xiq)) then
+    !call loadtxt("lag06.txt", d)
+    !call loadtxt("lag20.txt", d)
+    call loadtxt("lag52.txt", d)
+    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
+    xiq = d(:, 1)
+    wtq = d(:, 2)
+end if
+if (.not. allocated(xiq3)) then
+    allocate(xiq3(Nq), wtq3(Nq))
+    xiq3 = gauss_pts(Nq)
+    wtq3 = gauss_wts(Nq)
+end if
 print *, "Calculating Slater integrals..."
 Lmax = ubound(nbfl, 1)
 ndof = sum(nbfl)
@@ -595,16 +614,8 @@ interface
     end function
 end interface
 real(dp) :: r
-real(dp), allocatable :: d(:, :), hq(:)
+real(dp), allocatable :: hq(:)
 integer :: i
-if (.not. allocated(xiq)) then
-    !call loadtxt("lag06.txt", d)
-    !call loadtxt("lag20.txt", d)
-    call loadtxt("lag52.txt", d)
-    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
-    xiq = d(:, 1)
-    wtq = d(:, 2)
-end if
 
 allocate(hq(size(xiq)))
 do i = 1, size(xiq)
@@ -641,9 +652,6 @@ real(dp), intent(in) :: x0
 real(dp) :: r
 real(dp), allocatable :: hq(:)
 integer :: i
-if (.not. allocated(xiq)) then
-    call stop_error("sorry.")
-end if
 
 allocate(hq(size(xiq)))
 do i = 1, size(xiq)
@@ -657,6 +665,34 @@ do i = 1, size(xiq)
 end do
 res = sum(wtq * hq) / zeta
 res = res * exp(-zeta*x0)
+end function
+
+real(dp) function spec3(n, zeta, f, x0) result(res)
+! Calculates the integral \int_0^x0 r^n * exp(-zeta*r) * f(r) \d r
+!
+! A direct Gauss-Legendre quadrature is used.
+integer, intent(in) :: n
+real(dp), intent(in) :: zeta
+interface
+    real(dp) function f(x)
+    import :: dp
+    implicit none
+    real(dp), intent(in) :: x
+    end function
+end interface
+real(dp), intent(in) :: x0
+real(dp) :: r
+real(dp) :: fq(Nq), jac, a, b
+integer :: i
+
+a = 0
+b = x0
+jac = (b-a)/2
+do i = 1, Nq
+    r = (xiq3(i)+1) * jac + a
+    fq(i) = r**n * exp(-zeta*r) * f(r)
+end do
+res = sum(wtq3 * fq * jac)
 end function
 
 real(dp) function slater_gauss2(n, zeta, kk, i, j, k, l) result(r)
@@ -780,7 +816,9 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            spec(n(i) + n(k), zeta(i) + zeta(k), Ykoverr)
+            ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
+            + &
+            spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
 end if
 
 contains
@@ -792,18 +830,13 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec(n_, zeta_, g)
-    r = r + spec2(n_, zeta_, g2, xp)
+    r = spec3(n_, zeta_, g, x)
     end function
 
     real(dp) function g(x)
     real(dp), intent(in) :: x
+    !call assert(xp > x)   ! commented out for efficiency reasons
     g = Vk(kk, D, xp, x)
-    end function
-
-    real(dp) function g2(x)
-    real(dp), intent(in) :: x
-    g2 = Vk(kk, D, x, xp) - Vk(kk, D, xp, x)
     end function
 
 end function
@@ -843,6 +876,11 @@ if (.not. allocated(xiq)) then
     xiq = dd(:, 1)
     wtq = dd(:, 2)
 end if
+if (.not. allocated(xiq3)) then
+    allocate(xiq3(Nq), wtq3(Nq))
+    xiq3 = gauss_pts(Nq)
+    wtq3 = gauss_wts(Nq)
+end if
 
 n = size(nl)
 allocate(intindex(n, n, n, n))
@@ -860,7 +898,9 @@ do i = 1, n  ! Only this outer loop is parallelized
                     !slater_(ijkl, k_) = slater_gauss2(nl, zl, k_, i, k, j, l)
                     !slater_(ijkl, k_) = slater_gauss3(nl, zl, k_, i, k, j, l)
                     slater_(ijkl, k_) = slater_gauss_screening(nl, zl, &
-                        k_, i, k, j, l, D)
+                        k_, i, k, j, l, D) + &
+                    slater_gauss_screening(nl, zl, &
+                        k_, k, i, l, j, D)
                 end do
             end do
         end do
