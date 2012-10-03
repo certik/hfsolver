@@ -22,7 +22,7 @@ public get_basis, get_basis2, stoints, stoints2, get_values, slater_sto_gauss, &
 ! You have to call calc_factorials() to initialize it first.
 real(dp), allocatable :: fact(:)
 
-! only used in spec()
+! only used in gauss_aoo()
 real(dp), allocatable :: xiq(:), wtq(:)
 ! only used in gauss_ab()
 integer, parameter :: Nq = 64
@@ -570,7 +570,7 @@ else
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
             (gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0._dp, 0.1_dp) &
             + gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp, 5._dp) &
-            + spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 5._dp))
+            + gauss_aoo(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 5._dp))
 end if
 
 contains
@@ -593,42 +593,7 @@ contains
 
 end function
 
-real(dp) function spec(n, zeta, f) result(res)
-! Calculates the integral \int_0^oo r^n * exp(-zeta*r) * f(r) \d r
-!
-! We convert the integral to:
-!
-!   \int_0^oo r^n * exp(-zeta*r) * f(r) \d r =
-!       = (1/zeta) * \int_0^oo exp(-x) * (x/zeta)^n * f(x/zeta) \d x
-!
-! And use Gauss-Laguerre quadrature for the integral over "x".
-integer, intent(in) :: n
-real(dp), intent(in) :: zeta
-interface
-    real(dp) function f(x)
-    import :: dp
-    implicit none
-    real(dp), intent(in) :: x
-    end function
-end interface
-real(dp) :: r
-real(dp), allocatable :: hq(:)
-integer :: i
-
-allocate(hq(size(xiq)))
-do i = 1, size(xiq)
-    r = xiq(i) / zeta
-    ! Note: r**n goes to infinity for large "r", and f(r) goes to zero but very
-    ! slowly, so r**n * f(r) blows up. For example for Nq=52, the largest point
-    ! is x=188.41, zeta=1.7846, so r=105.57, and f(r)=1e-5, but
-    ! r**n*f(r)=1837.76
-    ! The weight is 1e-80, so the result is zero.
-    hq(i) = r**n * f(r)
-end do
-res = sum(wtq * hq) / zeta
-end function
-
-real(dp) function spec2(n, zeta, f, x0) result(res)
+real(dp) function gauss_aoo(n, zeta, f, x0) result(res)
 ! Calculates the integral \int_x0^oo r^n * exp(-zeta*r) * f(r) \d r
 !
 ! We first shift the integral to (0, oo) and then convert the integral to:
@@ -707,7 +672,7 @@ else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
             (gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0._dp, 0.1_dp) &
-            + spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
+            + gauss_aoo(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
 end if
 
 contains
