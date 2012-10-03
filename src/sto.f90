@@ -569,8 +569,8 @@ else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
             ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
-            + &
-            spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
+            + spec4(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp, 5._dp) &
+            + spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 5._dp))
 end if
 
 contains
