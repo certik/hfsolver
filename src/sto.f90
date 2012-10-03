@@ -24,7 +24,7 @@ real(dp), allocatable :: fact(:)
 
 ! only used in spec()
 real(dp), allocatable :: xiq(:), wtq(:)
-! only used in spec3()
+! only used in gauss_ab()
 integer, parameter :: Nq = 64
 real(dp), allocatable :: xiq3(:), wtq3(:)
 
@@ -568,8 +568,8 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
-            + spec4(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp, 5._dp) &
+            (gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0._dp, 0.1_dp) &
+            + gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp, 5._dp) &
             + spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 5._dp))
 end if
 
@@ -582,7 +582,7 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec3(n_, zeta_, g, x)
+    r = gauss_ab(n_, zeta_, g, 0._dp, x)
     end function
 
     real(dp) function g(x)
@@ -665,24 +665,7 @@ res = sum(wtq * hq) / zeta
 res = res * exp(-zeta*x0)
 end function
 
-real(dp) function spec3(n, zeta, f, x0) result(res)
-! Calculates the integral \int_0^x0 r^n * exp(-zeta*r) * f(r) \d r
-!
-! A direct Gauss-Legendre quadrature is used.
-integer, intent(in) :: n
-real(dp), intent(in) :: zeta
-interface
-    real(dp) function f(x)
-    import :: dp
-    implicit none
-    real(dp), intent(in) :: x
-    end function
-end interface
-real(dp), intent(in) :: x0
-res = spec4(n, zeta, f, 0._dp, x0)
-end function
-
-real(dp) function spec4(n, zeta, f, a, b) result(res)
+real(dp) function gauss_ab(n, zeta, f, a, b) result(res)
 ! Calculates the integral \int_a^b r^n * exp(-zeta*r) * f(r) \d r
 !
 ! A direct Gauss-Legendre quadrature is used.
@@ -723,9 +706,8 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
-            + &
-            spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
+            (gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0._dp, 0.1_dp) &
+            + spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
 end if
 
 contains
@@ -737,7 +719,7 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec3(n_, zeta_, g, x)
+    r = gauss_ab(n_, zeta_, g, 0._dp, x)
     end function
 
     real(dp) function g(x)
