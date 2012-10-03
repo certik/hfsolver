@@ -679,12 +679,27 @@ interface
     end function
 end interface
 real(dp), intent(in) :: x0
+res = spec4(n, zeta, f, 0._dp, x0)
+end function
+
+real(dp) function spec4(n, zeta, f, a, b) result(res)
+! Calculates the integral \int_a^b r^n * exp(-zeta*r) * f(r) \d r
+!
+! A direct Gauss-Legendre quadrature is used.
+integer, intent(in) :: n
+real(dp), intent(in) :: zeta
+interface
+    real(dp) function f(x)
+    import :: dp
+    implicit none
+    real(dp), intent(in) :: x
+    end function
+end interface
+real(dp), intent(in) :: a, b
 real(dp) :: r
-real(dp) :: fq(Nq), jac, a, b
+real(dp) :: fq(Nq), jac
 integer :: i
 
-a = 0
-b = x0
 jac = (b-a)/2
 do i = 1, Nq
     r = (xiq3(i)+1) * jac + a
