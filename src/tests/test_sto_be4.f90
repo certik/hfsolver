@@ -58,7 +58,7 @@ call stoints2(Z, nbfl, nl, zl, S, T, V, slater2)
 call slater_sto_gauss(nbfl, nl, zl, slater)
 ! This test is crucial: it tests that the numerical and analytical integrals
 ! agree to very high accuracy:
-call assert(all(abs(slater2-slater) < 1e-9_dp))
+call assert(all(abs(slater2-slater) < 1e-10_dp))
 
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 

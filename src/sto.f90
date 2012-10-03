@@ -22,9 +22,9 @@ public get_basis, get_basis2, stoints, stoints2, get_values, slater_sto_gauss, &
 ! You have to call calc_factorials() to initialize it first.
 real(dp), allocatable :: fact(:)
 
-! only used in spec()
+! only used in gauss_aoo()
 real(dp), allocatable :: xiq(:), wtq(:)
-! only used in spec3()
+! only used in gauss_ab()
 integer, parameter :: Nq = 64
 real(dp), allocatable :: xiq3(:), wtq3(:)
 
@@ -541,7 +541,8 @@ do i = 1, n
                 !call assert(ijkl2intindex(i, j, k, l) == ijkl)
                 do k_ = 0, 2*ubound(nbfl, 1)
                     !slater_(ijkl, k_) = slater(nl, zl, k_, i, k, j, l)
-                    slater_(ijkl, k_) = slater_gauss(nl, zl, k_, i, k, j, l)
+                    slater_(ijkl, k_) = slater_gauss(nl, zl, k_, i, k, j, l) &
+                        + slater_gauss(nl, zl, k_, k, i, l, j)
                 end do
             end do
         end do
@@ -567,7 +568,9 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            spec(n(i) + n(k), zeta(i) + zeta(k), Ykoverr)
+            (gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0._dp, 0.1_dp) &
+            + gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp, 5._dp) &
+            + gauss_aoo(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 5._dp))
 end if
 
 contains
@@ -579,58 +582,18 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec(n_, zeta_, g)
-    r = r + spec2(n_, zeta_, g2, xp)
+    r = gauss_ab(n_, zeta_, g, 0._dp, x)
     end function
 
     real(dp) function g(x)
     real(dp), intent(in) :: x
+    !call assert(xp > x)   ! commented out for efficiency reasons
     g = x**kk / xp**(kk+1)
     end function
 
-    real(dp) function g2(x)
-    real(dp), intent(in) :: x
-    g2 = xp**kk / x**(kk+1) - x**kk / xp**(kk+1)
-    end function
-
 end function
 
-real(dp) function spec(n, zeta, f) result(res)
-! Calculates the integral \int_0^oo r^n * exp(-zeta*r) * f(r) \d r
-!
-! We convert the integral to:
-!
-!   \int_0^oo r^n * exp(-zeta*r) * f(r) \d r =
-!       = (1/zeta) * \int_0^oo exp(-x) * (x/zeta)^n * f(x/zeta) \d x
-!
-! And use Gauss-Laguerre quadrature for the integral over "x".
-integer, intent(in) :: n
-real(dp), intent(in) :: zeta
-interface
-    real(dp) function f(x)
-    import :: dp
-    implicit none
-    real(dp), intent(in) :: x
-    end function
-end interface
-real(dp) :: r
-real(dp), allocatable :: hq(:)
-integer :: i
-
-allocate(hq(size(xiq)))
-do i = 1, size(xiq)
-    r = xiq(i) / zeta
-    ! Note: r**n goes to infinity for large "r", and f(r) goes to zero but very
-    ! slowly, so r**n * f(r) blows up. For example for Nq=52, the largest point
-    ! is x=188.41, zeta=1.7846, so r=105.57, and f(r)=1e-5, but
-    ! r**n*f(r)=1837.76
-    ! The weight is 1e-80, so the result is zero.
-    hq(i) = r**n * f(r)
-end do
-res = sum(wtq * hq) / zeta
-end function
-
-real(dp) function spec2(n, zeta, f, x0) result(res)
+real(dp) function gauss_aoo(n, zeta, f, x0) result(res)
 ! Calculates the integral \int_x0^oo r^n * exp(-zeta*r) * f(r) \d r
 !
 ! We first shift the integral to (0, oo) and then convert the integral to:
@@ -667,8 +630,8 @@ res = sum(wtq * hq) / zeta
 res = res * exp(-zeta*x0)
 end function
 
-real(dp) function spec3(n, zeta, f, x0) result(res)
-! Calculates the integral \int_0^x0 r^n * exp(-zeta*r) * f(r) \d r
+real(dp) function gauss_ab(n, zeta, f, a, b) result(res)
+! Calculates the integral \int_a^b r^n * exp(-zeta*r) * f(r) \d r
 !
 ! A direct Gauss-Legendre quadrature is used.
 integer, intent(in) :: n
@@ -680,125 +643,17 @@ interface
     real(dp), intent(in) :: x
     end function
 end interface
-real(dp), intent(in) :: x0
+real(dp), intent(in) :: a, b
 real(dp) :: r
-real(dp) :: fq(Nq), jac, a, b
+real(dp) :: fq(Nq), jac
 integer :: i
 
-a = 0
-b = x0
 jac = (b-a)/2
 do i = 1, Nq
     r = (xiq3(i)+1) * jac + a
     fq(i) = r**n * exp(-zeta*r) * f(r)
 end do
 res = sum(wtq3 * fq * jac)
-end function
-
-real(dp) function slater_gauss2(n, zeta, kk, i, j, k, l) result(r)
-! Just like slater_gauss2(), but uses a different method to do the integration,
-! but it is less precise. It splits the 2D integral into the upper and lower
-! triangle, related by simple indices exchange. Then just does a simple
-! integration over the triangle.
-integer, intent(in) :: n(:)
-real(dp), intent(in) :: zeta(:)
-integer, intent(in) :: kk, i, j, k, l
-real(dp) :: xp
-if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
-    ! This condition is taken from slater() --- these integrals are
-    ! never needed, they don't influence anything, thanks to the wigner3j
-    ! selection rule:
-    r = 0
-else
-    r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
-            sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            (spec(n(j) + n(l), zeta(j) + zeta(l), Ykoverr) + &
-            spec(n(i) + n(k), zeta(i) + zeta(k), Ykoverr2))
-end if
-
-contains
-
-    real(dp) function Ykoverr(x) result(r)
-    real(dp), intent(in) :: x
-    integer :: n_
-    real(dp) :: zeta_
-    xp = x ! save x
-    n_ = n(i) + n(k)
-    zeta_ = zeta(i) + zeta(k)
-    r = spec2(n_, zeta_, g2, xp)
-    end function
-
-    real(dp) function Ykoverr2(x) result(r)
-    real(dp), intent(in) :: x
-    integer :: n_
-    real(dp) :: zeta_
-    xp = x ! save x
-    n_ = n(j) + n(l)
-    zeta_ = zeta(j) + zeta(l)
-    r = spec2(n_, zeta_, g2, xp)
-    end function
-
-    real(dp) function g2(x)
-    real(dp), intent(in) :: x
-    !call assert(xp <= x)
-    g2 = xp**kk / x**(kk+1)
-    end function
-
-end function
-
-real(dp) function slater_gauss3(n, zeta, kk, i, j, k, l) result(r)
-! Just like slater_gauss2(), but uses probably a slightly better integration
-! over the lower triangle. Still not as precise as slater_gauss().
-integer, intent(in) :: n(:)
-real(dp), intent(in) :: zeta(:)
-integer, intent(in) :: kk, i, j, k, l
-real(dp) :: xp
-if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
-    ! This condition is taken from slater() --- these integrals are
-    ! never needed, they don't influence anything, thanks to the wigner3j
-    ! selection rule:
-    r = 0
-else
-    r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
-            sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            (spec(n(j) + n(l), zeta(j) + zeta(l), Ykoverr2) + &
-            spec(n(i) + n(k), zeta(i) + zeta(k), Ykoverr))
-end if
-
-contains
-
-    real(dp) function Ykoverr(x) result(r)
-    real(dp), intent(in) :: x
-    integer :: n_
-    real(dp) :: zeta_
-    xp = x ! save x
-    n_ = n(j) + n(l)
-    zeta_ = zeta(j) + zeta(l)
-    r = spec(n_, zeta_, g)
-    r = r + spec2(n_, zeta_, g2, xp)
-    end function
-
-    real(dp) function Ykoverr2(x) result(r)
-    real(dp), intent(in) :: x
-    integer :: n_
-    real(dp) :: zeta_
-    xp = x ! save x
-    n_ = n(i) + n(k)
-    zeta_ = zeta(i) + zeta(k)
-    r = spec(n_, zeta_, g)
-    r = r + spec2(n_, zeta_, g2, xp)
-    end function
-
-    real(dp) function g(x)
-    real(dp), intent(in) :: x
-    g = x**kk / xp**(kk+1)
-    end function
-
-    real(dp) function g2(x)
-    real(dp), intent(in) :: x
-    g2 = - x**kk / xp**(kk+1)
-    end function
-
 end function
 
 real(dp) function slater_gauss_screening(n, zeta, kk, i, j, k, l, D) result(r)
@@ -816,9 +671,8 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
-            + &
-            spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
+            (gauss_ab(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0._dp, 0.1_dp) &
+            + gauss_aoo(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
 end if
 
 contains
@@ -830,7 +684,7 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec3(n_, zeta_, g, x)
+    r = gauss_ab(n_, zeta_, g, 0._dp, x)
     end function
 
     real(dp) function g(x)
