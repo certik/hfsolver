@@ -2,11 +2,11 @@ module special_functions
 ! Special functions
 use types, only: dp
 use constants, only: i_, pi
-use utils, only: stop_error
+use utils, only: stop_error, str
 implicit none
 private
 public wigner3j, getgaunt, getgauntr, Fm, Inu_asympt_sum, Inu_series, &
-    Knu_asympt_sum
+    Knu_asympt_sum, Inu_formula, Knu_formula, Inu_formula2, Knu_formula2
 
 contains
 
@@ -330,6 +330,115 @@ real(dp) function Inu_series(nu, x) result(r)
 ! expansion around x=0.
 real(dp), intent(in) :: nu, x
 r = (x/2)**nu / gamma(nu+1) * hyp0f1(nu+1, x**2/4)
+end function
+
+subroutine Knu_formula(maxk, x, K)
+! Returns K(k) = K_{k+1/2}(x) / exp(-x) for k=-1,0,1,...,maxk.
+integer, intent(in) :: maxk
+real(dp), intent(in) :: x
+real(dp), intent(out) :: K(-1:)
+integer :: l
+K(-1) = sqrt(pi/(2*x))
+K(0) = K(-1)
+do l = 0, maxk-1
+    ! K_{nu+1} = K_{nu-1} + 2*nu*K_nu/x
+    K(l + 1) = K(l-1) + (2*l + 1)*K(l)/x
+end do
+end subroutine
+
+subroutine Inu_formula(maxk, x, I)
+! Returns I(k) = I_{k+1/2}(x) / exp(x) for k=-1,0,1,...,maxk.
+integer, intent(in) :: maxk
+real(dp), intent(in) :: x
+real(dp), intent(out) :: I(-1:)
+integer :: l
+I(-1) = (1+exp(-2*x)) / sqrt(2*pi*x)
+! I(0) = (1-exp(-2*x)) / sqrt(2*pi*x)
+if (x > -log(epsilon(1._dp))/2) then
+    ! (1-exp(-2*x)) = 1 in floating point precission
+    I(0) = 1 / sqrt(2*pi*x)
+else
+    ! (1-exp(-2*x)) = 2*sinh(x)/exp(x) to avoid cancellation
+    I(0) = sqrt(2/(pi*x)) * sinh(x)/exp(x)
+end if
+do l = 0, maxk-1
+    ! I_{nu+1} = I_{nu-1} - 2*nu*I_nu/x
+    I(l + 1) = I(l-1) - (2*l + 1)*I(l)/x
+end do
+end subroutine
+
+real(dp) elemental function esinh(x) result(r)
+real(dp), intent(in) :: x
+r = sinh(x) / exp(x)
+end function
+
+real(dp) elemental function ecosh(x) result(r)
+real(dp), intent(in) :: x
+r = cosh(x) / exp(x)
+end function
+
+real(dp) function Inu_formula2(k, x) result(r)
+integer, intent(in) :: k
+real(dp), intent(in) :: x
+select case (k)
+    case (0)
+        r = esinh(x)
+    case (1)
+        if (x > 0.9_dp) then
+            r = -esinh(x)/x + ecosh(x)
+        else
+            r = x**2/3 + x**4/30 + x**6/840 + x**8/45360 + x**10/3991680 + &
+                x**12/518918400 + x**14/93405312e3_dp
+            r = r / exp(x)
+        end if
+    case (2)
+        if (x > 0.9_dp) then
+            r = (3/x**2 + 1)*esinh(x) - 3*ecosh(x)/x
+        else
+            r = x**3/15 + x**5/210 + x**7/7560 + x**9/498960 + &
+                x**11/51891840 + x**13/7783776e3_dp
+            r = r / exp(x)
+        end if
+    case (3)
+        if (x > 0.9_dp) then
+            r = -(15/x**3 + 6/x)*esinh(x) + (15/x**2 + 1)*ecosh(x)
+        else
+            r = x**4/105 + x**6/1890 + x**8/83160 + x**10/6486480 + &
+                x**12/778377600 + x**14/132324192e3_dp
+            r = r / exp(x)
+        end if
+    case (4)
+        if (x > 0.9_dp) then
+            r = (105/x**4 + 45/x**2 + 1)*esinh(x) - (105/x**3 + 10/x)*ecosh(x)
+        else
+            r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + &
+                x**13/132324192e2_dp
+            r = r / exp(x)
+        end if
+    case default
+        call stop_error("k = " // str(k) // " not implemented.")
+end select
+r = r * sqrt(2/(pi*x))
+end function
+
+real(dp) function Knu_formula2(k, x) result(r)
+integer, intent(in) :: k
+real(dp), intent(in) :: x
+select case (k)
+    case (0)
+        r = 1
+    case (1)
+        r = 1/x + 1
+    case (2)
+        r = 3/x**2 + 3/x + 1
+    case (3)
+        r = 15/x**3 + 15/x**2 + 6/x + 1
+    case (4)
+        r = 105/x**4 + 105/x**3 + 45/x**2 + 10/x + 1
+    case default
+        call stop_error("k = " // str(k) // " not implemented.")
+end select
+r = r * sqrt(pi/(2*x))
 end function
 
 end module
