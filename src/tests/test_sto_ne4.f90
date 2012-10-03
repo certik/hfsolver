@@ -59,11 +59,7 @@ allocate(slater2(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater2)
 ! We calculate the slater integrals using Gauss-Laguerre quadrature:
 call slater_sto_gauss(nbfl, nl, zl, slater)
-! The accuracy here is a little lower:
-call assert(all(abs(slater2-slater) < 5e-8_dp))
-! The 4s state agrees to 1e-8, the 5s state only to 1.6e-7. All other states
-! agree to all printed digits (at least 5e-9). This can be tested by
-! uncommenting the next line:
+call assert(all(abs(slater2-slater) < 5e-10_dp))
 ! slater = slater2
 
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
