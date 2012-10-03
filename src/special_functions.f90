@@ -6,7 +6,7 @@ use utils, only: stop_error, str
 implicit none
 private
 public wigner3j, getgaunt, getgauntr, Fm, Inu_asympt_sum, Inu_series, &
-    Knu_asympt_sum, Inu_formula, Knu_formula, Inu_formula2
+    Knu_asympt_sum, Inu_formula, Knu_formula, Inu_formula2, Knu_formula2
 
 contains
 
@@ -384,17 +384,61 @@ select case (k)
     case (0)
         r = esinh(x)
     case (1)
-        r = -esinh(x)/x + ecosh(x)
+        if (x > 0.9_dp) then
+            r = -esinh(x)/x + ecosh(x)
+        else
+            r = x**2/3 + x**4/30 + x**6/840 + x**8/45360 + x**10/3991680 + &
+                x**12/518918400 + x**14/93405312e3_dp
+            r = r / exp(x)
+        end if
     case (2)
-        r = (3/x**2 + 1)*esinh(x) - 3*ecosh(x)/x
+        if (x > 0.9_dp) then
+            r = (3/x**2 + 1)*esinh(x) - 3*ecosh(x)/x
+        else
+            r = x**3/15 + x**5/210 + x**7/7560 + x**9/498960 + &
+                x**11/51891840 + x**13/7783776e3_dp
+            r = r / exp(x)
+        end if
     case (3)
-        r = -(15/x**3 + 6/x)*esinh(x) + (15/x**2 + 1)*ecosh(x)
+        if (x > 0.9_dp) then
+            r = -(15/x**3 + 6/x)*esinh(x) + (15/x**2 + 1)*ecosh(x)
+        else
+            r = x**4/105 + x**6/1890 + x**8/83160 + x**10/6486480 + &
+                x**12/778377600 + x**14/132324192e3_dp
+            r = r / exp(x)
+        end if
     case (4)
-        r = (105/x**4 + 45/x**2 + 1)*esinh(x) - (105/x**3 + 10/x)*ecosh(x)
+        if (x > 0.9_dp) then
+            r = (105/x**4 + 45/x**2 + 1)*esinh(x) - (105/x**3 + 10/x)*ecosh(x)
+        else
+            r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + &
+                x**13/132324192e2_dp
+            r = r / exp(x)
+        end if
     case default
         call stop_error("k = " // str(k) // " not implemented.")
 end select
 r = r * sqrt(2/(pi*x))
+end function
+
+real(dp) function Knu_formula2(k, x) result(r)
+integer, intent(in) :: k
+real(dp), intent(in) :: x
+select case (k)
+    case (0)
+        r = 1
+    case (1)
+        r = 1/x + 1
+    case (2)
+        r = 3/x**2 + 3/x + 1
+    case (3)
+        r = 15/x**3 + 15/x**2 + 6/x + 1
+    case (4)
+        r = 105/x**4 + 105/x**3 + 45/x**2 + 10/x + 1
+    case default
+        call stop_error("k = " // str(k) // " not implemented.")
+end select
+r = r * sqrt(pi/(2*x))
 end function
 
 end module

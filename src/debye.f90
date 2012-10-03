@@ -5,7 +5,7 @@ use debye_potential_series, only: S0, S1, S2, S3, S4
 use utils, only: stop_error, str
 use constants, only: pi
 use special_functions, only: Inu_asympt_sum, Inu_series, Knu_asympt_sum, &
-    Inu_formula, Knu_formula, Inu_formula2
+    Inu_formula, Knu_formula, Inu_formula2, Knu_formula2
 implicit none
 
 private
@@ -116,13 +116,10 @@ real(dp) function Vk3(k, D, r1, r2) result(r)
 integer, intent(in) :: k
 real(dp), intent(in) :: D, r1, r2
 real(dp) :: rmin, rmax, a, b, C
-real(dp), dimension(-1:k) :: I_, K_
 rmin = r2
 rmax = r1
-call Inu_formula(k, rmin/D, I_)
-call Knu_formula(k, rmax/D, K_)
-a = K_(k)
-b = I_(k)
+b = Inu_formula2(k, rmin/D)
+a = Knu_formula2(k, rmax/D)
 C = exp((rmin-rmax)/D)
 r = (2*k+1)*C*a*b/sqrt(rmin*rmax)
 end function
