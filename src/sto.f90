@@ -25,6 +25,7 @@ real(dp), allocatable :: fact(:)
 ! only used in spec()
 real(dp), allocatable :: xiq(:), wtq(:)
 ! only used in spec3()
+integer, parameter :: Nq = 64
 real(dp), allocatable :: xiq3(:), wtq3(:)
 
 contains
@@ -499,8 +500,22 @@ real(dp), allocatable, intent(out) :: slater_(:, :)
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: m, n, i, j, k, l, k_, ijkl, ndof, Lmax
+real(dp), allocatable :: d(:, :)
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
+if (.not. allocated(xiq)) then
+    !call loadtxt("lag06.txt", d)
+    !call loadtxt("lag20.txt", d)
+    call loadtxt("lag52.txt", d)
+    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
+    xiq = d(:, 1)
+    wtq = d(:, 2)
+end if
+if (.not. allocated(xiq3)) then
+    allocate(xiq3(Nq), wtq3(Nq))
+    xiq3 = gauss_pts(Nq)
+    wtq3 = gauss_wts(Nq)
+end if
 print *, "Calculating Slater integrals..."
 Lmax = ubound(nbfl, 1)
 ndof = sum(nbfl)
@@ -599,16 +614,8 @@ interface
     end function
 end interface
 real(dp) :: r
-real(dp), allocatable :: d(:, :), hq(:)
+real(dp), allocatable :: hq(:)
 integer :: i
-if (.not. allocated(xiq)) then
-    !call loadtxt("lag06.txt", d)
-    !call loadtxt("lag20.txt", d)
-    call loadtxt("lag52.txt", d)
-    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
-    xiq = d(:, 1)
-    wtq = d(:, 2)
-end if
 
 allocate(hq(size(xiq)))
 do i = 1, size(xiq)
@@ -643,14 +650,8 @@ interface
 end interface
 real(dp), intent(in) :: x0
 real(dp) :: r
-real(dp), allocatable :: hq(:), d(:,:)
+real(dp), allocatable :: hq(:)
 integer :: i
-if (.not. allocated(xiq)) then
-    call loadtxt("lag52.txt", d)
-    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
-    xiq = d(:, 1)
-    wtq = d(:, 2)
-end if
 
 allocate(hq(size(xiq)))
 do i = 1, size(xiq)
@@ -681,14 +682,8 @@ interface
 end interface
 real(dp), intent(in) :: x0
 real(dp) :: r
-integer, parameter :: Nq = 64
 real(dp) :: fq(Nq), jac, a, b
 integer :: i
-if (.not. allocated(xiq3)) then
-    allocate(xiq3(Nq), wtq3(Nq))
-    xiq3 = gauss_pts(Nq)
-    wtq3 = gauss_wts(Nq)
-end if
 
 a = 0
 b = x0
@@ -879,6 +874,11 @@ if (.not. allocated(xiq)) then
     allocate(xiq(size(dd, 1)), wtq(size(dd, 1)))
     xiq = dd(:, 1)
     wtq = dd(:, 2)
+end if
+if (.not. allocated(xiq3)) then
+    allocate(xiq3(Nq), wtq3(Nq))
+    xiq3 = gauss_pts(Nq)
+    wtq3 = gauss_wts(Nq)
 end if
 
 n = size(nl)
