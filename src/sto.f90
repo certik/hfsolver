@@ -10,9 +10,9 @@ use utils, only: loadtxt
 use openmp, only: omp_get_thread_num
 use quadrature, only: gauss_pts, gauss_wts
 !use debye, only: Vk
-use debye, only: Vk => Sk
+!use debye, only: Vk => Sk
 !use debye, only: Vk => Vk2
-!use debye, only: Vk => Vk3
+use debye, only: Vk => Vk3
 implicit none
 private
 public get_basis, get_basis2, stoints, stoints2, get_values, slater_sto_gauss, &
@@ -835,6 +835,7 @@ contains
 
     real(dp) function g(x)
     real(dp), intent(in) :: x
+    !call assert(xp > x)   ! commented out for efficiency reasons
     g = Vk(kk, D, xp, x)
     end function
 
