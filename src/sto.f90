@@ -8,6 +8,7 @@ use hartree_screening, only: hartree_y
 use special_functions, only: wigner3j, getgaunt
 use utils, only: loadtxt
 use openmp, only: omp_get_thread_num
+use quadrature, only: gauss_pts, gauss_wts
 !use debye, only: Vk
 use debye, only: Vk => Sk
 !use debye, only: Vk => Vk2
@@ -23,6 +24,8 @@ real(dp), allocatable :: fact(:)
 
 ! only used in spec()
 real(dp), allocatable :: xiq(:), wtq(:)
+! only used in spec3()
+real(dp), allocatable :: xiq3(:), wtq3(:)
 
 contains
 
@@ -658,6 +661,40 @@ do i = 1, size(xiq)
 end do
 res = sum(wtq * hq) / zeta
 res = res * exp(-zeta*x0)
+end function
+
+real(dp) function spec3(n, zeta, f, x0) result(res)
+! Calculates the integral \int_0^x0 r^n * exp(-zeta*r) * f(r) \d r
+!
+! A direct Gauss-Legendre quadrature is used.
+integer, intent(in) :: n
+real(dp), intent(in) :: zeta
+interface
+    real(dp) function f(x)
+    import :: dp
+    implicit none
+    real(dp), intent(in) :: x
+    end function
+end interface
+real(dp), intent(in) :: x0
+real(dp) :: r
+integer, parameter :: Nq = 50
+real(dp) :: fq(Nq), jac, a, b
+integer :: i
+if (.not. allocated(xiq3)) then
+    allocate(xiq3(Nq), wtq3(Nq))
+    xiq3 = gauss_pts(Nq)
+    wtq3 = gauss_wts(Nq)
+end if
+
+b = x0
+a = 0
+jac = (b-a)/2
+do i = 1, Nq
+    r = (xiq3(i)+1) * jac + a
+    fq(i) = r**n * exp(-zeta*r) * f(r)
+end do
+res = sum(wtq3 * fq * jac)
 end function
 
 real(dp) function slater_gauss2(n, zeta, kk, i, j, k, l) result(r)
