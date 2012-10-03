@@ -541,7 +541,8 @@ do i = 1, n
                 !call assert(ijkl2intindex(i, j, k, l) == ijkl)
                 do k_ = 0, 2*ubound(nbfl, 1)
                     !slater_(ijkl, k_) = slater(nl, zl, k_, i, k, j, l)
-                    slater_(ijkl, k_) = slater_gauss(nl, zl, k_, i, k, j, l)
+                    slater_(ijkl, k_) = slater_gauss(nl, zl, k_, i, k, j, l) &
+                        + slater_gauss(nl, zl, k_, k, i, l, j)
                 end do
             end do
         end do
@@ -567,7 +568,9 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            spec(n(i) + n(k), zeta(i) + zeta(k), Ykoverr)
+            ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
+            + &
+            spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
 end if
 
 contains
@@ -579,18 +582,13 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec(n_, zeta_, g)
-    r = r + spec2(n_, zeta_, g2, xp)
+    r = spec3(n_, zeta_, g, x)
     end function
 
     real(dp) function g(x)
     real(dp), intent(in) :: x
+    !call assert(xp > x)   ! commented out for efficiency reasons
     g = x**kk / xp**(kk+1)
-    end function
-
-    real(dp) function g2(x)
-    real(dp), intent(in) :: x
-    g2 = xp**kk / x**(kk+1) - x**kk / xp**(kk+1)
     end function
 
 end function
