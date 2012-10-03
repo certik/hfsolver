@@ -643,10 +643,13 @@ interface
 end interface
 real(dp), intent(in) :: x0
 real(dp) :: r
-real(dp), allocatable :: hq(:)
+real(dp), allocatable :: hq(:), d(:,:)
 integer :: i
 if (.not. allocated(xiq)) then
-    call stop_error("sorry.")
+    call loadtxt("lag52.txt", d)
+    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
+    xiq = d(:, 1)
+    wtq = d(:, 2)
 end if
 
 allocate(hq(size(xiq)))
@@ -678,7 +681,7 @@ interface
 end interface
 real(dp), intent(in) :: x0
 real(dp) :: r
-integer, parameter :: Nq = 50
+integer, parameter :: Nq = 64
 real(dp) :: fq(Nq), jac, a, b
 integer :: i
 if (.not. allocated(xiq3)) then
@@ -687,8 +690,8 @@ if (.not. allocated(xiq3)) then
     wtq3 = gauss_wts(Nq)
 end if
 
-b = x0
 a = 0
+b = x0
 jac = (b-a)/2
 do i = 1, Nq
     r = (xiq3(i)+1) * jac + a
@@ -818,7 +821,9 @@ if (n(i)+n(k)-kk-1 < 0 .or. n(j)+n(l)-kk-1 < 0) then
 else
     r = sto_norm(n(i), zeta(i)) * sto_norm(n(j), zeta(j)) * &
             sto_norm(n(k), zeta(k)) * sto_norm(n(l), zeta(l)) * &
-            spec(n(i) + n(k), zeta(i) + zeta(k), Ykoverr)
+            ( spec3(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp) &
+            + &
+            spec2(n(i) + n(k), zeta(i) + zeta(k), Ykoverr, 0.1_dp))
 end if
 
 contains
@@ -830,18 +835,12 @@ contains
     xp = x ! save x
     n_ = n(j) + n(l)
     zeta_ = zeta(j) + zeta(l)
-    r = spec(n_, zeta_, g)
-    r = r + spec2(n_, zeta_, g2, xp)
+    r = spec3(n_, zeta_, g, x)
     end function
 
     real(dp) function g(x)
     real(dp), intent(in) :: x
     g = Vk(kk, D, xp, x)
-    end function
-
-    real(dp) function g2(x)
-    real(dp), intent(in) :: x
-    g2 = Vk(kk, D, x, xp) - Vk(kk, D, xp, x)
     end function
 
 end function
@@ -898,7 +897,9 @@ do i = 1, n  ! Only this outer loop is parallelized
                     !slater_(ijkl, k_) = slater_gauss2(nl, zl, k_, i, k, j, l)
                     !slater_(ijkl, k_) = slater_gauss3(nl, zl, k_, i, k, j, l)
                     slater_(ijkl, k_) = slater_gauss_screening(nl, zl, &
-                        k_, i, k, j, l, D)
+                        k_, i, k, j, l, D) + &
+                    slater_gauss_screening(nl, zl, &
+                        k_, k, i, l, j, D)
                 end do
             end do
         end do
