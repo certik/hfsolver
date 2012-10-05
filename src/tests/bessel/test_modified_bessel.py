@@ -11,6 +11,8 @@ from sympy.mpmath import besseli
 from common import make_plots
 
 def Ik1(x):
+    # r = -sinh(x)/x + cosh(x)
+    # r = r * sqrt(2/(pi*x)) / exp(x)
     if x < 0.55:
         r = x**2/3 + x**4/30 + x**6/840 + x**8/45360 + x**10/3991680 + \
             x**12/518918400 + x**14/93405312e3
@@ -41,6 +43,8 @@ def Ik1(x):
     return r
 
 def Ik2(x):
+    # r = (3/x**2 + 1)*sinh(x) - 3/x*cosh(x)
+    # r = r * sqrt(2/(pi*x)) / exp(x)
     if x < 0.4:
         r = x**3/15 + x**5/210 + x**7/7560 + x**9/498960 + \
             x**11/51891840 + x**13/7783776e3
@@ -89,6 +93,8 @@ def Ik2(x):
     return r
 
 def Ik3(x):
+    # r = -(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)
+    # r = r * sqrt(2/(pi*x)) / exp(x)
     if x < 0.4:
         r = x**4/105 + x**6/1890 + x**8/83160 + x**10/6486480 + \
             x**12/778377600 + x**14/132324192e3
