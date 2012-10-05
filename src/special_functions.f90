@@ -367,22 +367,12 @@ do l = 0, maxk-1
 end do
 end subroutine
 
-real(dp) elemental function esinh(x) result(r)
-real(dp), intent(in) :: x
-r = sinh(x) / exp(x)
-end function
-
-real(dp) elemental function ecosh(x) result(r)
-real(dp), intent(in) :: x
-r = cosh(x) / exp(x)
-end function
-
 real(dp) function Inu_formula2(k, x) result(r)
 integer, intent(in) :: k
 real(dp), intent(in) :: x
 select case (k)
     case (0)
-        r = esinh(x)
+        r = sinh(x) / exp(x)
     case (1)
         ! r = -sinh(x)/x + cosh(x)
         ! r = r * sqrt(2/(pi*x)) / exp(x)
@@ -409,7 +399,7 @@ select case (k)
                     (0.0000484437498700383824299885362686_dp + &
                     1.88315077527785406856560709781e-6_dp*x)*x)))))))
         else if (x < 20) then
-            r = -(sinh(x)/exp(x))/x + (cosh(x)/exp(x))
+            r = (-sinh(x)/x + cosh(x))/exp(x)
         else
             r = (-1/x + 1) / 2
         end if
@@ -462,6 +452,8 @@ select case (k)
             r = (3/x**2 - 3/x + 1) / 2
         end if
     case (3)
+        ! r = -(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)
+        ! r = r / exp(x)
         if (x < 0.4_dp) then
             r = x**4/105 + x**6/1890 + x**8/83160 + x**10/6486480 + &
                 x**12/778377600 + x**14/132324192e3_dp
@@ -503,11 +495,14 @@ select case (k)
                     (0.0000729070672630135675918235119142_dp + &
                     0.0000308632011694791287440146822781_dp*x)*x)))))))
         else if (x < 20) then
-            r = -(15/x**3 + 6/x)*esinh(x) + (15/x**2 + 1)*ecosh(x)
+            r = -(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)
+            r = r / exp(x)
         else
             r = (-15/x**3 + 15/x**2 - 6/x  + 1)/2
         end if
     case (4)
+        ! r = (105/x**4 + 45/x**2 + 1)*sinh(x) - (105/x**3 + 10/x)*cosh(x)
+        ! r = r / exp(x)
         if (x < 0.2_dp) then
             r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + &
                     x**13/132324192e2_dp
