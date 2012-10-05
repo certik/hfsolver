@@ -1,0 +1,12 @@
+#! /usr/bin/env python
+
+# Generates .pxd and .h files from src/c_hfsolver.f90
+
+from os.path import dirname, abspath
+from os import system
+root = dirname(dirname(abspath(__file__)))
+
+system("cd %s; utils/fparser src/c_hfsolver.f90" % root)
+system("cd %s; mv src/c_hfsolver.pxd hfsolver/lib/" % root)
+print "'src/c_hfsolver.h' updated"
+print "'hfsolver/lib/c_hfsolver.pxd' updated"
