@@ -3,6 +3,7 @@ from pylab import (plot, legend, savefig, clf, semilogy, grid, xlabel, ylabel,
 from numpy import maximum, array
 
 def make_plots(xx, yf, yrat, k):
+    clf()
     xx = array(xx)
     yf = array(yf)
     yrat = array(yrat)
