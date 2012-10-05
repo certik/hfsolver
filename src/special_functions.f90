@@ -445,7 +445,6 @@ select case (k)
         else
             r = (-15/x**3 + 15/x**2 - 6/x  + 1)/2
         end if
-        r = r * sqrt(2/(pi*x))
     case (4)
         if (x < 0.2_dp) then
             r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + &
