@@ -45,3 +45,4 @@ ADDTEST(test_gaussians_atoms)
 ADDTEST(test_gaussians_molecules)
 
 ADDTEST(test_fm)
+ADDTEST(test_bessel)
