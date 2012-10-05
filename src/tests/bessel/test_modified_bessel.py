@@ -9,6 +9,7 @@ from math import sinh, cosh, exp, sqrt, pi
 from sympy.mpmath import besseli
 
 from common import make_plots
+from hfsolver.special import Inu, Knu
 
 def Ik1(x):
     # r = -sinh(x)/x + cosh(x)
