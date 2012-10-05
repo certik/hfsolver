@@ -7,7 +7,7 @@ use types, only: dp
 implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
-    stop_error, arange, loadtxt, savetxt, newunit, assert, str
+    stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random
 
 interface str
     module procedure str_int, str_real, str_real_n
@@ -340,5 +340,16 @@ integer, intent(in) :: n
 character(len=str_real_len(r, "(f0." // str_int(n) // ")")) :: s
 write(s, "(f0." // str_int(n) // ")") r
 end function
+
+subroutine init_random()
+! Initializes the random number generator based on the system's time.
+integer :: i, n, clock
+integer, allocatable :: seed(:)
+call random_seed(size=n)
+allocate(seed(n))
+call system_clock(count=clock)
+seed = clock + 37 * [(i - 1, i = 1, n)]
+call random_seed(put=seed)
+end subroutine
 
 end module
