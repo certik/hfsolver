@@ -4,13 +4,13 @@
 # the exact answer calculated using mpmath.  The rational approximation was
 # calculated using Mathematica, a sample script is given in the comment below.
 
-from numpy import linspace, maximum, array
-from pylab import (plot, legend, savefig, clf, semilogy, grid, xlabel, ylabel,
-    ylim, title)
+from numpy import linspace
 from math import sinh, cosh, exp, sqrt, pi
 from sympy.mpmath import besseli
 
-def rat(x):
+from common import make_plots
+
+def Ik4(x):
     if x < 0.2:
         r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + \
             x**13/132324192e2
@@ -85,23 +85,7 @@ def rat(x):
     return r
 
 xx = linspace(1e-10, 40, 10000)
-yf = array([(besseli(4+0.5, x) / exp(x)) for x in xx])
-yrat = array([rat(x) for x in xx])
-title("Function values plot")
-plot(xx, yf, label="f(x)")
-plot(xx, yrat, label="rat")
-xlabel("x")
-ylabel("function value")
-legend()
-savefig("f.png")
+yf = [(besseli(4+0.5, x) / exp(x)) for x in xx]
+yrat = [Ik4(x) for x in xx]
 
-clf()
-semilogy(xx, abs(yf-yrat), label="absolute error")
-semilogy(xx, abs(yf-yrat)/maximum(abs(yf), abs(yrat)), label="relative error")
-grid()
-legend()
-title("Error plot")
-xlabel("x")
-ylabel("error")
-ylim([1e-18, 1])
-savefig("error.png")
+make_plots(xx, yf, yrat)
