@@ -10,6 +10,16 @@ from sympy.mpmath import besseli
 
 from common import make_plots
 
+def Ik3(x):
+    if x < 0.4:
+        r = x**4/105 + x**6/1890 + x**8/83160 + x**10/6486480 + \
+            x**12/778377600 + x**14/132324192e3
+        r = r / exp(x)
+    else:
+        r = -(15/x**3 + 6/x)*(sinh(x)/exp(x)) + (15/x**2 + 1)*(cosh(x)/exp(x))
+    r = r * sqrt(2/(pi*x))
+    return r
+
 def Ik4(x):
     if x < 0.2:
         r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + \
