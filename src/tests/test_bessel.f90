@@ -15,7 +15,7 @@ n = 10000000
 allocate(x(n), yf(n), yr(n))
 do i = 1, n
     call random_number(r)
-    x(i) = r*20+6
+    x(i) = r*20
 end do
 call cpu_time(t1)
 do i = 1, n
@@ -23,7 +23,7 @@ do i = 1, n
 end do
 call cpu_time(t2)
 do i = 1, n
-    yr(i) = Inu_formula2(4, x(i))
+    yr(i) = Inu_formula2(3, x(i))
 end do
 call cpu_time(t3)
 print *, "abs:", maxval(abs(yf-yr))
