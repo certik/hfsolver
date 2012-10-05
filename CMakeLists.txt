@@ -39,6 +39,16 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fopenmp")
 endif ()
 
+set(WITH_PYTHON no
+    CACHE BOOL "Build with Python wrappers")
+
+if (WITH_PYTHON)
+    find_package(Python REQUIRED)
+    find_package(NumPy REQUIRED)
+    find_package(Cython REQUIRED)
+    add_subdirectory(hfsolver)
+endif ()
+
 # ------------------------------------------------------------
 # hfsolver dependencies:
 
@@ -86,3 +96,4 @@ if(WITH_LIBINT)
     message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
     message("LIBINT_LIBRARIES: ${LIBINT_LIBRARIES}")
 endif()
+message("With Python: ${WITH_PYTHON}")
