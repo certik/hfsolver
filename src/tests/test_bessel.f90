@@ -1,7 +1,7 @@
 program test_bessel
 use types, only: dp
 use constants, only: pi
-use special_functions, only: Fm
+use special_functions, only: Fm, Inu_formula2
 use utils, only: assert, init_random
 implicit none
 integer :: i, n
@@ -15,7 +15,7 @@ n = 10000000
 allocate(x(n), yf(n), yr(n))
 do i = 1, n
     call random_number(r)
-    x(i) = r*10 + 10
+    x(i) = r*20+6
 end do
 call cpu_time(t1)
 do i = 1, n
@@ -23,7 +23,7 @@ do i = 1, n
 end do
 call cpu_time(t2)
 do i = 1, n
-    yr(i) = r10_20(x(i))
+    yr(i) = Inu_formula2(4, x(i))
 end do
 call cpu_time(t3)
 print *, "abs:", maxval(abs(yf-yr))
@@ -37,6 +37,7 @@ contains
 real(dp) function f(x) result(r)
 real(dp) :: x
 r = ((105/x**4 + 45/x**2 + 1)*sinh(x) - (105/x**3 + 10/x)*cosh(x)) / exp(x)
+r = r * sqrt(2/(pi*x))
 end function
 
 real(dp) function r4_10(x) result(r)
