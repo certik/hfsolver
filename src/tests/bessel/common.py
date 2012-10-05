@@ -23,5 +23,5 @@ def make_plots(xx, yf, yrat):
     title("Error plot")
     xlabel("x")
     ylabel("error")
-    ylim([1e-18, 1])
+    ylim([1e-18, 1e-14])
     savefig("error.png")
