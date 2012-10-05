@@ -6,14 +6,14 @@ implicit none
 
 contains
 
-subroutine hfsolver_Inu(k, x, r) bind(c)
+subroutine hfsolver_Inu(k, x, r) bind(c, name="hfsolver_Inu")
 integer(c_int), intent(in) :: k
 real(c_double), intent(in) :: x
 real(c_double), intent(out) :: r
 r = Inu_formula2(k, x)
 end subroutine
 
-subroutine hfsolver_Knu(k, x, r) bind(c)
+subroutine hfsolver_Knu(k, x, r) bind(c, name="hfsolver_Knu")
 integer(c_int), intent(in) :: k
 real(c_double), intent(in) :: x
 real(c_double), intent(out) :: r
