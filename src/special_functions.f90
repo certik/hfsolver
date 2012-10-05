@@ -372,7 +372,12 @@ integer, intent(in) :: k
 real(dp), intent(in) :: x
 select case (k)
     case (0)
-        r = sinh(x) / exp(x)
+        ! r = sinh(x) / exp(x)
+        if (x < 20) then
+            r = sinh(x) / exp(x)
+        else
+            r = 1._dp / 2
+        end if
     case (1)
         ! r = -sinh(x)/x + cosh(x)
         ! r = r * sqrt(2/(pi*x)) / exp(x)
