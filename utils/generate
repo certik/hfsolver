@@ -7,6 +7,6 @@ from os import system
 root = dirname(dirname(abspath(__file__)))
 
 system("cd %s; utils/fparser src/c_hfsolver.f90" % root)
-system("cd %s; mv src/c_hfsolver.pxd hfsolver/lib/" % root)
+system("cd %s; mv src/c_hfsolver.pxd hfsolver/" % root)
 print "'src/c_hfsolver.h' updated"
-print "'hfsolver/lib/c_hfsolver.pxd' updated"
+print "'hfsolver/c_hfsolver.pxd' updated"
