@@ -211,7 +211,15 @@ def Ik4(x):
     return r
 
 xx = linspace(1e-10, 40, 10000)
-yf = [(besseli(4+0.5, x) / exp(x)) for x in xx]
-yrat = [Ik4(x) for x in xx]
-
-make_plots(xx, yf, yrat)
+for k in [1, 2, 3, 4]:
+    print "Doing:", k
+    yf = [(besseli(k+0.5, x) / exp(x)) for x in xx]
+    if k == 1:
+        yrat = [Ik1(x) for x in xx]
+    elif k == 2:
+        yrat = [Ik2(x) for x in xx]
+    elif k == 3:
+        yrat = [Ik3(x) for x in xx]
+    elif k == 4:
+        yrat = [Ik4(x) for x in xx]
+    make_plots(xx, yf, yrat, k)

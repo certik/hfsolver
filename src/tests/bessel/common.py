@@ -2,7 +2,7 @@ from pylab import (plot, legend, savefig, clf, semilogy, grid, xlabel, ylabel,
     ylim, title)
 from numpy import maximum, array
 
-def make_plots(xx, yf, yrat):
+def make_plots(xx, yf, yrat, k):
     xx = array(xx)
     yf = array(yf)
     yrat = array(yrat)
@@ -12,7 +12,7 @@ def make_plots(xx, yf, yrat):
     xlabel("x")
     ylabel("function value")
     legend()
-    savefig("f.png")
+    savefig("f%d.png" % k)
 
     clf()
     semilogy(xx, abs(yf-yrat), label="absolute error")
@@ -24,4 +24,4 @@ def make_plots(xx, yf, yrat):
     xlabel("x")
     ylabel("error")
     ylim([1e-18, 1e-14])
-    savefig("error.png")
+    savefig("error%d.png" % k)
