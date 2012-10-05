@@ -16,9 +16,20 @@ def make_plots(xx, yf, yrat, k):
     savefig("f%d.png" % k)
 
     clf()
-    semilogy(xx, abs(yf-yrat), label="absolute error")
-    semilogy(xx, abs(yf-yrat)/maximum(abs(yf), abs(yrat)),
-            label="relative error")
+    a = abs(yf-yrat)
+    i = a.argmax()
+    print "max abs error: %e" % a[i]
+    print "x = %.16e" % xx[i]
+    print "f(x): %.16e" % yf[i]
+    print "r(x): %.16e" % yrat[i]
+    b = abs(yf-yrat)/maximum(abs(yf), abs(yrat))
+    i = b.argmax()
+    print "max rel error: %e" % b[i]
+    print "x = %.16e" % xx[i]
+    print "f(x): %.16e" % yf[i]
+    print "r(x): %.16e" % yrat[i]
+    semilogy(xx, a, label="absolute error")
+    semilogy(xx, b, label="relative error")
     grid()
     legend()
     title("Error plot")
