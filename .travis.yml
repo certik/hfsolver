@@ -3,11 +3,13 @@ python:
   - 2.7
 env:
   # Test all fast tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug"
+  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no"
   # Test all fast tests in Debug build with libint:
-  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug"
+  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no"
   # Test all slow tests in Release build (to make them run faster):
-  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release"
+  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release" TEST_PYTHON="no"
+  # Test all Python tests in Debug build:
+  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="yes"
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq gfortran liblapack-dev
@@ -19,14 +21,23 @@ before_install:
       sudo make install;
       popd;
     fi
+  - if [ "${TEST_PYTHON}" == "yes" ]; then
+      pip install -q cython numpy matplotlib sympy --use-mirrors;
+    fi
 before_script:
-  - cmake -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .
+  - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} .
   - make
+  - make install
 script:
-  - if [ "${TEST_SLOW}" == "yes" ]; then
-      ctest --output-on-failure -L slow;
+  - if [ "${TEST_PYTHON}" == "yes" ]; then
+        cd src/tests/bessel;
+        python test_modified_bessel.py;
     else
-      ctest --output-on-failure -LE slow;
+        if [ "${TEST_SLOW}" == "yes" ]; then
+          ctest --output-on-failure -L slow;
+        else
+          ctest --output-on-failure -LE slow;
+        fi
     fi
 notifications:
   email: false
