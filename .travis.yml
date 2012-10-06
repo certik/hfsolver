@@ -22,7 +22,8 @@ before_install:
       popd;
     fi
   - if [ "${TEST_PYTHON}" == "yes" ]; then
-      pip install -q cython numpy matplotlib sympy --use-mirrors;
+      pip install -q --use-mirrors cython numpy sympy;
+      pip install -q --use-mirrors matplotlib;
     fi
 before_script:
   - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} .
