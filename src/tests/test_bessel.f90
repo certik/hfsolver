@@ -11,13 +11,13 @@ real(dp) :: t1, t2, t3
 
 call init_random()
 
-n = 10000000
+n = 100000
 allocate(x(n), yf(n), yr(n))
 do k = 0, 4
     print *, "Testing k =", k
     do i = 1, n
         call random_number(r)
-        x(i) = r*20 + 10
+        x(i) = r*40
     end do
     call cpu_time(t1)
     do i = 1, n
