@@ -49,3 +49,9 @@ endif()
 add_library(hfsolver ${SRC})
 
 add_subdirectory(tests)
+
+install(TARGETS hfsolver
+        RUNTIME DESTINATION bin
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+    )
