@@ -404,7 +404,7 @@ select case (k)
                     (0.0000484437498700383824299885362686_dp + &
                     1.88315077527785406856560709781e-6_dp*x)*x)))))))
         else if (x < 20) then
-            r = (-sinh(x)/x + cosh(x))/exp(x)
+            r = (-sinh(x)/x + cosh(x)) / exp(x)
         else
             r = (-1/x + 1) / 2
         end if
@@ -452,7 +452,7 @@ select case (k)
                     (0.00120128946303470807826705767304_dp + &
                     0.000108903528444754760503502120599_dp*x)*x)))))))
         else if (x < 20) then
-            r = (3/x**2 + 1)*(sinh(x)/exp(x)) - 3/x*(cosh(x)/exp(x))
+            r = ((3/x**2 + 1)*sinh(x) - 3/x*cosh(x)) / exp(x)
         else
             r = (3/x**2 - 3/x + 1) / 2
         end if
@@ -500,8 +500,7 @@ select case (k)
                     (0.0000729070672630135675918235119142_dp + &
                     0.0000308632011694791287440146822781_dp*x)*x)))))))
         else if (x < 20) then
-            r = -(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)
-            r = r / exp(x)
+            r = (-(15/x**3 + 6/x)*sinh(x) + (15/x**2 + 1)*cosh(x)) / exp(x)
         else
             r = (-15/x**3 + 15/x**2 - 6/x  + 1)/2
         end if
@@ -511,7 +510,7 @@ select case (k)
         if (x < 0.2_dp) then
             r = x**5/945 + x**7/20790 + x**9/1081080 + x**11/97297200 + &
                     x**13/132324192e2_dp
-            r = r/exp(x)
+            r = r / exp(x)
         else if (x < 1.7_dp) then
             r =  (5.1962956007054264229527112912e-17_dp -  &
                     1.7091983797257865101834560981e-15_dp*x +  &
@@ -530,7 +529,7 @@ select case (k)
                     0.0000102233345389484523128091507614_dp*x**6 -  &
                     2.37680351471245713258958333627e-6_dp*x**7 +  &
                     1.7722924118248819944246867464e-7_dp*x**8)
-            r = r/exp(x)
+            r = r / exp(x)
         else if (x < 4) then
             r = (-1.53382275599031353712671171402e-7_dp + &
                     1.02445790975414106564424700453e-6_dp*x - &
@@ -549,7 +548,7 @@ select case (k)
                     0.0000431403377516821653299354827079_dp*x**6 + &
                     2.65420161107604023280035849057e-6_dp*x**7 - &
                     6.20361275935376828687251028769e-8_dp*x**8)
-            r = r/exp(x)
+            r = r / exp(x)
         else if (x < 10) then
             ! Produced by:
             ! FortranForm[MiniMaxApproximation[((105/x^4 + 45/x^2 +
@@ -590,6 +589,7 @@ select case (k)
             r = (105/x**4 - 105/x**3 + 45/x**2 - 10/x + 1)/2
         end if
     case default
+        r = -1 ! For compiler warning "fix"
         call stop_error("k = " // str(k) // " not implemented.")
 end select
 r = r * sqrt(2/(pi*x))
