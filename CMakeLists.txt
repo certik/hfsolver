@@ -19,6 +19,10 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
     message(FATAL_ERROR "CMAKE_BUILD_TYPE must be one of: Debug, Release (current value: '${CMAKE_BUILD_TYPE}')")
 endif ()
 
+set(WITH_OPENMP yes
+    CACHE BOOL "Build with OpenMP")
+
+
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # gfortran
     # Enable this if you want to check for single/double corruption (and use
@@ -32,11 +36,16 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # $ ./test_sto_he3
     # $ gprof ./test_sto_he3 | gprof2dot.py -n 0 -e 0 | dot -Tpng -o output.png
 
-    # Use openmp (comment this out to disable openmp):
-    set(CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   -fopenmp")
-    set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fopenmp")
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG   "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -fopenmp")
-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fopenmp")
+    if (WITH_OPENMP)
+        set(CMAKE_Fortran_FLAGS_DEBUG
+            "${CMAKE_Fortran_FLAGS_DEBUG}   -fopenmp")
+        set(CMAKE_Fortran_FLAGS_RELEASE
+            "${CMAKE_Fortran_FLAGS_RELEASE} -fopenmp")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG
+            "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -fopenmp")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE
+            "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fopenmp")
+    endif ()
 endif ()
 
 set(WITH_PYTHON no
@@ -96,4 +105,5 @@ if(WITH_LIBINT)
     message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
     message("LIBINT_LIBRARIES: ${LIBINT_LIBRARIES}")
 endif()
-message("With Python: ${WITH_PYTHON}")
+message("WITH_PYTHON: ${WITH_PYTHON}")
+message("WITH_OPENMP: ${WITH_OPENMP}")
