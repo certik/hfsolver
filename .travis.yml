@@ -35,6 +35,9 @@ script:
         python test_modified_bessel.py;
     else
         if [ "${TEST_SLOW}" == "yes" ]; then
+          cat /proc/cpuinfo;
+          gfortran -v;
+          /usr/bin/f95 -v;
           ctest --output-on-failure -L slow;
         else
           ctest --output-on-failure -LE slow;
