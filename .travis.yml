@@ -26,6 +26,10 @@ before_install:
       pip install -q --use-mirrors matplotlib;
     fi
 before_script:
+  # Print CPU info for debugging purposes:
+  - cat /proc/cpuinfo
+  - gfortran -v
+  - /usr/bin/f95 -v
   - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} .
   - make
   - make install
@@ -35,9 +39,6 @@ script:
         python test_modified_bessel.py;
     else
         if [ "${TEST_SLOW}" == "yes" ]; then
-          cat /proc/cpuinfo;
-          gfortran -v;
-          /usr/bin/f95 -v;
           ctest --output-on-failure -L slow;
         else
           ctest --output-on-failure -LE slow;
