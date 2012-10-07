@@ -3,13 +3,13 @@ python:
   - 2.7
 env:
   # Test all fast tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no"
+  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no" TEST_OPENMP="yes"
   # Test all fast tests in Debug build with libint:
-  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no"
-  # Test all slow tests in Release build (to make them run faster):
-  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release" TEST_PYTHON="no"
+  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no" TEST_OPENMP="yes"
+  # Test all slow tests in Release build (to make them run faster) and disable OpenMP due to #12:
+  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release" TEST_PYTHON="no" TEST_OPENMP="no"
   # Test all Python tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="yes"
+  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq gfortran liblapack-dev
@@ -30,7 +30,7 @@ before_script:
   - cat /proc/cpuinfo
   - gfortran -v
   - /usr/bin/f95 -v
-  - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} .
+  - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} -DWITH_OPENMP=${TEST_OPENMP} .
   - make
   - make install
 script:
