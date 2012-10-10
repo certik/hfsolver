@@ -36,7 +36,8 @@ integer :: Nelec
 
 real(dp) :: Egreen, D
 integer, allocatable :: idx(:)
-integer :: i
+integer :: i, it, it_N
+real(dp) :: Dmin, Dmax, it_a, it_b
 
 Lmax = 2
 allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
@@ -74,32 +75,39 @@ allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
 call create_intindex_sym4(intindex)
 
-D = 20
-print *, "D =", D
-call sto_V_screen(Z, nbfl, nl, zl, V, D)
-call slater_sto_screen(nbfl, nl, zl, slater, D)
-H = T + V
-print *, "SCF cycle:"
-call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
-Ekin = kinetic_energy(nbfl, P_, T)
-call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
-call printlam(nbfl, lam, Ekin, Etot)
-call radiallam2lam(nlist, llist, lam, lamtot)
-idx = argsort(lamtot)
-nlist = nlist(idx)
-llist = llist(idx)
-mlist = mlist(idx)
-lamtot = lamtot(idx)
-call slater2int22(nbfl, nlist, llist, mlist, slater, int2)
-call radialC2C(nlist, llist, mlist, C, Ctot)
-moint2 = transform_int22(int2, intindex, Ctot)
-Nelec = Z
-print *, "Green's function calculation:"
-print *, "i         lam(i)            dE         lam(i)+dE"
-do i = 1, size(lam)
-    if (lamtot(i) > 0) exit
-    Egreen = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, 200, 1e-10_dp)
-    print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen-lamtot(i), Egreen
+Dmin = 1._dp
+Dmax = 1e9
+it_N = 10
+it_a = Dmin * (Dmin/Dmax)**(1._dp/(it_N-1))
+it_b = log(Dmax/Dmin)/(it_N-1)
+do it = 1, it_N
+    D = it_a*exp(it_b*it)
+    print *, "D =", D
+    call sto_V_screen(Z, nbfl, nl, zl, V, D)
+    call slater_sto_screen(nbfl, nl, zl, slater, D)
+    H = T + V
+    print *, "SCF cycle:"
+    call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
+    Ekin = kinetic_energy(nbfl, P_, T)
+    call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
+    call printlam(nbfl, lam, Ekin, Etot)
+    call radiallam2lam(nlist, llist, lam, lamtot)
+    idx = argsort(lamtot)
+    nlist = nlist(idx)
+    llist = llist(idx)
+    mlist = mlist(idx)
+    lamtot = lamtot(idx)
+    call slater2int22(nbfl, nlist, llist, mlist, slater, int2)
+    call radialC2C(nlist, llist, mlist, C, Ctot)
+    moint2 = transform_int22(int2, intindex, Ctot)
+    Nelec = Z
+    print *, "Green's function calculation:"
+    print *, "i         lam(i)            dE         lam(i)+dE"
+    do i = 1, size(lam)
+        if (lamtot(i) > 0) exit
+        Egreen = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, 200, 1e-10_dp)
+        print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen-lamtot(i), Egreen
+    end do
 end do
 
 end program
