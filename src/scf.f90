@@ -5,7 +5,7 @@ use utils, only: stop_error, str
 implicit none
 private
 public doscf, electronic_energy, get_nuclear_energy, ijkl2intindex, &
-        ijkl2intindex2, kinetic_energy
+        ijkl2intindex2, kinetic_energy, create_intindex_sym4
 
 contains
 
@@ -282,5 +282,32 @@ integer pure function getni(i) result(n)
 integer, intent(in) :: i
 n = (i-1)**2 * ((i-1)**2 + 3) / 4
 end function
+
+subroutine create_intindex_sym4(intindex)
+integer, intent(out) :: intindex(:, :, :, :)
+integer :: i, j, k, l, ijkl, n
+n = size(intindex, 1)
+! Uncomment the commented lines to run checks:
+!intindex = -1
+ijkl = 1
+do i = 1, n
+    do j = 1, i
+        do k = 1, i
+            do l = 1, i
+                if (i == j .and. k < l) cycle
+                if (i == k .and. j < l) cycle
+                if (i == l .and. j < k) cycle
+!                call assert(ijkl2intindex2(i, j, k, l) == ijkl)
+                intindex(i, j, k, l) = ijkl
+                intindex(j, i, l, k) = ijkl
+                intindex(k, l, i, j) = ijkl
+                intindex(l, k, j, i) = ijkl
+                ijkl = ijkl + 1
+            end do
+        end do
+    end do
+end do
+!call assert(.not. (any(intindex == -1)))
+end subroutine
 
 end module

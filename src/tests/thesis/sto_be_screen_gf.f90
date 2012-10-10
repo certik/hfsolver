@@ -18,7 +18,7 @@ use hfprint, only: printall, printlam
 use mbpt, only: transform_int2, mbpt2, mbpt3, mbpt4, transform_int22
 use gf2, only: find_poles, find_pole_diag, total_energy, plot_poles
 use sorting, only: argsort
-use scf, only: ijkl2intindex, ijkl2intindex2
+use scf, only: ijkl2intindex, ijkl2intindex2, create_intindex_sym4
 implicit none
 
 integer, allocatable :: nl(:, :), nbfl(:)
@@ -94,7 +94,7 @@ call radiallam2lam(nlist, llist, lam, lamtot)
 m = size(nlist)**2 * (size(nlist)**2 + 3) / 4
 allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
-call create_index(intindex)
+call create_intindex_sym4(intindex)
 
 
 ! permute() is not needed any more:
@@ -205,32 +205,5 @@ real(dp), intent(in) :: H(:, :), C(:, :)
 real(dp) :: Horb(size(H, 1), size(H, 2))
 Horb = matmul(matmul(transpose(C), H), C)
 end function
-
-subroutine create_index(intindex)
-integer, intent(out) :: intindex(:, :, :, :)
-integer :: i, j, k, l, ijkl, n
-n = size(intindex, 1)
-! Uncomment the commented lines to run checks:
-!intindex = -1
-ijkl = 1
-do i = 1, n
-    do j = 1, i
-        do k = 1, i
-            do l = 1, i
-                if (i == j .and. k < l) cycle
-                if (i == k .and. j < l) cycle
-                if (i == l .and. j < k) cycle
-!                call assert(ijkl2intindex2(i, j, k, l) == ijkl)
-                intindex(i, j, k, l) = ijkl
-                intindex(j, i, l, k) = ijkl
-                intindex(k, l, i, j) = ijkl
-                intindex(l, k, j, i) = ijkl
-                ijkl = ijkl + 1
-            end do
-        end do
-    end do
-end do
-!call assert(.not. (any(intindex == -1)))
-end subroutine
 
 end program
