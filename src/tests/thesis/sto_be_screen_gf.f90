@@ -30,13 +30,11 @@ real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 
 integer, allocatable :: nlist(:), llist(:), mlist(:)
-real(dp), allocatable :: int2(:), moint2(:), Ctot(:, :), Htot(:, :), lamtot(:)
+real(dp), allocatable :: int2(:), moint2(:), Ctot(:, :), lamtot(:)
 integer, allocatable :: intindex(:, :, :, :)
 integer :: Nelec
 
-!real(dp) :: E2, E3, E4
-real(dp) :: Ntot, Egreen, D
-!real(dp), allocatable :: lam_green(:)
+real(dp) :: Egreen, D
 integer, allocatable :: idx(:)
 integer :: i
 
@@ -88,7 +86,6 @@ call printlam(nbfl, lam, Ekin, Etot)
 
 call get_basis(nbfl, nlist, llist, mlist)
 allocate(Ctot(size(nlist), size(nlist)), lamtot(size(nlist)), idx(size(nlist)))
-allocate(Htot(size(nlist), size(nlist)))
 call radiallam2lam(nlist, llist, lam, lamtot)
 
 m = size(nlist)**2 * (size(nlist)**2 + 3) / 4
@@ -104,29 +101,10 @@ lamtot = lamtot(idx)
 call slater2int22(nbfl, nlist, llist, mlist, slater, int2)
 
 call radialC2C(nlist, llist, mlist, C, Ctot)
-call radialC2C(nlist, llist, mlist, H, Htot)
-
-Htot = transform_H(Htot, Ctot)
 
 moint2 = transform_int22(int2, intindex, Ctot)
 
 Nelec = Z
-!print *, "Calculating MPBT 2"
-!E2 = mbpt2(moint2, lamtot, Nelec/2)
-!print *, "Calculating MPBT 3"
-!E3 = mbpt3(moint2, lamtot, Nelec/2)
-!print *, "Calculating MPBT 4"
-!E4 = mbpt4(moint2, lamtot, Nelec/2)
-
-print *, "MBPT results:"
-print "(' E0+E1 (HF)    = ',f15.8)", Etot
-!print "(' E2    (MBPT2) = ',f15.8)", E2
-!print "(' E3    (MBPT3) = ',f15.8)", E3
-!print "(' E4    (MBPT4) = ',f15.8)", E4
-!print "(' E0+E1+E2      = ',f15.8)", Etot + E2
-!print "(' E0+E1+E2+E3   = ',f15.8)", Etot + E2 + E3
-!print "(' E0+E1+E2+E3+E4= ',f15.8)", Etot + E2 + E3 + E4
-!call assert(abs(E2 - (-0.03532286_dp)) < 1e-8_dp)
 
 print *, "Green's function calculation:"
 print *, "i         lam(i)            dE         lam(i)+dE"
@@ -142,45 +120,5 @@ do i = 1, size(lam)
         !call assert(abs(Egreen - (-0.32724971_dp)) < 1e-8_dp)
     end if
 end do
-
-!call plot_poles(moint2, intindex, lamtot, Nelec/2)
-
-print *, "GF total energy (p=20):"
-call total_energy(moint2, intindex, lamtot, Nelec/2, 20, Htot, &
-        200, 0.1_dp, 0.1_dp, 0._dp, Ntot, Egreen)
-print *, "Ntot =", Ntot
-print *, "Etot =", Egreen
-!do i = 5, 60, 5
-!    print *, "p =", i
-!    call total_energy(moint2, intindex, lamtot, Nelec/2, i, Htot, &
-!        200, 0.1_dp, 0.1_dp, 0._dp, Ntot, Egreen)
-!    print *, "Ntot =", Ntot
-!    print *, "Etot =", Egreen
-!end do
-! These numbers are converged to at least 1e-9:
-!call assert(abs(Ntot   - (  4.004281307_dp)) < 1e-6_dp)
-!call assert(abs(Egreen - (-14.650438751_dp)) < 1e-6_dp)
-! [1] has total energy:   -14.641639
-! Note: if we extended the countour to -55 a.u., we get:
-! In [1]: -14.666238504287749 / 4.0052366660634684 * 4
-! Out[1]: -14.6470630597741
-! So after normalization by the number of particles, we get a close energy.
-
-
-!allocate(lam_green(size(nlist)))
-!lam_green = find_poles(moint2, lamtot, Nelec/2, 20)
-!do i = 1, size(lamtot)
-!    if (lamtot(i) > 0) exit
-!    print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), lam_green(i)-lamtot(i), &
-!        lam_green(i)
-!end do
-
-contains
-
-function transform_H(H, C) result(Horb)
-real(dp), intent(in) :: H(:, :), C(:, :)
-real(dp) :: Horb(size(H, 1), size(H, 2))
-Horb = matmul(matmul(transpose(C), H), C)
-end function
 
 end program
