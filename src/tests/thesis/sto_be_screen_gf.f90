@@ -96,9 +96,6 @@ allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
 call create_intindex_sym4(intindex)
 
-
-! permute() is not needed any more:
-!call permute(int2, idx, size(nlist))
 idx = argsort(lamtot)
 nlist = nlist(idx)
 llist = llist(idx)
@@ -179,26 +176,6 @@ print *, "Etot =", Egreen
 !end do
 
 contains
-
-
-subroutine permute(A, idx, n)
-real(dp), intent(inout) :: A(:)
-integer, intent(in) :: idx(:), n
-real(dp) :: B(size(A))
-integer :: i, j, k, l
-do i = 1, n
-    do j = 1, i
-        do k = 1, n
-            do l = 1, k
-                if ((i-1)*i/2 + j < (k-1)*k/2 + l) cycle
-                B(ijkl2intindex(i, j, k, l)) = &
-                    A(ijkl2intindex(idx(i), idx(j), idx(k), idx(l)))
-            end do
-        end do
-    end do
-end do
-A = B
-end subroutine
 
 function transform_H(H, C) result(Horb)
 real(dp), intent(in) :: H(:, :), C(:, :)
