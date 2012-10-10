@@ -36,7 +36,7 @@ integer :: Nelec
 
 real(dp) :: D
 integer, allocatable :: idx(:)
-integer :: i, it, it_N, u
+integer :: i, it, it_N, u, N_elec
 real(dp) :: Dmin, Dmax, it_a, it_b
 
 Lmax = 2
@@ -62,6 +62,7 @@ Nscf = 100
 
 n = maxval(nbfl)
 ndof = sum(nbfl)
+N_elec = round(sum(focc))
 print *, "total  DOFs =", ndof
 allocate(S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
 m = ndof*(ndof+1)/2
@@ -70,7 +71,7 @@ call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 call get_basis(nbfl, nlist, llist, mlist)
 allocate(Ctot(size(nlist), size(nlist)), lamtot(size(nlist)), idx(size(nlist)))
-allocate(Egreen(size(nlist)))
+allocate(Egreen(N_elec))
 m = size(nlist)**2 * (size(nlist)**2 + 3) / 4
 allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
@@ -107,8 +108,7 @@ do it = 1, it_N
     print *, "Green's function calculation:"
     print *, "i         lam(i)            dE         lam(i)+dE"
     Egreen = 0
-    do i = 1, size(lam)
-        if (lamtot(i) > 0) exit
+    do i = 1, size(Egreen)
         Egreen(i) = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, &
             200, 1e-10_dp)
         print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen(i)-lamtot(i), &
@@ -120,4 +120,13 @@ do it = 1, it_N
     close(u)
 
 end do
+
+contains
+
+integer function round(x) result(r)
+! Rounds "x" to the nearest integer
+real(dp), intent(in) :: x
+r = int(x + 0.5_dp)
+end function
+
 end program
