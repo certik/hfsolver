@@ -5,3 +5,4 @@ endmacro(ADDPROG)
 
 addprog(fe_ra)
 addprog(fe_ra_opt)
+addprog(sto_be_screen_gf)
