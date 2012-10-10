@@ -63,6 +63,12 @@ real(dp), intent(in) :: P(:, :), H(:, :), F(:, :)
 E0 = 0.5_dp * sum(P*(H + F))
 end function
 
+real(dp) function kinetic_energy(P, T) result(Ekin)
+! Calculates kinetic energy
+real(dp), intent(in) :: P(:, :), T(:, :)
+Ekin = sum(P * T)
+end function
+
 subroutine doscf(H, int2, S, Noccupied, Nscf, tolE, tolP, alpha, C, P, lam, E0)
 ! Runs the SCF cycle
 real(dp), intent(in) :: H(:, :), int2(:), S(:, :)

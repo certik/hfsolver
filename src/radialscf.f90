@@ -229,7 +229,7 @@ end function
 
 
 real(dp) function kinetic_energy(nbfl, P, T) result(Ekin)
-! Calculates electronic energy
+! Calculates kinetic energy
 integer, intent(in) :: nbfl(0:) ! The length of each diagonal l-block
 real(dp), intent(in) :: P(:, :, 0:), T(:, :, 0:)
 integer :: l
