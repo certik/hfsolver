@@ -6,9 +6,9 @@ use scf, only: ijkl2intindex
 use utils, only: str, assert
 use hartree_screening, only: hartree_y
 use special_functions, only: wigner3j, getgaunt
-use utils, only: loadtxt
 use openmp, only: omp_get_thread_num
 use quadrature, only: gauss_pts, gauss_wts
+use quad_laguerre, only: gauss_laguerre_pts, gauss_laguerre_wts
 !use debye, only: Vk
 !use debye, only: Vk => Sk
 !use debye, only: Vk => Vk2
@@ -500,16 +500,12 @@ real(dp), allocatable, intent(out) :: slater_(:, :)
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: m, n, i, j, k, l, k_, ijkl, ndof, Lmax
-real(dp), allocatable :: d(:, :)
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
 if (.not. allocated(xiq)) then
-    !call loadtxt("lag06.txt", d)
-    !call loadtxt("lag20.txt", d)
-    call loadtxt("lag52.txt", d)
-    allocate(xiq(size(d, 1)), wtq(size(d, 1)))
-    xiq = d(:, 1)
-    wtq = d(:, 2)
+    allocate(xiq(52), wtq(52))
+    xiq = gauss_laguerre_pts(52)
+    wtq = gauss_laguerre_wts(52)
 end if
 if (.not. allocated(xiq3)) then
     allocate(xiq3(Nq), wtq3(Nq))
@@ -705,7 +701,6 @@ real(dp), intent(in) :: D ! Debye screening length
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: n, i, j, k, l, k_, ijkl, Lmax, ndof, m
-real(dp), allocatable :: dd(:, :)
 integer, allocatable :: intindex(:, :, :, :)
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
@@ -723,12 +718,9 @@ do l = 0, ubound(nbfl, 1)
 end do
 
 if (.not. allocated(xiq)) then
-    !call loadtxt("lag06.txt", d)
-    !call loadtxt("lag20.txt", d)
-    call loadtxt("lag52.txt", dd)
-    allocate(xiq(size(dd, 1)), wtq(size(dd, 1)))
-    xiq = dd(:, 1)
-    wtq = dd(:, 2)
+    allocate(xiq(52), wtq(52))
+    xiq = gauss_laguerre_pts(52)
+    wtq = gauss_laguerre_wts(52)
 end if
 if (.not. allocated(xiq3)) then
     allocate(xiq3(Nq), wtq3(Nq))
