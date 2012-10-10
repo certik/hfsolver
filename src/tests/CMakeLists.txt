@@ -48,3 +48,5 @@ ADDTEST(test_gaussians_molecules)
 
 ADDTEST(test_fm)
 ADDTEST(test_bessel)
+
+add_subdirectory(thesis)
