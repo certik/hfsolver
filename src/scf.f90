@@ -5,7 +5,7 @@ use utils, only: stop_error, str
 implicit none
 private
 public doscf, electronic_energy, get_nuclear_energy, ijkl2intindex, &
-        ijkl2intindex2
+        ijkl2intindex2, kinetic_energy
 
 contains
 

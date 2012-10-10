@@ -13,7 +13,7 @@ use gf, only: plot_poles
 use utils, only: assert
 implicit none
 real(dp), allocatable :: C(:, :), lam(:), int2(:), moint2(:)
-real(dp) :: E0, E2, E3, Etot, Enuc
+real(dp) :: E0, E2, E3, Etot, Enuc, Ekin
 integer :: Nscf, Nelec
 real(dp) :: alpha, tolE, tolP
 
@@ -24,7 +24,7 @@ Nscf = 40
 ! He
 call rhf_gauss([2], reshape( &
     [0._dp, 0._dp, 0._dp], &
-    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -50,7 +50,7 @@ call assert(abs(E3 - (-0.00544224_dp)) < 1e-6_dp)
 ! Be
 call rhf_gauss([4], reshape( &
     [0._dp, 0._dp, 0._dp], &
-    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -76,7 +76,7 @@ call assert(abs(E3 - (-0.01056728_dp)) < 1e-6_dp)
 ! Ne
 call rhf_gauss([10], reshape( &
     [0._dp, 0._dp, 0._dp], &
-    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -101,7 +101,7 @@ call assert(abs(E3 - (0.00015112_dp)) < 1e-6_dp)
 ! Mg
 call rhf_gauss([12], reshape( &
     [0._dp, 0._dp, 0._dp], &
-    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -124,7 +124,7 @@ call assert(abs(E3 - (-0.00714535_dp)) < 1e-6_dp)
 ! Ar
 call rhf_gauss([18], reshape( &
     [0._dp, 0._dp, 0._dp], &
-    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 1]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -148,6 +148,11 @@ contains
 
 subroutine print_energies(skip3)
 logical, optional, intent(in) :: skip3
+print *, "HF results:"
+print "(a,es10.2)", "        EKIN+EHF (a.u.):", Ekin + Etot
+print "(a,f18.8)", "  KINETIC ENERGY (a.u.):", Ekin
+print "(a,f18.8)", "HF ATOMIC ENERGY (a.u.):", Etot
+print *
 print *, "MBPT results:"
 print "(' E0+E1 (HF)    = ',f15.8)", Etot
 print "(' E2    (MBPT2) = ',f15.8)", E2

@@ -10,7 +10,7 @@ use utils, only: assert
 use gf, only: find_poles, find_pole_diag
 implicit none
 real(dp), allocatable :: C(:, :), lam(:), int2(:), moint2(:)
-real(dp) :: E0, E2, E3, Etot, Enuc
+real(dp) :: E0, E2, E3, Etot, Enuc, Ekin
 ! The difference between PyQuante C implementation and libint2 in the total
 ! energy for the molecules tested in this file should be below this eps:
 real(dp), parameter :: eps = 1e-7_dp
@@ -25,7 +25,7 @@ Nscf = 40
 call rhf_gauss([1, 1], reshape( &
     [0._dp, 0._dp, 0._dp, &
      0._dp, 0._dp, 1.4_dp], &
-    [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -59,7 +59,7 @@ call assert(abs(Egreen - (-0.59832340_dp)) < 1e-8_dp)
 call rhf_gauss([7, 7], reshape( &
     [0._dp, 0._dp, 0._dp, &
      0._dp, 0._dp, 2.074_dp], &
-    [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 ! MPQC      -108.942 687
 ! [1]       -108.942         (Table 3.12, p. 192)
 call assert(abs(Etot - (-108.94268654_dp)) < 1e-8_dp)
@@ -72,7 +72,7 @@ call assert(abs(lam(7) - (-0.612_dp)) < 6e-4_dp)
 call rhf_gauss([8, 6], reshape( &
     [0._dp, 0._dp, 0._dp, &
      0._dp, 0._dp, 2.132_dp], &
-    [3, 2]), Nscf, 0.8_dp, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 2]), Nscf, 0.8_dp, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 ! [1]       -112.737         (Table 3.12, p. 192)
 call assert(abs(Etot - (-112.73732121_dp)) < 1e-8_dp)
 ! [1] Table 3.15, page 195:
@@ -86,7 +86,7 @@ call rhf_gauss([6, 1, 1, 1, 1], reshape( &
    -0.683292_dp,     1.932773_dp,     0.000000_dp, &
    -0.683292_dp,    -0.966387_dp,    -1.673831_dp, &
    -0.683292_dp,    -0.966387_dp,     1.673831_dp], &
-    [3, 5]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 5]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -123,7 +123,7 @@ call rhf_gauss([6, 1, 1, 1, 1], reshape( &
     -0.62558332_dp,     0.62558332_dp,     0.62558332_dp, &
     0.62558332_dp,     0.62558332_dp,    -0.62558332_dp, &
     -0.62558332_dp,    -0.62558332_dp,    -0.62558332_dp], &
-    [3, 5]) * ang2bohr, Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 5]) * ang2bohr, Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -142,7 +142,7 @@ call rhf_gauss([7, 1, 1, 1], reshape( &
     1.913000_dp,     0.000000_dp,     0.000000_dp, &
    -0.548761_dp,     1.832602_dp,     0.000000_dp, &
    -0.548761_dp,    -0.916301_dp,    -1.587080_dp], &
-    [3, 4]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 4]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 Nelec = 10
@@ -163,7 +163,7 @@ call rhf_gauss([8, 1, 1], reshape( &
     [0.000000_dp,     0.000000_dp,     0.000000_dp, &
     1.809000_dp,     0.000000_dp,     0.000000_dp, &
    -0.453549_dp,     1.751221_dp,     0.000000_dp], &
-    [3, 3]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 3]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 print *, "Calculating MPBT 2"
@@ -195,7 +195,7 @@ call assert(abs(Egreen - (-0.40499448_dp)) < 1e-8_dp)
 call rhf_gauss([9, 1], reshape( &
     [0.000000_dp,     0.000000_dp,     0.000000_dp, &
     1.733_dp,     0.000000_dp,     0.000000_dp], &
-    [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Etot)
+    [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
 allocate(moint2(size(int2)))
 moint2 = transform_int2(int2, C)
 Nelec = 10
