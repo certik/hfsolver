@@ -11,6 +11,7 @@ set(SRC
     hartree_screening.f90
     feutils.f90
     quadrature.f90
+    quad_laguerre.f90
     fe.f90
     sto.f90
     radialscf.f90
