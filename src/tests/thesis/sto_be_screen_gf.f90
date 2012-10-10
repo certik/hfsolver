@@ -79,7 +79,7 @@ call create_intindex_sym4(intindex)
 open(newunit=u, file="eigs_D.txt", status="replace")
 close(u)
 Dmin = 1._dp
-Dmax = 1e9
+Dmax = 1e5
 it_N = 10
 it_a = Dmin * (Dmin/Dmax)**(1._dp/(it_N-1))
 it_b = log(Dmax/Dmin)/(it_N-1)
