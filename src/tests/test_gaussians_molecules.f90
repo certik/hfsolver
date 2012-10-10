@@ -60,6 +60,7 @@ call rhf_gauss([7, 7], reshape( &
     [0._dp, 0._dp, 0._dp, &
      0._dp, 0._dp, 2.074_dp], &
     [3, 2]), Nscf, alpha, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
+call print_energies_hf()
 ! MPQC      -108.942 687
 ! [1]       -108.942         (Table 3.12, p. 192)
 call assert(abs(Etot - (-108.94268654_dp)) < 1e-8_dp)
@@ -73,6 +74,7 @@ call rhf_gauss([8, 6], reshape( &
     [0._dp, 0._dp, 0._dp, &
      0._dp, 0._dp, 2.132_dp], &
     [3, 2]), Nscf, 0.8_dp, tolE, tolP, C, lam, int2, E0, Enuc, Ekin, Etot)
+call print_energies_hf()
 ! [1]       -112.737         (Table 3.12, p. 192)
 call assert(abs(Etot - (-112.73732121_dp)) < 1e-8_dp)
 ! [1] Table 3.15, page 195:
@@ -216,8 +218,17 @@ call assert(abs(Egreen - (-0.51894290_dp)) < 2e-8_dp)
 
 contains
 
+subroutine print_energies_hf()
+print *, "HF results:"
+print "(a,es10.2)", "        EKIN+EHF (a.u.):", Ekin + Etot
+print "(a,f18.8)", "  KINETIC ENERGY (a.u.):", Ekin
+print "(a,f18.8)", "HF ATOMIC ENERGY (a.u.):", Etot
+end subroutine
+
 subroutine print_energies(skip3)
 logical, optional, intent(in) :: skip3
+call print_energies_hf()
+print *
 print *, "MBPT results:"
 print "(' E0+E1 (HF)    = ',f15.8)", Etot
 print "(' E2    (MBPT2) = ',f15.8)", E2
