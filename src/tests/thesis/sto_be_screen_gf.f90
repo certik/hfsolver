@@ -66,59 +66,40 @@ allocate(S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
 m = ndof*(ndof+1)/2
 allocate(slater(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
-
-D = 20
-print *, "D =", D
-call sto_V_screen(Z, nbfl, nl, zl, V, D)
-call slater_sto_screen(nbfl, nl, zl, slater, D)
-
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
-
-H = T + V
-
-print *, "SCF cycle:"
-call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
-Ekin = kinetic_energy(nbfl, P_, T)
-call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
-call printlam(nbfl, lam, Ekin, Etot)
-
-!call assert(abs(Etot - (-14.57278856_dp)) < 1e-8_dp)
-
 call get_basis(nbfl, nlist, llist, mlist)
 allocate(Ctot(size(nlist), size(nlist)), lamtot(size(nlist)), idx(size(nlist)))
-call radiallam2lam(nlist, llist, lam, lamtot)
-
 m = size(nlist)**2 * (size(nlist)**2 + 3) / 4
 allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
 call create_intindex_sym4(intindex)
 
+D = 20
+print *, "D =", D
+call sto_V_screen(Z, nbfl, nl, zl, V, D)
+call slater_sto_screen(nbfl, nl, zl, slater, D)
+H = T + V
+print *, "SCF cycle:"
+call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
+Ekin = kinetic_energy(nbfl, P_, T)
+call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
+call printlam(nbfl, lam, Ekin, Etot)
+call radiallam2lam(nlist, llist, lam, lamtot)
 idx = argsort(lamtot)
 nlist = nlist(idx)
 llist = llist(idx)
 mlist = mlist(idx)
 lamtot = lamtot(idx)
 call slater2int22(nbfl, nlist, llist, mlist, slater, int2)
-
 call radialC2C(nlist, llist, mlist, C, Ctot)
-
 moint2 = transform_int22(int2, intindex, Ctot)
-
 Nelec = Z
-
 print *, "Green's function calculation:"
 print *, "i         lam(i)            dE         lam(i)+dE"
 do i = 1, size(lam)
     if (lamtot(i) > 0) exit
     Egreen = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, 200, 1e-10_dp)
     print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen-lamtot(i), Egreen
-    if (i == 1) then
-        ! [1] has energy:         -4.612
-        !call assert(abs(Egreen - (-4.61175302_dp)) < 1e-8_dp)
-    else if (i == 2) then
-        ! [1] has energy:         -0.327
-        !call assert(abs(Egreen - (-0.32724971_dp)) < 1e-8_dp)
-    end if
 end do
 
 end program
