@@ -30,13 +30,13 @@ real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 
 integer, allocatable :: nlist(:), llist(:), mlist(:)
-real(dp), allocatable :: int2(:), moint2(:), Ctot(:, :), lamtot(:)
+real(dp), allocatable :: int2(:), moint2(:), Ctot(:, :), lamtot(:), Egreen(:)
 integer, allocatable :: intindex(:, :, :, :)
 integer :: Nelec
 
-real(dp) :: Egreen, D
+real(dp) :: D
 integer, allocatable :: idx(:)
-integer :: i, it, it_N
+integer :: i, it, it_N, u
 real(dp) :: Dmin, Dmax, it_a, it_b
 
 Lmax = 2
@@ -70,11 +70,14 @@ call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 call get_basis(nbfl, nlist, llist, mlist)
 allocate(Ctot(size(nlist), size(nlist)), lamtot(size(nlist)), idx(size(nlist)))
+allocate(Egreen(size(nlist)))
 m = size(nlist)**2 * (size(nlist)**2 + 3) / 4
 allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
 call create_intindex_sym4(intindex)
 
+open(newunit=u, file="eigs_D.txt", status="replace")
+close(u)
 Dmin = 1._dp
 Dmax = 1e9
 it_N = 10
@@ -89,7 +92,7 @@ do it = 1, it_N
     print *, "SCF cycle:"
     call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
     Ekin = kinetic_energy(nbfl, P_, T)
-    call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
+!    call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     call printlam(nbfl, lam, Ekin, Etot)
     call radiallam2lam(nlist, llist, lam, lamtot)
     idx = argsort(lamtot)
@@ -103,11 +106,18 @@ do it = 1, it_N
     Nelec = Z
     print *, "Green's function calculation:"
     print *, "i         lam(i)            dE         lam(i)+dE"
+    Egreen = 0
     do i = 1, size(lam)
         if (lamtot(i) > 0) exit
-        Egreen = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, 200, 1e-10_dp)
-        print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen-lamtot(i), Egreen
+        Egreen(i) = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, &
+            200, 1e-10_dp)
+        print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen(i)-lamtot(i), &
+            Egreen(i)
     end do
-end do
 
+    open(newunit=u, file="eigs_D.txt", position="append", status="old")
+    write(u, "(6(es23.16, ' '))") D, Etot, lamtot(:2), Egreen(:2)
+    close(u)
+
+end do
 end program
