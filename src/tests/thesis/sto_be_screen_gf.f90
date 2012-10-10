@@ -80,7 +80,7 @@ open(newunit=u, file="eigs_D.txt", status="replace")
 close(u)
 Dmin = 1._dp
 Dmax = 1e5
-it_N = 10
+it_N = 100
 it_a = Dmin * (Dmin/Dmax)**(1._dp/(it_N-1))
 it_b = log(Dmax/Dmin)/(it_N-1)
 do it = 1, it_N
