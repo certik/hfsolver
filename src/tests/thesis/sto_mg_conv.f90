@@ -26,7 +26,7 @@ end subroutine
 
 subroutine sto_even_tempered(Lmax, nbfl, nl, zl)
 integer, intent(in) :: Lmax
-integer, intent(in) :: nbfl(:)
+integer, intent(in) :: nbfl(0:)
 integer, allocatable, intent(out) :: nl(:, :)
 real(dp), allocatable, intent(out) :: zl(:, :)
 real(dp), allocatable :: alpha(:), beta(:)
