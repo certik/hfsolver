@@ -106,7 +106,7 @@ do mu = 1, n
                 tempvec(alpha) = int2(ijkl2intindex(mu, nu, alpha, beta))
             end do
             do k = 1, n
-                temp(mu, nu, k, beta) = dot_product(C(:, k), tempvec)
+                temp(mu, k, beta, nu) = dot_product(C(:, k), tempvec)
             end do
         end do
     end do
@@ -116,7 +116,7 @@ do nu = 1, n
     do beta = 1, n
         do k = 1, n
             do i = 1, n
-                temp2(beta, i, nu, k) = dot_product(C(:, i), temp(:, nu, k, beta))
+                temp2(beta, i, nu, k) = dot_product(C(:, i), temp(:, k, beta, nu))
             end do
         end do
     end do
