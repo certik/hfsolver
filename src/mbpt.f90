@@ -125,8 +125,9 @@ print *, "  ( i nu |   k   beta) -> ( i nu | k  l  )"
 do i = 1, n
     do nu = 1, n
         do k = 1, n
+            tempvec = temp2(i, nu, k, :)
             do l = 1, n
-                temp(i, nu, k, l) = dot_product(C(:, l), temp2(i, nu, k, :))
+                temp(i, nu, k, l) = dot_product(C(:, l), tempvec)
             end do
         end do
     end do
