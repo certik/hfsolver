@@ -26,7 +26,8 @@ end subroutine
 
 subroutine sto_even_tempered(Lmax, nbfl, nl, zl)
 integer, intent(in) :: Lmax
-integer, allocatable, intent(out) :: nl(:, :), nbfl(:)
+integer, intent(in) :: nbfl(:)
+integer, allocatable, intent(out) :: nl(:, :)
 real(dp), allocatable, intent(out) :: zl(:, :)
 real(dp), allocatable :: alpha(:), beta(:)
 integer :: i, k
@@ -34,8 +35,6 @@ call assert(Lmax == 1)
 allocate(alpha(0:Lmax), beta(0:Lmax))
 alpha = [0.40938054_dp, 0.92139926_dp]
 beta = [1.61259870_dp, 1.81117158_dp]
-allocate(nbfl(0:Lmax))
-nbfl = [10, 5]
 allocate(nl(maxval(nbfl), 0:Lmax), zl(maxval(nbfl), 0:Lmax))
 do i = 0, Lmax
     nl(:nbfl(i), i) = i+1
@@ -78,6 +77,8 @@ focc = 0
 focc(:3, 0) = [2, 2, 2]
 focc(:1, 1) = [6]
 !call sto_optimized(Lmax, nbfl, nl, zl)
+allocate(nbfl(0:Lmax))
+nbfl = [10, 5]
 call sto_even_tempered(Lmax, nbfl, nl, zl)
 
 Z = 12
