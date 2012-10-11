@@ -3,7 +3,7 @@ use types, only: dp
 use utils, only: assert
 implicit none
 private
-public sto_optimized
+public sto_optimized, sto_even_tempered
 
 contains
 
@@ -24,7 +24,27 @@ zl(:nbfl(1), 1) = [32.077221_dp, 12.495413_dp, 9.644163_dp, 5.042248_dp, &
                 3.070882_dp, 2.086080_dp, 0.711410_dp]
 end subroutine
 
+subroutine sto_even_tempered(Lmax, nbfl, nl, zl)
+integer, intent(in) :: Lmax
+integer, allocatable, intent(out) :: nl(:, :), nbfl(:)
+real(dp), allocatable, intent(out) :: zl(:, :)
+real(dp), allocatable :: alpha(:), beta(:)
+integer :: i, k
+call assert(Lmax == 1)
+allocate(alpha(0:Lmax), beta(0:Lmax))
+alpha = [0.40938054_dp, 0.92139926_dp]
+beta = [1.61259870_dp, 1.81117158_dp]
+allocate(nbfl(0:Lmax))
+nbfl = [10, 5]
+allocate(nl(maxval(nbfl), 0:Lmax), zl(maxval(nbfl), 0:Lmax))
+do i = 0, Lmax
+    nl(:nbfl(i), i) = i+1
+    zl(:nbfl(i), i) = [(alpha(i)*beta(i)**k, k=1,nbfl(i))]
+end do
+end subroutine
+
 end module
+
 
 program sto_mg_conv
 
@@ -42,7 +62,7 @@ use mbpt, only: transform_int2, mbpt2, mbpt3, mbpt4, transform_int22
 use gf2, only: find_poles, find_pole_diag, total_energy, plot_poles
 use sorting, only: argsort
 use scf, only: ijkl2intindex, ijkl2intindex2, create_intindex_sym4
-use sto_mg_basis, only: sto_optimized
+use sto_mg_basis, only: sto_optimized, sto_even_tempered
 implicit none
 
 integer, allocatable :: nl(:, :), nbfl(:)
@@ -51,14 +71,14 @@ real(dp), allocatable :: S(:, :, :), T(:, :, :), V(:, :, :), slater(:, :)
 integer :: n, Z, m, Nscf, Lmax, ndof
 real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
-!real(dp), allocatable :: alpha(:), beta(:)
 
 Lmax = 1
 allocate(focc(3, 0:Lmax))
 focc = 0
 focc(:3, 0) = [2, 2, 2]
 focc(:1, 1) = [6]
-call sto_optimized(Lmax, nbfl, nl, zl)
+!call sto_optimized(Lmax, nbfl, nl, zl)
+call sto_even_tempered(Lmax, nbfl, nl, zl)
 
 Z = 12
 tolE = 1e-10_dp
