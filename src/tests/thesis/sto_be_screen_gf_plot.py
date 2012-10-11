@@ -1,7 +1,7 @@
 from numpy import loadtxt, average, empty, array, shape, transpose, size
 from pylab import semilogx, savefig, legend, title, grid, xlabel, ylabel, clf
 
-data = loadtxt("eigs_D.txt")
+data = loadtxt("be_eigs_D.txt")
 D = data[:, 0]
 Etot = data[:, 1]
 E1 = data[:, 2]

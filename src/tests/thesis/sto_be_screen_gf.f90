@@ -115,7 +115,7 @@ do it = 1, it_N
             Egreen(i)
     end do
 
-    open(newunit=u, file="eigs_D.txt", position="append", status="old")
+    open(newunit=u, file="be_eigs_D.txt", position="append", status="old")
     write(u, "(6(es23.16, ' '))") D, Etot, lamtot(:2), Egreen(:2)
     close(u)
 
