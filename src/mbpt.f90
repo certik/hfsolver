@@ -116,7 +116,7 @@ do nu = 1, n
     do beta = 1, n
         do k = 1, n
             do i = 1, n
-                temp2(i, nu, k, beta) = dot_product(C(:, i), temp(:, nu, k, beta))
+                temp2(beta, i, nu, k) = dot_product(C(:, i), temp(:, nu, k, beta))
             end do
         end do
     end do
@@ -125,7 +125,7 @@ print *, "  ( i nu |   k   beta) -> ( i nu | k  l  )"
 do i = 1, n
     do nu = 1, n
         do k = 1, n
-            tempvec = temp2(i, nu, k, :)
+            tempvec = temp2(:, i, nu, k)
             do l = 1, n
                 temp(i, nu, k, l) = dot_product(C(:, l), tempvec)
             end do
@@ -142,7 +142,7 @@ do i = 1, n
                 if (i == k .and. j < l) cycle
                 if (i == l .and. j < k) cycle
                 ! This must hold:
-                call assert(ijkl2intindex(i, j, k, l) == ijkl)
+                !call assert(ijkl2intindex(i, j, k, l) == ijkl)
                 moint2(ijkl) = dot_product(C(:, j), temp(i, :, k, l))
                 ijkl = ijkl + 1
             end do
