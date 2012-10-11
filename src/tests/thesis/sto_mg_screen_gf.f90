@@ -37,23 +37,22 @@ integer :: Nelec
 real(dp) :: D
 integer, allocatable :: idx(:)
 integer :: i, it, it_N, u
-real(dp) :: Dmin, Dmax, it_a, it_b
+real(dp) :: Dmin, Dmax, it_a, it_b, t1, t2
 
-Lmax = 2
-allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(3, 0:Lmax))
-nbfl = 0
+Lmax = 1
+allocate(nbfl(0:Lmax))
+nbfl = [10, 7]
+allocate(nl(maxval(nbfl), 0:Lmax), zl(maxval(nbfl), 0:Lmax), focc(3, 0:Lmax))
 focc = 0
 focc(:3, 0) = [2, 2, 2]
 focc(:1, 1) = [6]
-nbfl(0) = 8
-nl(:8, 0) = [1, 2, 2, 3, 3, 3, 3, 4]
-zl(:8, 0) = [12._dp, 13.6_dp, 9.3_dp, 6.5_dp, 4.2_dp, 1.4_dp, 0.9_dp, 2.5_dp]
-nbfl(1) = 8
-nl(:8, 1) = [2, 2, 2, 3, 3, 3, 3, 4]
-zl(:8, 1) = [12.5_dp, 9.2_dp, 6._dp, 0.5_dp, 5.3_dp, 3.7_dp, 2.5_dp, 1.2_dp]
-nbfl(2) = 8
-nl(:8, 2) = [3, 3, 3, 3, 4, 4, 4, 4]
-zl(:8, 2) = [12.8_dp, 9.6_dp, 6.4_dp, 0.75_dp, 5.2_dp, 3.6_dp, 2.1_dp, 1.4_dp]
+nl(:nbfl(0), 0) = [2, 1, 2, 1, 1, 2, 1, 1, 2, 1]
+zl(:nbfl(0), 0) = [35.988252_dp, 19.193253_dp, 16.093419_dp, 10.773377_dp, &
+                7.853579_dp, 6.023976_dp, 2.905152_dp, 1.694174_dp, &
+                0.750076_dp, 0.711410_dp]
+nl(:nbfl(1), 1) = [3, 2, 3, 2, 2, 2, 2]
+zl(:nbfl(1), 1) = [32.077221_dp, 12.495413_dp, 9.644163_dp, 5.042248_dp, &
+                3.070882_dp, 2.086080_dp, 0.711410_dp]
 
 Z = 12
 tolE = 1e-10_dp
@@ -78,7 +77,7 @@ allocate(int2(m), moint2(m))
 allocate(intindex(size(nlist), size(nlist), size(nlist), size(nlist)))
 call create_intindex_sym4(intindex)
 
-open(newunit=u, file="eigs_D.txt", status="replace")
+open(newunit=u, file="mg_eigs_D.txt", status="replace")
 close(u)
 Dmin = 1._dp
 Dmax = 1e5
@@ -94,7 +93,7 @@ do it = it_N, 1, -1
     print *, "SCF cycle:"
     call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
     Ekin = kinetic_energy(nbfl, P_, T)
-!    call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
+    !call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     call printlam(nbfl, lam, Ekin, Etot)
     call radiallam2lam(nlist, llist, lam, lamtot)
     idx = argsort(lamtot)
@@ -104,11 +103,15 @@ do it = it_N, 1, -1
     lamtot = lamtot(idx)
     call slater2int22(nbfl, nlist, llist, mlist, slater, int2)
     call radialC2C(nlist, llist, mlist, C, Ctot)
+    call cpu_time(t1)
     moint2 = transform_int22(int2, intindex, Ctot)
+    call cpu_time(t2)
+    print *, t2-t1
+!    stop "OK"
     print *, "Green's function calculation:"
     print *, "i         lam(i)            dE         lam(i)+dE"
     Egreen = 0
-    do i = 1, size(Egreen)
+    do i = 1, Nelec
         Egreen(i) = find_pole_diag(i, moint2, intindex, lamtot, Nelec/2, &
             200, 1e-10_dp)
         print "(i4, f15.6, f15.6, f15.6)", i, lamtot(i), Egreen(i)-lamtot(i), &
@@ -116,7 +119,7 @@ do it = it_N, 1, -1
     end do
 
     open(newunit=u, file="mg_eigs_D.txt", position="append", status="old")
-    write(u, "(100(es23.16, ' '))") D, Etot, lamtot(:2), Egreen(:2)
+    write(u, "(100(es23.16, ' '))") D, Etot, lamtot(:Nelec), Egreen(:Nelec)
     close(u)
 
 end do
