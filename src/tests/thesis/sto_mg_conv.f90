@@ -36,6 +36,8 @@ allocate(alpha(0:Lmax), beta(0:Lmax))
 alpha = [0.40938054_dp, 0.92139926_dp]
 beta = [1.61259870_dp, 1.81117158_dp]
 allocate(nl(maxval(nbfl), 0:Lmax), zl(maxval(nbfl), 0:Lmax))
+nl = 0
+zl = 0
 do i = 0, Lmax
     nl(:nbfl(i), i) = i+1
     zl(:nbfl(i), i) = [(alpha(i)*beta(i)**k, k=1,nbfl(i))]
@@ -70,18 +72,13 @@ real(dp), allocatable :: S(:, :, :), T(:, :, :), V(:, :, :), slater(:, :)
 integer :: n, Z, m, Nscf, Lmax, ndof
 real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
-integer :: Nb
+integer :: Nb, u
 
 Lmax = 1
 allocate(focc(3, 0:Lmax))
 focc = 0
 focc(:3, 0) = [2, 2, 2]
 focc(:1, 1) = [6]
-!call sto_optimized(Lmax, nbfl, nl, zl)
-allocate(nbfl(0:Lmax))
-Nb = 5
-nbfl = [2*Nb, Nb]
-call sto_even_tempered(Lmax, nbfl, nl, zl)
 
 Z = 12
 tolE = 1e-10_dp
@@ -89,20 +86,37 @@ tolP = 1e-4_dp
 alpha = 0.6_dp
 Nscf = 100
 
-n = maxval(nbfl)
-ndof = sum(nbfl)
-print *, "total  DOFs =", ndof
-allocate(S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
-m = ndof*(ndof+1)/2
-allocate(slater(m*(m+1)/2, 0:2*Lmax))
-call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
-allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
+open(newunit=u, file="Etot.txt", status="replace")
+close(u)
 
-H = T + V
-print *, "SCF cycle:"
-call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
-Ekin = kinetic_energy(nbfl, P_, T)
-!call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
-call printlam(nbfl, lam, Ekin, Etot)
+do Nb = 3, 30
+    print *, "Nb =", Nb
+    !call sto_optimized(Lmax, nbfl, nl, zl)
+    allocate(nbfl(0:Lmax))
+    nbfl = [2*Nb, Nb]
+    call sto_even_tempered(Lmax, nbfl, nl, zl)
+
+    n = maxval(nbfl)
+    ndof = sum(nbfl)
+    print *, "total  DOFs =", ndof
+    allocate(S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
+    m = ndof*(ndof+1)/2
+    allocate(slater(m*(m+1)/2, 0:2*Lmax))
+    call stoints2(Z, nbfl, nl, zl, S, T, V, slater)
+    allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
+
+    H = T + V
+    print *, "SCF cycle:"
+    call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
+    Ekin = kinetic_energy(nbfl, P_, T)
+    !call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
+    call printlam(nbfl, lam, Ekin, Etot)
+
+    open(newunit=u, file="Etot.txt", position="append", status="old")
+    write(u, "(i4, ' ', i5, ' ', es23.16)") Nb, ndof, Etot
+    close(u)
+
+    deallocate(nbfl, S, T, V, slater, P_, C, H, lam)
+end do
 
 end program
