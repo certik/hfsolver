@@ -4,6 +4,7 @@ macro(ADDPROG name)
 endmacro(ADDPROG)
 
 addprog(fe_ra)
+addprog(fe_mg)
 addprog(fe_ra_opt)
 addprog(sto_be_screen_gf)
 addprog(sto_mg_screen_gf)
