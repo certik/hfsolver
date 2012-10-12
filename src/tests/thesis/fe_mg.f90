@@ -33,17 +33,15 @@ integer :: p, Ne, Nb, Nq
 real(dp) :: rmin, rmax, a
 integer :: l, u
 
-Lmax = 3
+Lmax = 1
 allocate(nbfl(0:Lmax), focc(7, 0:Lmax))
 nbfl = 0
 focc = 0
-focc(:7, 0) = [2, 2, 2, 2, 2, 2, 2]
-focc(:5, 1) = [6, 6, 6, 6, 6]
-focc(:3, 2) = [10, 10, 10]
-focc(:1, 3) = [14]
+focc(:3, 0) = [2, 2, 2]
+focc(:1, 1) = [6]
 
-Z = 88
-tolE = 1e-9_dp
+Z = 12
+tolE = 1e-10_dp
 tolP = 1e-4_dp
 alpha = 0.6_dp
 Nscf = 100
