@@ -113,7 +113,8 @@ do Nb = 3, 30
     call printlam(nbfl, lam, Ekin, Etot)
 
     open(newunit=u, file="Etot.txt", position="append", status="old")
-    write(u, "(i4, ' ', i5, ' ', es23.16)") Nb, ndof, Etot
+    write(u, "(i4, ' ', i5, ' ', es23.16, ' ', es23.16)") Nb, ndof, Etot, &
+        Ekin+Etot
     close(u)
 
     deallocate(nbfl, S, T, V, slater, P_, C, H, lam)
