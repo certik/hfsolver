@@ -1,4 +1,4 @@
-program test_fe_ra
+program fe_ra
 
 use types, only: dp
 use sto, only: stoints2, get_basis2
