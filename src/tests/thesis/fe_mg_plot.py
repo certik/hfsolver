@@ -36,13 +36,20 @@ def convergence_plot(data, i):
     errs = get_errors(data, i)
     x = data[:, 0]
     y = data[:, 1]
-    semilogy(x[1:], diffs, "k--", label="abs(E-E_prev)")
-    semilogy(x, errs, "k-", lw=2, label="abs(E-E_conv)")
+    semilogy(x[1:], diffs, "k--", label="FE abs(E-E_prev)")
+    semilogy(x, errs, "k-", lw=2, label="FE abs(E-E_conv)")
     title("Params: N=%d, a=%d, Nq=%d, rmax=%d\nConverged value: dofs=%d, E_conv=%.11f" \
             % (3, 40, 53, 30, int(x[i]), y[i]))
     xlabel("DOFs")
     ylabel("Error [a.u.]")
     plot([17], [abs(-199.61463626959647 - y[i])], "ko", label="STO optimized")
+
+    data = loadtxt("sto_mg_conv_Etot.txt")
+    x = data[:, 1]
+    yy = data[:, 2]
+    plot(x, abs(yy - y[i]), "k^", label="STO even-tempered")
+    plot(x, abs(yy - y[i]), "k-")
+
     grid()
     legend()
     savefig("fe_mg_convergence.pdf")
