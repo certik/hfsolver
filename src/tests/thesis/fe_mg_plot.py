@@ -52,6 +52,8 @@ def convergence_plot(data, i):
 #    plot(x, abs(yy - y[i]), "k-")
     plot(x, abs(virial), "kx", label="STO ET virial theorem")
 #    plot(x, abs(virial), "k--", label="STO ET virial theorem")
+    #plot(x[1:], abs(yy[1:] - yy[:-1]), "k-.", label="STO ET error prev")
+    #plot(x, abs(yy - yy[-1]), "k-", label="STO ET error")
 
     grid()
     legend()
