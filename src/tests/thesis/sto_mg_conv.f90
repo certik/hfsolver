@@ -70,6 +70,7 @@ real(dp), allocatable :: S(:, :, :), T(:, :, :), V(:, :, :), slater(:, :)
 integer :: n, Z, m, Nscf, Lmax, ndof
 real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
+integer :: Nb
 
 Lmax = 1
 allocate(focc(3, 0:Lmax))
@@ -78,7 +79,8 @@ focc(:3, 0) = [2, 2, 2]
 focc(:1, 1) = [6]
 !call sto_optimized(Lmax, nbfl, nl, zl)
 allocate(nbfl(0:Lmax))
-nbfl = [10, 5]
+Nb = 5
+nbfl = [2*Nb, Nb]
 call sto_even_tempered(Lmax, nbfl, nl, zl)
 
 Z = 12
