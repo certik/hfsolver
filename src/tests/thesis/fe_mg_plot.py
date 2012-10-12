@@ -38,9 +38,9 @@ def convergence_plot(data, i):
     y = data[:, 1]
     semilogy(x[1:], diffs, "k--", label="abs(E-E_prev)")
     semilogy(x, errs, "k-", lw=2, label="abs(E-E_conv)")
-    title("Params: N=%d, a=%d, Nq=%d, rmax=%d\nConverged value: p=%d, E_conv=%.11f" \
-            % (4, 200, 53, 30, int(x[i]), y[i]))
-    xlabel("p")
+    title("Params: N=%d, a=%d, Nq=%d, rmax=%d\nConverged value: dofs=%d, E_conv=%.11f" \
+            % (3, 40, 53, 30, int(x[i]), y[i]))
+    xlabel("DOFs")
     ylabel("Error [a.u.]")
     grid()
     legend()
@@ -48,7 +48,7 @@ def convergence_plot(data, i):
 
 
 data = loadtxt("fe_mg_Etot.txt")
-x = data[:, 0]
+x = data[:, 1]
 y = data[:, 2]
 data = array([x, y])
 data = transpose(data)

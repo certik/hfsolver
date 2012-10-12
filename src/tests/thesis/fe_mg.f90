@@ -49,8 +49,8 @@ Nscf = 100
 
 rmin = 0
 rmax = 30
-a = 310
-Ne = 4
+a = 40
+Ne = 3
 Nq = 53
 
 allocate(xe(Ne+1))
