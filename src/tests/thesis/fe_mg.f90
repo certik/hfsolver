@@ -41,8 +41,8 @@ focc(:3, 0) = [2, 2, 2]
 focc(:1, 1) = [6]
 
 Z = 12
-tolE = 1e-10_dp
-tolP = 1e-4_dp
+tolE = 5e-11_dp
+tolP = 1e-5_dp
 alpha = 0.6_dp
 Nscf = 100
 
@@ -59,8 +59,9 @@ xe = meshexp(rmin, rmax, a, Ne)
 open(newunit=u, file="Etot.txt", status="replace")
 close(u)
 
-do p = 4, 21
+do p = 4, 25
 
+    print *, "p =", p
     allocate(xin(p+1))
     call get_parent_nodes(2, p, xin)
     allocate(in(p+1, Ne), ib(p+1, Ne))
