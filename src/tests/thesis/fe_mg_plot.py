@@ -47,8 +47,11 @@ def convergence_plot(data, i):
     data = loadtxt("sto_mg_conv_Etot.txt")
     x = data[:, 1]
     yy = data[:, 2]
-    plot(x, abs(yy - y[i]), "k^", label="STO even-tempered")
-    plot(x, abs(yy - y[i]), "k-")
+    virial = data[:, 3]
+    plot(x, abs(yy - y[i]), "k^", label="STO even-tempered (ET)")
+#    plot(x, abs(yy - y[i]), "k-")
+    plot(x, abs(virial), "kx", label="STO ET virial theorem")
+#    plot(x, abs(virial), "k--", label="STO ET virial theorem")
 
     grid()
     legend()
