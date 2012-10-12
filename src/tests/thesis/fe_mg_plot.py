@@ -1,5 +1,5 @@
 from numpy import loadtxt, average, empty, array, shape, transpose, size
-from pylab import semilogy, savefig, legend, title, grid, xlabel, ylabel
+from pylab import semilogy, savefig, legend, title, grid, xlabel, ylabel, plot
 
 def get_differences(data):
     assert data.shape[1] == 2
@@ -42,6 +42,7 @@ def convergence_plot(data, i):
             % (3, 40, 53, 30, int(x[i]), y[i]))
     xlabel("DOFs")
     ylabel("Error [a.u.]")
+    plot([17], [abs(-199.61463626959647 - y[i])], "ko", label="STO optimized")
     grid()
     legend()
     savefig("fe_mg_convergence.pdf")
