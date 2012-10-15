@@ -16,7 +16,7 @@ use solvers, only: solve_sym
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
-    define_connect_tensor_3d, c2fullc_2d, fe2quad_2d
+    define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d
 
 contains
 
@@ -262,6 +262,40 @@ do ie = 1, size(elems, 2)
                 fullu(in(ilnx, ilny, ie)) * phihq(iqx, ilnx) * phihq(iqy, ilny)
         end do
         end do
+    end do
+    end do
+end do
+end subroutine
+
+subroutine fe2quad_3d(elems, xin, xiq, phihq, in, fullu, uq)
+! Transforms fullu from FE-coefficient to quadrature-grid representation.
+! fullu is a full FE coefficient vector, having values for all nodes in the
+! mesh, including domain-boundary nodes.
+integer, intent(in) :: elems(:, :)
+real(dp), intent(in) :: xin(:)
+real(dp), intent(in) :: xiq(:)
+real(dp), intent(in) :: phihq(:, :)
+integer, intent(in) :: in(:, :, :, :)
+real(dp), intent(in) :: fullu(:)
+real(dp), intent(out) :: uq(:, :, :, :)
+integer :: ie, ilnx, ilny, ilnz, iqx, iqy, iqz
+
+! evaluate at quad points in each element
+do ie = 1, size(elems, 2)
+    uq(:, :, :, ie) = 0
+    do ilnx = 1, size(xin)
+    do ilny = 1, size(xin)
+    do ilnz = 1, size(xin)
+        do iqx = 1, size(xiq)
+        do iqy = 1, size(xiq)
+        do iqz = 1, size(xiq)
+            uq(iqx, iqy, iqz, ie) = uq(iqx, iqy, iqz, ie) + &
+                fullu(in(ilnx, ilny, ilnz, ie)) * &
+                phihq(iqx, ilnx) * phihq(iqy, ilny) * phihq(iqz, ilnz)
+        end do
+        end do
+        end do
+    end do
     end do
     end do
 end do
