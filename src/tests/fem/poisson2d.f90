@@ -102,11 +102,6 @@ do j = 1, Nb
 end do
 end subroutine
 
-real(dp) pure function det(A)
-real(dp), intent(in) :: A(:, :)
-det = A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1)
-end function
-
 real(dp) function sol_error(nodes, elems, xiq, wtq, solq) result(r)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :)
@@ -135,58 +130,6 @@ do e = 1, Ne
 end do
 r = sqrt(r)
 end function
-
-real(dp) pure function integrate_3d(f, wtq) result(r)
-! Calculates a 3D integral over (-1, 1)^3
-real(dp), intent(in) :: f(:, :, :) ! The function f(x,y,z) at quadrature points
-real(dp), intent(in) :: wtq(:) ! The 1D quadrature
-integer :: i, j, k
-r = 0
-do i = 1, size(wtq)
-    do j = 1, size(wtq)
-        do k = 1, size(wtq)
-            r = r + f(i, j, k)*wtq(i)*wtq(j)*wtq(k)
-        end do
-    end do
-end do
-end function
-
-subroutine append(list, x)
-integer, intent(in) :: x
-integer, intent(inout) :: list(:)
-integer :: i
-do i = 1, size(list)
-    if (list(i) == 0) then
-        list(i) = x
-        return
-    end if
-end do
-call stop_error("The list is too short")
-end subroutine
-
-integer function get_edge_index(edge_list, v1, v2) result(idx)
-integer, intent(inout) :: edge_list(:, :)
-integer, intent(in) :: v1, v2
-integer :: i, vmin, vmax
-vmin = min(v1, v2)
-vmax = max(v1, v2)
-do i = 1, size(edge_list, 2)
-    if (edge_list(1, i) == 0) then
-        edge_list(:, i) = [vmin, vmax]
-        idx = i
-        return
-    end if
-    if (all(edge_list(:, i) == [vmin, vmax])) then
-        idx = i
-        return
-    end if
-end do
-idx = -1 ! To fix compiler warning
-call stop_error("edge_list is too short")
-end function
-
-
-
 
 end module
 
