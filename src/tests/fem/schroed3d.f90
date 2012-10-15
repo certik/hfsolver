@@ -51,9 +51,9 @@ end do
 end do
 Am=0; Bm=0
 ! Precalculate as much as possible:
-lx = nodes(1, elems(3, 1)) - nodes(1, elems(1, 1)) ! Element sizes
-ly = nodes(2, elems(3, 1)) - nodes(2, elems(1, 1))
-lz = nodes(3, elems(3, 1)) - nodes(3, elems(1, 1))
+lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
+lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
 jacx = lx/2
 jacy = ly/2
 jacz = lz/2

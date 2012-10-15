@@ -9,6 +9,17 @@ module fe_mesh
 !  +-----+
 ! 1       2
 !
+! The hexahedron is enumerated as follows
+!
+! The bottom face:             The top face:
+! 4       3                      8       7
+!  +-----+                        +-----+
+!  |     |                        |     |
+!  |     |                        |     |
+!  +-----+                        +-----+
+! 1       2                      5       6
+!
+
 use types
 use utils, only: stop_error
 use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
