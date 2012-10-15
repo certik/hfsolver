@@ -439,7 +439,7 @@ select case (btype)
 end select
 end subroutine
 
-real(dp) function phih(xin, n, xi)
+real(dp) pure function phih(xin, n, xi)
 ! "phi hat": nth Lagrange polynomial with nodes xin at point xi in [-1,1]
 real(dp), intent(in) :: xin(:) ! polynomial nodes
 integer, intent(in) :: n       ! polynomial index
@@ -453,7 +453,7 @@ do i = 1, size(xin)
 end do
 end function
 
-real(dp) function dphih(xin, n, xi)
+real(dp) pure function dphih(xin, n, xi)
 ! "d phi hat": derivative of nth Lagrange polynomial with nodes xin at point xi
 ! in [-1,1]
 real(dp), intent(in) :: xin(:) ! polynomial nodes
