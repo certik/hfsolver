@@ -5,3 +5,4 @@ endmacro(ADDPROG)
 
 addprog(poisson2d)
 addprog(laplace2d_eig)
+addprog(jed)
