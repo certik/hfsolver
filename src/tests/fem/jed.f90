@@ -8,10 +8,10 @@ public logg
 
 contains
 
-real(dp) function logg(m, solvetype) result(error)
-integer, intent(in) :: m, solvetype
+real(dp) function logg(m) result(error)
+integer, intent(in) :: m
 real(dp) :: D(m+2, m+2), xb(m+2), D2(m, m), xd(m), sinx(m, 1), xexact(m**2), &
-    b(m**2), L(m**2, m**2), x(m**2), lam(m), R(m, m), Diag(m, m), Rinv(m, M)
+    b(m**2), x(m**2), lam(m), R(m, m), Diag(m, m), Rinv(m, M)
 complex(dp) :: lam_complex(m), R_complex(m, m)
 integer :: i, j
 call Cheb(m+1, D, xb);
@@ -23,19 +23,15 @@ xd = xb(2:size(xb)-1)
 sinx(:, 1) = sin(pi*xd)
 xexact = reshape(matmul(sinx, transpose(sinx)), [size(xexact)])
 b = 2*pi**2*xexact
-select case (solvetype)
-    case (1)
-        L = kron(D2, eye(m)) + kron(eye(m), D2)
-        x = solve(L, b)
-    case (2)
-        call eig(D2, lam_complex, R_complex)
-        lam = real(lam_complex, dp)
-        R = real(R_complex, dp)
-        forall(i=1:m, j=1:m) Diag(i, j) = 1/(lam(i)+lam(j))
-        Rinv = inv(R)
-        Diag = Diag * matmul(matmul(Rinv, reshape(b, [m, m])), transpose(Rinv))
-        x = reshape(matmul(matmul(R, Diag), transpose(R)), [size(x)])
-end select
+
+call eig(D2, lam_complex, R_complex)
+lam = real(lam_complex, dp)
+R = real(R_complex, dp)
+forall(i=1:m, j=1:m) Diag(i, j) = 1/(lam(i)+lam(j))
+Rinv = inv(R)
+Diag = Diag * matmul(matmul(Rinv, reshape(b, [m, m])), transpose(Rinv))
+x = reshape(matmul(matmul(R, Diag), transpose(R)), [size(x)])
+
 error = norm2(x - xexact)
 end function
 
@@ -77,7 +73,7 @@ real(dp) :: t1, t2
 N = 100000
 call cpu_time(t1)
 do i = 1, N
-    error = logg(7, 2)
+    error = logg(7)
 end do
 call cpu_time(t2)
 print *, "error = ", error
