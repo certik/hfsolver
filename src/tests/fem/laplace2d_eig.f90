@@ -1,131 +1,84 @@
 module laplace_assembly
 use types, only: dp
-use feutils, only: phih, dphih
-use linalg, only: inv
-use utils, only: assert
 implicit none
 private
-public assemble_2d, define_connect
+public assemble_2d
 
 contains
 
-subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, Am, Bm)
-real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:)
+subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, Bm)
+! Assemble on a 2D rectangular uniform mesh
+real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :), &
+    phihq(:, :), dphihq(:, :)
 integer, intent(in):: elems(:, :), ib(:, :, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
-integer :: Ne, Nb, p, e, i, j, iqx, iqy
-real(dp) :: phihq(size(xiq),size(xin)), dphihq(size(xiq),size(xin))
+integer :: Ne, p, e, i, j, iqx, iqy
 real(dp), dimension(size(xiq), size(xiq), size(xin), size(xin)) :: &
     phi_v, phi_dx, phi_dy
-real(dp) :: hq(size(xiq), size(xiq))
-real(dp) :: l(2)
+real(dp) :: x(size(xiq)), y(size(xiq))
+real(dp) :: fq(size(xiq), size(xiq)), xp(size(xiq)), yp(size(xiq))
+real(dp) :: lx, ly
 integer :: ax, ay, bx, by
 real(dp) :: jacx, jacy, jac_det
 
 Ne = size(elems, 2)
-Nb = maxval(ib)
 p = size(xin) - 1
-! 1D shape functions
-do ax = 1, p+1
-    do iqx = 1, size(xiq)
-        phihq(iqx, ax) = phih(xin,ax,xiq(iqx))
-        dphihq(iqx, ax) = dphih(xin,ax,xiq(iqx))
-   end do
-end do
 ! 2D shape functions
-do ax = 1, p+1
-    do ay = 1, p+1
-        do iqx = 1, size(xiq)
-            do iqy = 1, size(xiq)
-                phi_v(iqx, iqy, ax, ay) = phihq(iqx, ax)*phihq(iqy,ay)
-                phi_dx(iqx, iqy, ax, ay) = dphihq(iqx, ax)*phihq(iqy,ay)
-                phi_dy(iqx, iqy, ax, ay) = phihq(iqx, ax)*dphihq(iqy,ay)
+do ay = 1, p+1
+    do ax = 1, p+1
+        do iqy = 1, size(xiq)
+            do iqx = 1, size(xiq)
+                phi_v(iqx, iqy, ax, ay) = phihq(iqx, ax)*phihq(iqy, ay)
+                phi_dx(iqx, iqy, ax, ay) = dphihq(iqx, ax)*phihq(iqy, ay)
+                phi_dy(iqx, iqy, ax, ay) = phihq(iqx, ax)*dphihq(iqy, ay)
             end do
         end do
    end do
 end do
 Am=0; Bm=0
+! Precalculate as much as possible:
+lx = nodes(1, elems(3, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+ly = nodes(2, elems(3, 1)) - nodes(2, elems(1, 1))
+jacx = lx/2
+jacy = ly/2
+jac_det = abs(jacx*jacy)
+xp = (xiq + 1) * jacx
+yp = (xiq + 1) * jacy
+phi_dx = phi_dx / jacx
+phi_dy = phi_dy / jacy
 do e = 1, Ne
-    ! l is the diagonal vector:
-    l = nodes(:, elems(1, e)) - nodes(:, elems(3, e))
-    ! Assume rectangular shape:
-    jacx = l(1)/2
-    jacy = l(2)/2
-    jac_det = abs(jacx*jacy)
-    do bx = 1, p+1
+    x = xp + nodes(1, elems(1, e))
+    y = yp + nodes(2, elems(1, e))
+!    do iqy = 1, size(xiq)
+!        do iqx = 1, size(xiq)
+!            fq(iqx, iqy) = f(x(iqx), y(iqy))
+!        end do
+!    end do
+    fq = fq * jac_det * wtq
     do by = 1, p+1
+    do bx = 1, p+1
         j = ib(bx, by, e)
         if (j==0) cycle
-        do ax = 1, p+1
         do ay = 1, p+1
+        do ax = 1, p+1
             i = ib(ax, ay, e)
             if (i == 0) cycle
             if (j > i) cycle
-            hq = phi_dx(:, :, ax, ay)*phi_dx(:, :, bx, by) / (jacx*jacy) &
-                +phi_dy(:, :, ax, ay)*phi_dy(:, :, bx, by) / (jacx*jacy)
-            hq = hq / 2
-            Am(i,j) = Am(i,j) + integrate_2d(hq * jac_det, wtq)
-            hq = phi_v(:, :, ax, ay) * phi_v(:, :, bx, by)
-            Bm(i,j) = Bm(i,j) + integrate_2d(hq * jac_det, wtq)
+            Am(i,j) = Am(i,j) + sum( &
+                    (phi_dx(:, :, ax, ay)*phi_dx(:, :, bx, by) &
+                    +phi_dy(:, :, ax, ay)*phi_dy(:, :, bx, by)) &
+                * jac_det * wtq) / 2
+            Bm(i,j) = Bm(i,j) + sum((phi_v(:, :, ax, ay)*phi_v(:, :, bx, by) &
+                * jac_det * wtq))
         end do
         end do
     end do
     end do
 end do
-do j = 1, Nb
+do j = 1, size(Am, 2)
     do i = 1, j-1
         Am(i, j) = Am(j, i)
         Bm(i, j) = Bm(j, i)
-    end do
-end do
-end subroutine
-
-real(dp) pure function det(A)
-real(dp), intent(in) :: A(:, :)
-det = A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1)
-end function
-
-real(dp) pure function integrate_2d(f, wtq) result(r)
-! Calculates a 2D integral over (-1, 1)^2
-real(dp), intent(in) :: f(:, :) ! The function f(x, y) at quadrature points
-real(dp), intent(in) :: wtq(:) ! The 1D quadrature
-integer :: i, j
-r = 0
-do i = 1, size(wtq)
-    do j = 1, size(wtq)
-        r = r + f(i, j)*wtq(i)*wtq(j)
-    end do
-end do
-end function
-
-real(dp) pure function integrate_3d(f, wtq) result(r)
-! Calculates a 3D integral over (-1, 1)^3
-real(dp), intent(in) :: f(:, :, :) ! The function f(x,y,z) at quadrature points
-real(dp), intent(in) :: wtq(:) ! The 1D quadrature
-integer :: i, j, k
-r = 0
-do i = 1, size(wtq)
-    do j = 1, size(wtq)
-        do k = 1, size(wtq)
-            r = r + f(i, j, k)*wtq(i)*wtq(j)*wtq(k)
-        end do
-    end do
-end do
-end function
-
-subroutine define_connect(elems, p, ib)
-integer, intent(in):: elems(:, :), p
-integer, allocatable, intent(out) :: ib(:, :, :)
-integer :: i, j, Ne, idx
-Ne = size(elems, 2)
-allocate(ib(p+1, p+1, Ne))
-call assert(Ne == 1)
-ib = 0
-idx = 1
-do i = 2, p
-    do j = 2, p
-        ib(i, j, 1) = idx
-        idx = idx + 1
     end do
 end do
 end subroutine
@@ -138,9 +91,10 @@ end module
 program laplace2d_eig
 
 use types, only: dp
-use fe_mesh, only: cartesian_mesh_2d, cartesian_mesh_3d
-use laplace_assembly, only: assemble_2d, define_connect
-use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
+use fe_mesh, only: cartesian_mesh_2d, cartesian_mesh_3d, &
+    define_connect_tensor_2d, c2fullc_2d, fe2quad_2d
+use laplace_assembly, only: assemble_2d
+use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use constants, only: pi
 implicit none
@@ -151,47 +105,41 @@ real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:)
-integer, allocatable :: ib(:, :, :)
-integer :: i
+    lam(:), wtq2(:, :), phihq(:, :), dphihq(:, :)
+integer, allocatable :: ib(:, :, :), in(:, :, :)
+integer :: i, j, Nex, Ney
 
+Nex = 2
+Ney = 2
+p = 3
+Nq = 4
 
-! Test the 3D mesh:
-call cartesian_mesh_3d(3, 10, 2, [0._dp, 0._dp, 0._dp], [1._dp, 2._dp, 3._dp], nodes, elems)
-
-! Test the 2D mesh:
-call cartesian_mesh_2d(1, 1, [0._dp, 0._dp], [pi, pi], nodes, elems)
+call cartesian_mesh_2d(Nex, Ney, [0._dp, 0._dp], [pi, pi], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
-!print *, "Nodes:"
-!do i = 1, Nn
-!    print *, i, nodes(:, i)
-!end do
-!print *, "Elements:"
-!do i = 1, Ne
-!    print *, i, elems(:, i)
-!end do
 
-Nq = 11
-p = 10
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
-allocate(xiq(Nq), wtq(Nq))
+allocate(xiq(Nq), wtq(Nq), wtq2(Nq, Nq))
 call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
+forall(i=1:Nq, j=1:Nq) wtq2(i, j) = wtq(i)*wtq(j)
+allocate(phihq(size(xiq), size(xin)))
+allocate(dphihq(size(xiq), size(xin)))
+! Tabulate parent basis at quadrature points
+forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 
-call define_connect(elems, p, ib)
+call define_connect_tensor_2d(Nex, Ney, p, 1, in)
+call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
 Nb = maxval(ib)
+print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
-call assemble_2d(xin, nodes, elems, ib, xiq, wtq, A, B)
-!print *, "A:"
-!print "(4f10.6)", A
-!print *, "B:"
-!print "(4f10.6)", B
+call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, dphihq, A, B)
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
 do i = 1, Nb
