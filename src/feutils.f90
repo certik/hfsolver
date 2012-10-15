@@ -460,7 +460,12 @@ real(dp), intent(in) :: xin(:) ! polynomial nodes
 integer, intent(in) :: n       ! polynomial index
 real(dp), intent(in) :: xi     ! point in [-1,1] at which to evaluate dphih
 real(dp) :: term
+real(dp) :: tmp(size(xin))
 integer :: i, j
+do i = 1, size(xin)
+    if (i==n) cycle
+    tmp(i) = (xi-xin(i))/(xin(n)-xin(i))
+end do
 ! compute derivative of nth polynomal
 dphih = 0
 do j = 1, size(xin)
@@ -468,7 +473,7 @@ do j = 1, size(xin)
     term = 1 / (xin(n)-xin(j))
     do i = 1, size(xin)
         if (i==n .or. i==j) cycle
-        term = term * (xi-xin(i))/(xin(n)-xin(i))
+        term = term * tmp(i)
     end do
     dphih = dphih + term
 end do
