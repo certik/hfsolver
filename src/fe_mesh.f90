@@ -15,7 +15,8 @@ use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 implicit none
 private
-public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d
+public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
+    c2fullc_2d, fe2quad_2d
 
 contains
 
@@ -144,6 +145,59 @@ do iex = 1, nex
         iy = (iey-1)*p+1
         ! Get global node numbers in element
         gn(:, :, iel) = nodes(ix:ix+p, iy:iy+p)
+    end do
+end do
+end subroutine
+
+
+subroutine c2fullc_2d(in, ib, c, fullc)
+! Converts FE coefficient vector to full coefficient vector
+! It puts 0 for Dirichlet boundary conditions (ib==0), otherwise it just copies
+! the coefficients.
+integer, intent(in) :: in(:, :, :)
+integer, intent(in) :: ib(:, :, :)
+real(dp), intent(in) :: c(:) ! coefficient vector with regards to ib
+real(dp), intent(out) :: fullc(:) ! full coefficients vector with regards to in
+integer :: e, i, j
+do e = 1, size(in, 3)
+    do i = 1, size(in, 1)
+        do j = 1, size(in, 2)
+            if (ib(i, j, e) == 0) then
+                fullc(in(i, j, e)) = 0 ! Dirichlet
+            else
+                fullc(in(i, j, e)) = c(ib(i, j, e))
+            end if
+        end do
+    end do
+end do
+end subroutine
+
+
+subroutine fe2quad_2d(elems, xin, xiq, phihq, in, fullu, uq)
+! Transforms fullu from FE-coefficient to quadrature-grid representation.
+! fullu is a full FE coefficient vector, having values for all nodes in the
+! mesh, including domain-boundary nodes.
+integer, intent(in) :: elems(:, :)
+real(dp), intent(in) :: xin(:)
+real(dp), intent(in) :: xiq(:)
+real(dp), intent(in) :: phihq(:, :)
+integer, intent(in) :: in(:, :, :)
+real(dp), intent(in) :: fullu(:)
+real(dp), intent(out) :: uq(:, :, :)
+integer :: ie, ilnx, ilny, iqx, iqy
+
+! evaluate at quad points in each element
+do ie = 1, size(elems, 2)
+    uq(:, :, ie) = 0
+    do ilnx = 1, size(xin)
+    do ilny = 1, size(xin)
+        do iqx = 1, size(xiq)
+        do iqy = 1, size(xiq)
+            uq(iqx, iqy, ie) = uq(iqx, iqy, ie) + &
+                fullu(in(ilnx, ilny, ie)) * phihq(iqx, ilnx) * phihq(iqy, ilny)
+        end do
+        end do
+    end do
     end do
 end do
 end subroutine
