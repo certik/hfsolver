@@ -133,6 +133,8 @@ end function
 
 end module
 
+! ------------------------------------------------------------------------
+
 module poisson2d_code
 
 use types, only: dp
@@ -161,28 +163,15 @@ integer, allocatable :: in(:, :, :), ib(:, :, :)
 integer :: i, j
 integer, intent(in) :: Nex, Ney
 
-! Test the 3D mesh:
-!call cartesian_mesh_3d(3, 10, 2, [0._dp, 0._dp, 0._dp], [1._dp, 2._dp, 3._dp], nodes, elems)
-
-! Test the 2D mesh:
 call cartesian_mesh_2d(Nex, Ney, [0.0_dp, 0._dp], [1._dp, 1._dp], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-
-!print *, "Number of nodes:", Nn
-!print *, "Number of elements:", Ne
-!print *, "Nodes:"
-!do i = 1, Nn
-!    print *, i, nodes(:, i)
-!end do
-!print *, "Elements:"
-!do i = 1, Ne
-!    print *, i, elems(:, i)
-!end do
-
 Nq = p+1
-!print *, "Nq =", Nq
-!print *, "p =", p
+
+print *, "Number of nodes:", Nn
+print *, "Number of elements:", Ne
+print *, "Nq =", Nq
+print *, "p =", p
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq2(Nq, Nq))
@@ -203,10 +192,7 @@ end do
 call define_connect_tensor_2d(Nex, Ney, p, 1, in)
 call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
 Nb = maxval(ib)
-!print *, "DOFs =", Nb
-!print *, in
-!print *
-!print *, ib
+print *, "DOFs =", Nb
 allocate(A(Nb, Nb), rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Ne))
 
 call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, A, rhs)
@@ -214,13 +200,13 @@ sol = solve(A, rhs)
 call c2fullc_2d(in, ib, sol, fullsol)
 call fe2quad_2d(elems, xin, xiq, phihq, in, fullsol, solq)
 error = sol_error(nodes, elems, xiq, wtq2, solq)
-!print *, "L2 error:", error
 
 end function
 
 end module
 
 
+! ------------------------------------------------------------------------
 
 
 program poisson2d
@@ -231,7 +217,7 @@ real(dp) :: error
 integer :: i, N
 real(dp) :: t1, t2
 
-N = 4000
+N = 1
 call cpu_time(t1)
 do i = 1, N
     error = logg(1, 1, 8)
