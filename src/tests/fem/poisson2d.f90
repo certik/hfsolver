@@ -172,10 +172,8 @@ forall(i=1:Nq, j=1:Nq) wtq2(i, j) = wtq(i)*wtq(j)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
-forall(i=1:size(xiq), j=1:size(xin))
-     phihq(i, j) =  phih(xin, j, xiq(i))
-    dphihq(i, j) = dphih(xin, j, xiq(i))
-end forall
+forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 
 call define_connect_tensor_2d(Nex, Ney, p, 1, in)
 call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
