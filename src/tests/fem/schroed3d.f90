@@ -136,12 +136,12 @@ integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
 integer :: i, j, k, Nex, Ney, Nez
 
-Nex = 2
-Ney = 2
-Nez = 2
+Nex = 1
+Ney = 1
+Nez = 1
 p = 3
 Nq = 4
-rmax = 1  ! The size of the box in atomic units
+rmax = pi/2  ! The size of the box in atomic units
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-rmax, -rmax, -rmax], [rmax, rmax, rmax], &
