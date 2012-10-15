@@ -77,5 +77,5 @@ do i = 1, N
 end do
 call cpu_time(t2)
 print *, "error = ", error
-print "('Total time: ', f10.8)", (t2-t1) / N
+print "('Total time (us): ', f12.8)", 1e6_dp * (t2-t1) / N
 end program
