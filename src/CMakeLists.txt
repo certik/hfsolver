@@ -32,6 +32,7 @@ set(SRC
     debye.f90
     debye_potential.f90
     debye_potential_series.f90
+    fe_mesh.f90
 
     c_hfsolver.f90
 )

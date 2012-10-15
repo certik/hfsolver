@@ -1,0 +1,7 @@
+macro(ADDPROG name)
+    add_executable(${name} ${name}.f90)
+    target_link_libraries(${name} hfsolver ${LIBS})
+endmacro(ADDPROG)
+
+addprog(poisson2d)
+addprog(laplace2d_eig)

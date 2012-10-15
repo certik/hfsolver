@@ -50,3 +50,4 @@ ADDTEST(test_fm)
 ADDTEST(test_bessel)
 
 add_subdirectory(thesis)
+add_subdirectory(fem)
