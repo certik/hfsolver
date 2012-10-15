@@ -1,6 +1,5 @@
 module poisson_assembly
 use types, only: dp
-use feutils, only: dphih
 use linalg, only: inv
 use utils, only: assert, stop_error
 use constants, only: pi
@@ -20,13 +19,13 @@ real(dp), intent(in) :: x, y
 exact_sol = sin(pi*x) * sin(pi*y)
 end function
 
-subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, phihq, Am, rhs)
+subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, rhs)
 ! Assemble on a 2D rectangular uniform mesh
-real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :), phihq(:, :)
+real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :), &
+    phihq(:, :), dphihq(:, :)
 integer, intent(in):: elems(:, :), ib(:, :, :)
 real(dp), intent(out):: Am(:,:), rhs(:)
 integer :: Ne, Nb, p, e, i, j, iqx, iqy
-real(dp) :: dphihq(size(xiq),size(xin))
 real(dp), dimension(size(xiq), size(xiq), size(xin), size(xin)) :: &
     phi_v, phi_dx, phi_dy
 real(dp) :: x(size(xiq)), y(size(xiq))
@@ -38,12 +37,6 @@ real(dp) :: jacx, jacy, jac_det
 Ne = size(elems, 2)
 Nb = maxval(ib)
 p = size(xin) - 1
-! 1D shape functions
-do ax = 1, p+1
-    do iqx = 1, size(xiq)
-        dphihq(iqx, ax) = dphih(xin, ax, xiq(iqx))
-   end do
-end do
 ! 2D shape functions
 do ay = 1, p+1
     do ax = 1, p+1
@@ -138,7 +131,7 @@ end module
 module poisson2d_code
 
 use types, only: dp
-use feutils, only: phih
+use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_2d, cartesian_mesh_3d, &
     define_connect_tensor_2d, c2fullc_2d, fe2quad_2d
 use poisson_assembly, only: assemble_2d, sol_error
@@ -158,7 +151,7 @@ real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), rhs(:), sol(:), &
-        fullsol(:), solq(:, :, :), wtq2(:, :), phihq(:, :)
+        fullsol(:), solq(:, :, :), wtq2(:, :), phihq(:, :), dphihq(:, :)
 integer, allocatable :: in(:, :, :), ib(:, :, :)
 integer :: i, j
 integer, intent(in) :: Nex, Ney
@@ -178,8 +171,12 @@ allocate(xiq(Nq), wtq(Nq), wtq2(Nq, Nq))
 call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
 forall(i=1:Nq, j=1:Nq) wtq2(i, j) = wtq(i)*wtq(j)
 allocate(phihq(size(xiq), size(xin)))
-! tabulate parent basis at quadrature points
-forall(i=1:size(xiq), j=1:size(xin)) phihq(i, j) = phih(xin, j, xiq(i))
+allocate(dphihq(size(xiq), size(xin)))
+! Tabulate parent basis at quadrature points
+forall(i=1:size(xiq), j=1:size(xin))
+     phihq(i, j) =  phih(xin, j, xiq(i))
+    dphihq(i, j) = dphih(xin, j, xiq(i))
+end forall
 
 call define_connect_tensor_2d(Nex, Ney, p, 1, in)
 call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
@@ -187,7 +184,7 @@ Nb = maxval(ib)
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Ne))
 
-call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, A, rhs)
+call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, dphihq, A, rhs)
 sol = solve(A, rhs)
 call c2fullc_2d(in, ib, sol, fullsol)
 call fe2quad_2d(elems, xin, xiq, phihq, in, fullsol, solq)
