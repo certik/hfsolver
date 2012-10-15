@@ -176,18 +176,10 @@ allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq2(Nq, Nq))
 call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
-do j = 1, Nq
-    do i = 1, Nq
-        wtq2(i, j) = wtq(i)*wtq(j)
-    end do
-end do
+forall(i=1:Nq, j=1:Nq) wtq2(i, j) = wtq(i)*wtq(j)
 allocate(phihq(size(xiq), size(xin)))
 ! tabulate parent basis at quadrature points
-do j = 1, size(xin)
-    do i = 1, size(xiq)
-        phihq(i, j) = phih(xin, j, xiq(i))
-    end do
-end do
+forall(i=1:size(xiq), j=1:size(xin)) phihq(i, j) = phih(xin, j, xiq(i))
 
 call define_connect_tensor_2d(Nex, Ney, p, 1, in)
 call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
