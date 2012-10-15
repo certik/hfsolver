@@ -139,9 +139,9 @@ integer :: i, j, k, Nex, Ney, Nez
 Nex = 1
 Ney = 1
 Nez = 1
-p = 3
-Nq = 4
-rmax = pi/2  ! The size of the box in atomic units
+p = 4
+Nq = p+1
+rmax = 5  ! The size of the box in atomic units
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-rmax, -rmax, -rmax], [rmax, rmax, rmax], &
@@ -170,10 +170,12 @@ print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
+print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
+print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
-do i = 1, Nb
+do i = 1, min(Nb, 20)
     print *, i, lam(i)
 end do
 end program
