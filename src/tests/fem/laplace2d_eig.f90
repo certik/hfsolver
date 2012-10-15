@@ -107,14 +107,16 @@ integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), wtq2(:, :), phihq(:, :), dphihq(:, :)
 integer, allocatable :: ib(:, :, :), in(:, :, :)
+real(dp) :: rmax
 integer :: i, j, Nex, Ney
 
-Nex = 2
-Ney = 2
+Nex = 1
+Ney = 1
 p = 3
 Nq = 4
+rmax = pi/2
 
-call cartesian_mesh_2d(Nex, Ney, [0._dp, 0._dp], [pi, pi], nodes, elems)
+call cartesian_mesh_2d(Nex, Ney, [-rmax, -rmax], [rmax, rmax], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 
