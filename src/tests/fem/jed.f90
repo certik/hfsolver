@@ -42,14 +42,15 @@ end function
 subroutine Cheb(N, D, x)
 integer, intent(in) :: N
 real(dp), intent(out) :: D(:, :), x(:)
-real(dp) :: c(N+1, 1), X_(N+1, N+1), dX(N+1, N+1)
-integer :: i
+real(dp) :: c(N+1), X_(N+1, N+1), dX(N+1, N+1)
+integer :: i, j
 if (N == 0) then; D = 0; x = 1; return; end if
 x = cos(pi*[(i,i=0,N)]/N)
-c(:, 1) = [2, [(1,i=1,N-1)], 2] * (-1)**[(i,i=0,N)]
+c(:) = [2, [(1,i=1,N-1)], 2] * (-1)**[(i,i=0,N)]
 X_ = spread(x, 2, N+1)
 dX = X_ - transpose(X_)
-D = (matmul(c, transpose(1/c))) / (dX + eye(N+1))
+forall(i=1:N+1, j=1:N+1) D(i, j) = c(i) / c(j)
+D = D / (dX + eye(N+1))
 forall(i=1:N+1) D(i, i) = D(i, i) - sum(D(i, :))
 end subroutine
 
