@@ -49,8 +49,9 @@ x = cos(pi*[(i,i=0,N)]/N)
 c(:) = [2, [(1,i=1,N-1)], 2] * (-1)**[(i,i=0,N)]
 X_ = spread(x, 2, N+1)
 dX = X_ - transpose(X_)
+forall(i=1:N+1) dX(i, i) = dX(i, i) + 1
 forall(i=1:N+1, j=1:N+1) D(i, j) = c(i) / c(j)
-D = D / (dX + eye(N+1))
+D = D / dX
 forall(i=1:N+1) D(i, i) = D(i, i) - sum(D(i, :))
 end subroutine
 
