@@ -134,7 +134,6 @@ do iy = 1, ney*p+1
         nodes(ix, iy) = inode
     end do
 end do
-
 ! Construct connectivity table of global nodes in each element
 allocate(gn(p+1, p+1, nex*ney))
 iel = 0
@@ -145,6 +144,48 @@ do iex = 1, nex
         iy = (iey-1)*p+1
         ! Get global node numbers in element
         gn(:, :, iel) = nodes(ix:ix+p, iy:iy+p)
+    end do
+end do
+end subroutine
+
+subroutine define_connect_tensor_3d(nex, ney, nez, p, ibc, gn)
+! 3D connectivity table for tensor-product order p elements
+integer, intent(in) :: nex, ney, nez ! Number of elements in x, y, z directions
+integer, intent(in) :: p ! Polynomial order of elements
+integer, intent(in) :: ibc ! Boundary condition: 1 = Neumann, 2 = Dirichlet
+! gn(i, j, k, e) is the global node number of the local (i,j,k) node
+! in the e-th element:
+integer, allocatable, intent(out) :: gn(:, :, :, :)
+integer :: nodes(nex*p+1, ney*p+1, nez*p+1)
+integer :: inode, ix, iy, iz, iel, iex, iey, iez
+! Construct array of global nodes
+! 0 = no associated basis function as in e.g. Dirichlet BCs
+nodes = 0
+inode = 0
+do iz = 1, nez*p+1
+    do iy = 1, ney*p+1
+        do ix = 1, nex*p+1
+            if (ibc == 2 .and. (ix == 1 .or. ix == nex*p+1 .or. &
+                iy == 1 .or. iy == ney*p+1 .or. &
+                iz == 1 .or. iz == nez*p+1)) cycle
+            inode = inode + 1
+            nodes(ix, iy, iz) = inode
+        end do
+    end do
+end do
+! Construct connectivity table of global nodes in each element
+allocate(gn(p+1, p+1, p+1, nex*ney))
+iel = 0
+do iex = 1, nex
+    do iey = 1, ney
+        do iez = 1, nez
+            iel = iel + 1 ! Element number
+            ix = (iex-1)*p+1 ! Lower left front corner
+            iy = (iey-1)*p+1
+            iz = (iez-1)*p+1
+            ! Get global node numbers in element
+            gn(:, :, :, iel) = nodes(ix:ix+p, iy:iy+p, iz:iz+p)
+        end do
     end do
 end do
 end subroutine
