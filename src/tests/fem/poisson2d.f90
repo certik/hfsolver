@@ -6,7 +6,7 @@ use utils, only: assert, stop_error
 use constants, only: pi
 implicit none
 private
-public assemble_2d, define_connect_2d, sol_error, c2fullc, fe2quad
+public assemble_2d, sol_error, c2fullc, fe2quad
 
 contains
 
@@ -185,41 +185,6 @@ idx = -1 ! To fix compiler warning
 call stop_error("edge_list is too short")
 end function
 
-subroutine define_connect_2d(nex, ney, p, ibc, gn)
-! 2D connectivity table for tensor-product order p elements
-integer, intent(in) :: nex, ney ! Number of elements in x and y directions
-integer, intent(in) :: p ! Polynomial order of elements
-integer, intent(in) :: ibc ! Boundary condition: 1 = Neumann, 2 = Dirichlet
-! gn(i, j, e) is the global node number of the local (i,j) node in e-th element
-integer, allocatable, intent(out) :: gn(:, :, :)
-integer :: nodes(nex*p+1, ney*p+1)
-integer :: inode, ix, iy, iel, iex, iey
-! Construct array of global nodes
-! 0 = no associated basis function as in e.g. Dirichlet BCs
-nodes = 0
-inode = 0
-do iy = 1, ney*p+1
-    do ix = 1, nex*p+1
-        if (ibc == 2 .and. (ix == 1 .or. ix == nex*p+1 .or. &
-                            iy == 1 .or. iy == ney*p+1)) cycle
-        inode = inode + 1
-        nodes(ix, iy) = inode
-    end do
-end do
-
-! Construct connectivity table of global nodes in each element
-allocate(gn(p+1, p+1, nex*ney))
-iel = 0
-do iex = 1, nex
-    do iey = 1, ney
-        iel = iel + 1 ! Element number
-        ix = (iex-1)*p+1 ! Lower left corner
-        iy = (iey-1)*p+1
-        ! Get global node numbers in element
-        gn(:, :, iel) = nodes(ix:ix+p, iy:iy+p)
-    end do
-end do
-end subroutine
 
 subroutine c2fullc(in, ib, c, fullc)
 ! Converts FE coefficient vector to full coefficient vector
@@ -280,8 +245,9 @@ module poisson2d_code
 
 use types, only: dp
 use feutils, only: phih
-use fe_mesh, only: cartesian_mesh_2d, cartesian_mesh_3d
-use poisson_assembly, only: assemble_2d, define_connect_2d, sol_error, &
+use fe_mesh, only: cartesian_mesh_2d, cartesian_mesh_3d, &
+    define_connect_tensor_2d
+use poisson_assembly, only: assemble_2d, sol_error, &
         c2fullc, fe2quad
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
@@ -343,8 +309,8 @@ do j = 1, size(xin)
     end do
 end do
 
-call define_connect_2d(Nex, Ney, p, 1, in)
-call define_connect_2d(Nex, Ney, p, 2, ib)
+call define_connect_tensor_2d(Nex, Ney, p, 1, in)
+call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
 Nb = maxval(ib)
 !print *, "DOFs =", Nb
 !print *, in

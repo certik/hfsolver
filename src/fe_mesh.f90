@@ -15,7 +15,7 @@ use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 implicit none
 private
-public cartesian_mesh_2d, cartesian_mesh_3d
+public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d
 
 contains
 
@@ -109,6 +109,43 @@ contains
     p = (i-1)*(ny+1)*(nz+1) + (j-1)*(nz+1) + k
     end function
 
+end subroutine
+
+
+subroutine define_connect_tensor_2d(nex, ney, p, ibc, gn)
+! 2D connectivity table for tensor-product order p elements
+integer, intent(in) :: nex, ney ! Number of elements in x and y directions
+integer, intent(in) :: p ! Polynomial order of elements
+integer, intent(in) :: ibc ! Boundary condition: 1 = Neumann, 2 = Dirichlet
+! gn(i, j, e) is the global node number of the local (i,j) node in e-th element
+integer, allocatable, intent(out) :: gn(:, :, :)
+integer :: nodes(nex*p+1, ney*p+1)
+integer :: inode, ix, iy, iel, iex, iey
+! Construct array of global nodes
+! 0 = no associated basis function as in e.g. Dirichlet BCs
+nodes = 0
+inode = 0
+do iy = 1, ney*p+1
+    do ix = 1, nex*p+1
+        if (ibc == 2 .and. (ix == 1 .or. ix == nex*p+1 .or. &
+                            iy == 1 .or. iy == ney*p+1)) cycle
+        inode = inode + 1
+        nodes(ix, iy) = inode
+    end do
+end do
+
+! Construct connectivity table of global nodes in each element
+allocate(gn(p+1, p+1, nex*ney))
+iel = 0
+do iex = 1, nex
+    do iey = 1, ney
+        iel = iel + 1 ! Element number
+        ix = (iex-1)*p+1 ! Lower left corner
+        iy = (iey-1)*p+1
+        ! Get global node numbers in element
+        gn(:, :, iel) = nodes(ix:ix+p, iy:iy+p)
+    end do
+end do
 end subroutine
 
 end module
