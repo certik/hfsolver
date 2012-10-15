@@ -174,11 +174,11 @@ do iz = 1, nez*p+1
     end do
 end do
 ! Construct connectivity table of global nodes in each element
-allocate(gn(p+1, p+1, p+1, nex*ney))
+allocate(gn(p+1, p+1, p+1, Nex*Ney*Nez))
 iel = 0
-do iex = 1, nex
-    do iey = 1, ney
-        do iez = 1, nez
+do iex = 1, Nex
+    do iey = 1, Ney
+        do iez = 1, Nez
             iel = iel + 1 ! Element number
             ix = (iex-1)*p+1 ! Lower left front corner
             iy = (iey-1)*p+1
