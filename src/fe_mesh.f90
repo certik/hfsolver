@@ -16,7 +16,7 @@ use solvers, only: solve_sym
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
-    c2fullc_2d, fe2quad_2d
+    define_connect_tensor_3d, c2fullc_2d, fe2quad_2d
 
 contains
 
@@ -208,6 +208,30 @@ do e = 1, size(in, 3)
             else
                 fullc(in(i, j, e)) = c(ib(i, j, e))
             end if
+        end do
+    end do
+end do
+end subroutine
+
+subroutine c2fullc_3d(in, ib, c, fullc)
+! Converts FE coefficient vector to full coefficient vector
+! It puts 0 for Dirichlet boundary conditions (ib==0), otherwise it just copies
+! the coefficients.
+integer, intent(in) :: in(:, :, :, :)
+integer, intent(in) :: ib(:, :, :, :)
+real(dp), intent(in) :: c(:) ! coefficient vector with regards to ib
+real(dp), intent(out) :: fullc(:) ! full coefficients vector with regards to in
+integer :: e, i, j, k
+do e = 1, size(in, 4)
+    do i = 1, size(in, 1)
+        do j = 1, size(in, 2)
+            do k = 1, size(in, 3)
+                if (ib(i, j, k, e) == 0) then
+                    fullc(in(i, j, k, e)) = 0 ! Dirichlet
+                else
+                    fullc(in(i, j, k, e)) = c(ib(i, j, k, e))
+                end if
+            end do
         end do
     end do
 end do
