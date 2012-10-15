@@ -10,8 +10,8 @@ contains
 
 real(dp) function logg(m) result(error)
 integer, intent(in) :: m
-real(dp) :: D(m+2, m+2), D_(m+2, m+2), xb(m+2), D2(m, m), xd(m), sinx(m), xexact(m**2), &
-    b(m**2), x(m**2), lam(m), R(m, m), Diag(m, m), Rinv(m, M)
+real(dp) :: D(m+2, m+2), D_(m+2, m+2), xb(m+2), D2(m, m), xd(m), sinx(m), &
+    xexact(m, m), b(m, m), x(m,m), lam(m), R(m, m), Diag(m, m), Rinv(m, M)
 complex(dp) :: lam_complex(m), R_complex(m, m)
 integer :: i, j
 call Cheb(m+1, D, xb);
@@ -20,7 +20,7 @@ D_ = -4*matmul(D, D)
 D2 = D_(2:size(D,1)-1, 2:size(D,2)-1)
 xd = xb(2:size(xb)-1)
 sinx(:) = sin(pi*xd)
-forall (i=1:m, j=1:m) xexact((i-1)*m+j) = sinx(i)*sinx(j)
+forall (i=1:m, j=1:m) xexact(i,j) = sinx(i)*sinx(j)
 b = 2*pi**2*xexact
 
 call eig(D2, lam_complex, R_complex)
@@ -28,8 +28,8 @@ lam = real(lam_complex, dp)
 R = real(R_complex, dp)
 forall(i=1:m, j=1:m) Diag(i, j) = 1/(lam(i)+lam(j))
 Rinv = inv(R)
-Diag = Diag * matmul(matmul(Rinv, reshape(b, [m, m])), transpose(Rinv))
-x = reshape(matmul(matmul(R, Diag), transpose(R)), [size(x)])
+Diag = Diag * matmul(matmul(Rinv, b), transpose(Rinv))
+x = matmul(matmul(R, Diag), transpose(R))
 
 error = norm2(x - xexact)
 end function
