@@ -133,6 +133,7 @@ integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
+real(dp) :: rmax
 integer :: i, j, k, Nex, Ney, Nez
 
 Nex = 2
@@ -140,8 +141,10 @@ Ney = 2
 Nez = 2
 p = 3
 Nq = 4
+rmax = 1  ! The size of the box in atomic units
 
-call cartesian_mesh_3d(Nex, Ney, Nez, [0._dp, 0._dp, 0._dp], [pi, pi, pi], &
+call cartesian_mesh_3d(Nex, Ney, Nez, &
+    [-rmax, -rmax, -rmax], [rmax, rmax, rmax], &
     nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
