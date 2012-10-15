@@ -25,7 +25,7 @@ real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :), &
     phihq(:, :), dphihq(:, :)
 integer, intent(in):: elems(:, :), ib(:, :, :)
 real(dp), intent(out):: Am(:,:), rhs(:)
-integer :: Ne, Nb, p, e, i, j, iqx, iqy
+integer :: Ne, p, e, i, j, iqx, iqy
 real(dp), dimension(size(xiq), size(xiq), size(xin), size(xin)) :: &
     phi_v, phi_dx, phi_dy
 real(dp) :: x(size(xiq)), y(size(xiq))
@@ -35,7 +35,6 @@ integer :: ax, ay, bx, by
 real(dp) :: jacx, jacy, jac_det
 
 Ne = size(elems, 2)
-Nb = maxval(ib)
 p = size(xin) - 1
 ! 2D shape functions
 do ay = 1, p+1
@@ -88,7 +87,7 @@ do e = 1, Ne
     end do
     end do
 end do
-do j = 1, Nb
+do j = 1, size(Am, 2)
     do i = 1, j-1
         Am(i, j) = Am(j, i)
     end do
