@@ -93,7 +93,7 @@ do e = 1, Ne
                 phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
                 * jac_det * wtq) / 2
             Bm(i,j) = Bm(i,j) + sum(( &
-                phi_v(:, :, :, ax, ay, az) * phi_v(:, :, :, bx, by, az) &
+                phi_v(:, :, :, ax, ay, az) * phi_v(:, :, :, bx, by, bz) &
                 * jac_det * wtq))
         end do
         end do
