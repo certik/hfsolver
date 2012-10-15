@@ -10,15 +10,14 @@ contains
 
 real(dp) function logg(m) result(error)
 integer, intent(in) :: m
-real(dp) :: D(m+2, m+2), xb(m+2), D2(m, m), xd(m), sinx(m, 1), xexact(m**2), &
+real(dp) :: D(m+2, m+2), D_(m+2, m+2), xb(m+2), D2(m, m), xd(m), sinx(m, 1), xexact(m**2), &
     b(m**2), x(m**2), lam(m), R(m, m), Diag(m, m), Rinv(m, M)
 complex(dp) :: lam_complex(m), R_complex(m, m)
 integer :: i, j
 call Cheb(m+1, D, xb);
-D = 2*D
 xb = 0.5_dp + 0.5_dp * xb
-D = -matmul(D, D)
-D2 = D(2:size(D,1)-1, 2:size(D,2)-1)
+D_ = -4*matmul(D, D)
+D2 = D_(2:size(D,1)-1, 2:size(D,2)-1)
 xd = xb(2:size(xb)-1)
 sinx(:, 1) = sin(pi*xd)
 xexact = reshape(matmul(sinx, transpose(sinx)), [size(xexact)])
