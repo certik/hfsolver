@@ -92,6 +92,9 @@ do e = 1, Ne
                 phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
                 phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
                 * jac_det * wtq) / 2
+            Am(i,j) = Am(i,j) + sum(fq * &
+                phi_v(:, :, :, ax, ay, az)*phi_v(:, :, :, bx, by, bz) &
+                * jac_det * wtq)
             Bm(i,j) = Bm(i,j) + sum(( &
                 phi_v(:, :, :, ax, ay, az) * phi_v(:, :, :, bx, by, bz) &
                 * jac_det * wtq))
