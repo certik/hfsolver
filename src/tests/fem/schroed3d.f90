@@ -1,14 +1,17 @@
 module schroed_assembly
 use types, only: dp
+use sorting, only: sort
 implicit none
 private
-public assemble_3d
+public assemble_3d, omega, exact_energies
+
+real(dp), parameter :: omega = 1.138_dp
 
 contains
 
 real(dp) elemental function f(x, y, z)
 real(dp), intent(in) :: x, y, z
-f = (x**2 + y**2 + z**2) / 2  ! Harmonic oscillator
+f = omega**2 * (x**2 + y**2 + z**2) / 2  ! Harmonic oscillator
 end function
 
 subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, Bm)
@@ -113,6 +116,24 @@ do j = 1, size(Am, 2)
 end do
 end subroutine
 
+subroutine exact_energies(omega, E)
+real(dp), intent(in) :: omega
+real(dp), intent(out) :: E(:)
+real(dp) :: tmp(size(E)*(size(E)+1)*(2*size(E)+1)/6)
+integer :: n, l, m, idx
+idx = 0
+do n = 1, size(E)
+    do l = 0, n-1
+        do m = -l, l
+            idx = idx + 1
+            tmp(idx) = omega * (2*n - l - 1._dp/2)
+        end do
+    end do
+end do
+call sort(tmp)
+E = tmp(:size(E))
+end subroutine
+
 end module
 
 
@@ -122,7 +143,7 @@ program schroed3d
 
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d
-use schroed_assembly, only: assemble_3d
+use schroed_assembly, only: assemble_3d, omega, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use constants, only: pi
@@ -134,7 +155,7 @@ real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :)
+    lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), E_exact(:)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
 integer :: i, j, k, Nex, Ney, Nez
@@ -178,7 +199,9 @@ call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
+allocate(E_exact(20))
+call exact_energies(omega, E_exact)
 do i = 1, min(Nb, 20)
-    print *, i, lam(i)
+    print *, i, lam(i), E_exact(i)
 end do
 end program
