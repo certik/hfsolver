@@ -4,7 +4,14 @@ implicit none
 private
 public assemble_2d
 
+real(dp), parameter :: omega = 1.138_dp
+
 contains
+
+real(dp) elemental function f(x, y)
+real(dp), intent(in) :: x, y
+f = omega**2 * (x**2 + y**2) / 2  ! Harmonic oscillator
+end function
 
 subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, Bm)
 ! Assemble on a 2D rectangular uniform mesh
@@ -49,11 +56,11 @@ phi_dy = phi_dy / jacy
 do e = 1, Ne
     x = xp + nodes(1, elems(1, e))
     y = yp + nodes(2, elems(1, e))
-!    do iqy = 1, size(xiq)
-!        do iqx = 1, size(xiq)
-!            fq(iqx, iqy) = f(x(iqx), y(iqy))
-!        end do
-!    end do
+    do iqy = 1, size(xiq)
+    do iqx = 1, size(xiq)
+        fq(iqx, iqy) = f(x(iqx), y(iqy))
+    end do
+    end do
     fq = fq * jac_det * wtq
     do by = 1, p+1
     do bx = 1, p+1
@@ -68,6 +75,9 @@ do e = 1, Ne
                     (phi_dx(:, :, ax, ay)*phi_dx(:, :, bx, by) &
                     +phi_dy(:, :, ax, ay)*phi_dy(:, :, bx, by)) &
                 * jac_det * wtq) / 2
+            Am(i,j) = Am(i,j) + sum(fq * &
+                phi_v(:, :, ax, ay)*phi_v(:, :, bx, by) &
+                * jac_det * wtq)
             Bm(i,j) = Bm(i,j) + sum((phi_v(:, :, ax, ay)*phi_v(:, :, bx, by) &
                 * jac_det * wtq))
         end do
@@ -144,7 +154,7 @@ allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, dphihq, A, B)
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
-do i = 1, Nb
+do i = 1, min(Nb, 20)
     print *, i, lam(i)
 end do
 end program
