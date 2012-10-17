@@ -3,7 +3,7 @@ use types, only: dp
 use utils, only: assert
 implicit none
 private
-public sto_optimized, sto_even_tempered
+public sto_optimized, sto_even_tempered, alpha_beta_step
 
 contains
 
@@ -24,17 +24,14 @@ zl(:nbfl(1), 1) = [32.077221_dp, 12.495413_dp, 9.644163_dp, 5.042248_dp, &
                 3.070882_dp, 2.086080_dp, 0.711410_dp]
 end subroutine
 
-subroutine sto_even_tempered(Lmax, nbfl, nl, zl)
+subroutine sto_even_tempered(Lmax, nbfl, alpha, beta, nl, zl)
 integer, intent(in) :: Lmax
 integer, intent(in) :: nbfl(0:)
+real(dp), intent(in) :: alpha(0:), beta(0:)
 integer, allocatable, intent(out) :: nl(:, :)
 real(dp), allocatable, intent(out) :: zl(:, :)
-real(dp), allocatable :: alpha(:), beta(:)
 integer :: i, k
 call assert(Lmax == 1)
-allocate(alpha(0:Lmax), beta(0:Lmax))
-alpha = [0.40938054_dp, 0.92139926_dp]
-beta = [1.61259870_dp, 1.81117158_dp]
 allocate(nl(maxval(nbfl), 0:Lmax), zl(maxval(nbfl), 0:Lmax))
 nl = 0
 zl = 0
@@ -42,6 +39,18 @@ do i = 0, Lmax
     nl(:nbfl(i), i) = i+1
     zl(:nbfl(i), i) = [(alpha(i)*beta(i)**k, k=1,nbfl(i))]
 end do
+end subroutine
+
+subroutine alpha_beta_step(alpha, beta, a, b, N)
+real(dp), intent(inout) :: alpha, beta
+real(dp), intent(in) :: a, b
+integer, intent(in) :: N
+real(dp) :: beta_old
+call assert(a > 0)
+call assert(-1 < b .and. b < 0)
+beta_old = beta
+beta = beta_old**((N/(N-1._dp))**b)
+alpha = ((beta-1)/(beta_old-1))**a * alpha
 end subroutine
 
 end module
@@ -63,15 +72,16 @@ use mbpt, only: transform_int2, mbpt2, mbpt3, mbpt4, transform_int22
 use gf2, only: find_poles, find_pole_diag, total_energy, plot_poles
 use sorting, only: argsort
 use scf, only: ijkl2intindex, ijkl2intindex2, create_intindex_sym4
-use sto_mg_basis, only: sto_optimized, sto_even_tempered
+use sto_mg_basis, only: sto_optimized, sto_even_tempered, alpha_beta_step
 implicit none
 
 integer, allocatable :: nl(:, :), nbfl(:)
 real(dp), allocatable :: zl(:, :), focc(:, :)
 real(dp), allocatable :: S(:, :, :), T(:, :, :), V(:, :, :), slater(:, :)
 integer :: n, Z, m, Nscf, Lmax, ndof
-real(dp) :: alpha, Etot, tolE, tolP, Ekin
+real(dp) :: alpha_scf, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
+real(dp), allocatable :: alpha(:), beta(:)
 integer :: Nb, u
 
 Lmax = 1
@@ -83,18 +93,22 @@ focc(:1, 1) = [6]
 Z = 12
 tolE = 1e-10_dp
 tolP = 1e-4_dp
-alpha = 0.6_dp
+alpha_scf = 0.6_dp
 Nscf = 100
 
 open(newunit=u, file="Etot.txt", status="replace")
 close(u)
 
-do Nb = 3, 30
+allocate(alpha(0:Lmax), beta(0:Lmax))
+alpha = [0.40938054_dp, 0.92139926_dp]
+beta = [1.61259870_dp, 1.81117158_dp]
+
+do Nb = 5, 30
     print *, "Nb =", Nb
     !call sto_optimized(Lmax, nbfl, nl, zl)
     allocate(nbfl(0:Lmax))
     nbfl = [2*Nb, Nb]
-    call sto_even_tempered(Lmax, nbfl, nl, zl)
+    call sto_even_tempered(Lmax, nbfl, alpha, beta, nl, zl)
 
     n = maxval(nbfl)
     ndof = sum(nbfl)
@@ -107,15 +121,18 @@ do Nb = 3, 30
 
     H = T + V
     print *, "SCF cycle:"
-    call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, Etot)
+    call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha_scf, C, P_, lam, Etot)
     Ekin = kinetic_energy(nbfl, P_, T)
     !call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     call printlam(nbfl, lam, Ekin, Etot)
 
     open(newunit=u, file="Etot.txt", position="append", status="old")
-    write(u, "(i4, ' ', i5, ' ', es23.16, ' ', es23.16)") Nb, ndof, Etot, &
-        Ekin+Etot
+    write(u, "(i4, ' ', i5, ' ', es23.16, ' ', es23.16, ' ', 2f10.4, 2f10.4)") Nb, ndof, Etot, &
+        Ekin+Etot, alpha, beta
     close(u)
+
+    call alpha_beta_step(alpha(0), beta(0), 0.5_dp, -0.5_dp, Nb+1)
+    call alpha_beta_step(alpha(1), beta(1), 0.6_dp, -0.45_dp, Nb+1)
 
     deallocate(nbfl, S, T, V, slater, P_, C, H, lam)
 end do
