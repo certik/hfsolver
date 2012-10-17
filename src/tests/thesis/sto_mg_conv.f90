@@ -82,7 +82,7 @@ integer :: n, Z, m, Nscf, Lmax, ndof
 real(dp) :: alpha_scf, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp), allocatable :: alpha(:), beta(:)
-integer :: Nb, u
+integer :: Nb, u, i
 
 Lmax = 1
 allocate(focc(3, 0:Lmax))
@@ -100,14 +100,14 @@ open(newunit=u, file="Etot.txt", status="replace")
 close(u)
 
 allocate(alpha(0:Lmax), beta(0:Lmax))
+allocate(nbfl(0:Lmax))
 alpha = [0.40938054_dp, 0.92139926_dp]
 beta = [1.61259870_dp, 1.81117158_dp]
+nbfl = [10, 5]
 
 do Nb = 5, 30
     print *, "Nb =", Nb
     !call sto_optimized(Lmax, nbfl, nl, zl)
-    allocate(nbfl(0:Lmax))
-    nbfl = [2*Nb, Nb]
     call sto_even_tempered(Lmax, nbfl, alpha, beta, nl, zl)
 
     n = maxval(nbfl)
@@ -131,10 +131,16 @@ do Nb = 5, 30
         Ekin+Etot, alpha, beta
     close(u)
 
-    call alpha_beta_step(alpha(0), beta(0), 0.5_dp, -0.5_dp, Nb+1)
-    call alpha_beta_step(alpha(1), beta(1), 0.6_dp, -0.45_dp, Nb+1)
+    do i = 1, 2
+        nbfl(0) = nbfl(0) + 1
+        call alpha_beta_step(alpha(0), beta(0), 0.5_dp, -0.5_dp, nbfl(0))
+    end do
+    do i = 1, 1
+        nbfl(1) = nbfl(1) + 1
+        call alpha_beta_step(alpha(1), beta(1), 0.6_dp, -0.45_dp, nbfl(1))
+    end do
 
-    deallocate(nbfl, S, T, V, slater, P_, C, H, lam)
+    deallocate(S, T, V, slater, P_, C, H, lam)
 end do
 
 end program
