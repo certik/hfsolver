@@ -81,7 +81,7 @@ integer :: n, Z, m, Nscf, Lmax, ndof
 real(dp) :: alpha_scf, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp), allocatable :: alpha(:), beta(:)
-integer :: Nb, u
+integer :: Nb, u, i
 
 Lmax = 2
 allocate(focc(5, 0:Lmax))
@@ -134,12 +134,16 @@ do Nb = 1, 5
         Ekin+Etot, alpha, beta
     close(u)
 
-    nbfl(0) = nbfl(0) + 1
-    call alpha_beta_step(alpha(0), beta(0), 0.5_dp, -0.5_dp, nbfl(0))
-    nbfl(1) = nbfl(1) + 1
-    call alpha_beta_step(alpha(1), beta(1), 0.6_dp, -0.45_dp, nbfl(1))
-    nbfl(2) = nbfl(2) + 1
-    call alpha_beta_step(alpha(2), beta(2), 0.7_dp, -0.40_dp, nbfl(2))
+    do i = 1, 3
+        nbfl(0) = nbfl(0) + 1
+        call alpha_beta_step(alpha(0), beta(0), 0.5_dp, -0.5_dp, nbfl(0))
+        nbfl(1) = nbfl(1) + 1
+        call alpha_beta_step(alpha(1), beta(1), 0.6_dp, -0.45_dp, nbfl(1))
+    end do
+    do i = 1, 2
+        nbfl(2) = nbfl(2) + 1
+        call alpha_beta_step(alpha(2), beta(2), 0.7_dp, -0.40_dp, nbfl(2))
+    end do
 
     deallocate(S, T, V, slater, P_, C, H, lam)
 end do
