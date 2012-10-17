@@ -106,7 +106,7 @@ alpha = [0.91105533_dp, 0.80896448_dp, 1.82059299_dp]
 beta = [1.40429784_dp, 1.41130982_dp, 1.43332993_dp]
 nbfl = [13, 12, 8]
 
-do Nb = 1, 5
+do Nb = 1, 50
     print *, "Nb =", Nb
     !call sto_optimized(Lmax, nbfl, nl, zl)
     !nbfl = [2*Nb, Nb]
@@ -134,13 +134,13 @@ do Nb = 1, 5
         Ekin+Etot, alpha, beta
     close(u)
 
-    do i = 1, 3
+    do i = 1, 1
         nbfl(0) = nbfl(0) + 1
         call alpha_beta_step(alpha(0), beta(0), 0.5_dp, -0.5_dp, nbfl(0))
         nbfl(1) = nbfl(1) + 1
         call alpha_beta_step(alpha(1), beta(1), 0.6_dp, -0.45_dp, nbfl(1))
     end do
-    do i = 1, 2
+    do i = 1, 1
         nbfl(2) = nbfl(2) + 1
         call alpha_beta_step(alpha(2), beta(2), 0.7_dp, -0.40_dp, nbfl(2))
     end do
