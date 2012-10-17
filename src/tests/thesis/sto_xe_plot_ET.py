@@ -29,6 +29,7 @@ def get_errors(data, i):
     x = data[:, 0]
     y = data[:, 1]
     errs = abs(y - y[i])
+#    errs = abs(y - Econv)
     return errs
 
 def convergence_plot(data, i):
@@ -64,5 +65,6 @@ data = transpose(data)
 diffs = get_differences(data)
 i = guess_convergence(diffs, 5)
 i = size(x)-1
+#Econv = -7232.1383634
 print "Converged value: (%d, %.10f)" % tuple(data[i])
 convergence_plot(data, i)
