@@ -64,8 +64,7 @@ use sto, only: stoints2, get_basis2, slater_sto_screen, sto_V_screen
 use utils, only: assert
 use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
-    get_basis, radialC2C, &
-    radiallam2lam
+    get_basis, radialC2C, radiallam2lam, numocc
 use hfprint, only: printall, printlam
 use mbpt, only: transform_int2, mbpt2, mbpt3, mbpt4, transform_int22
 use gf2, only: find_poles, find_pole_diag, total_energy, plot_poles
@@ -81,7 +80,7 @@ integer :: n, Z, m, Nscf, Lmax, ndof
 real(dp) :: alpha_scf, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp), allocatable :: alpha(:), beta(:)
-integer :: Nb, u, i
+integer :: Nb, u, i, j
 
 Lmax = 2
 allocate(focc(5, 0:Lmax))
@@ -128,6 +127,15 @@ do Nb = 1, 50
     Ekin = kinetic_energy(nbfl, P_, T)
     !call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     call printlam(nbfl, lam, Ekin, Etot)
+
+    open(newunit=u, file="sols.txt", status="replace")
+    do i = 0, Lmax
+        do j = 1, nbfl(i)
+            write(u, "(i5, i5, es24.16, es24.16, 100es24.16)") &
+                i, nl(j, i), zl(j, i), C(j, :nbfl(Lmax), i)
+        end do
+    end do
+    close(u)
 
     open(newunit=u, file="Etot.txt", position="append", status="old")
     write(u, "(i4, ' ', i5, ' ', es23.16, ' ', es23.16, ' ', 3f10.4, 3f10.4)") Nb, ndof, Etot, &

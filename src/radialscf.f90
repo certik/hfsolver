@@ -7,7 +7,7 @@ use scf, only: ijkl2intindex, ijkl2intindex2
 implicit none
 private
 public doscf, electronic_energy, kinetic_energy, slater2int2, get_basis, &
-    radialC2C, radiallam2lam, slater2int22
+    radialC2C, radiallam2lam, slater2int22, numocc
 
 
 ! Array of wigner3j coefficients:
