@@ -1,6 +1,6 @@
 module radialscf
 use types, only: dp
-use linalg, only: eigh
+use linalg, only: eigh, inv
 use utils, only: stop_error, str, assert
 use special_functions, only: wigner3j, getgaunt, getgauntr
 use scf, only: ijkl2intindex, ijkl2intindex2
@@ -241,7 +241,7 @@ end do
 end function
 
 subroutine doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, &
-        C, P, lam, E0, slater_l_indep, precalcTT)
+        C, P, lam, E0, slater_l_indep, precalcTT, show_cond)
 ! Runs the SCF cycle
 integer, intent(in) :: nbfl(0:) ! The length of each diagonal l-block
 real(dp), intent(in) :: H(:, :, 0:), slater(:, 0:), S(:, :, 0:), focc(:, 0:)
@@ -252,12 +252,22 @@ logical, intent(in), optional :: slater_l_indep ! the slater integrals are
 logical, intent(in), optional :: precalcTT ! The TT matrix will be
 ! precalculated (this needs much more memory, so for larger basis it might not
 ! be possible to use). Default: .false.
+logical, intent(in), optional :: show_cond ! If present, then a condition
+! number of the overlap matrix S will be shown for each "l".
 real(dp), intent(out) :: C(:, :, 0:), P(:, :, 0:), lam(:, 0:), E0
 real(dp), dimension(size(H, 1), size(H, 1), 0:ubound(nbfl, 1)) :: G, F, Pold
 real(dp), allocatable :: TT(:, :, :, :, :, :)
 integer :: i, l, n
 real(dp) :: dP_, Escf(Nscf), Emin, Emax
 logical :: l_indep, useTT
+if (present(show_cond)) then
+    print *, "Condition number of the overlap matrix:"
+    print *, "l  cond"
+    do l = 0, ubound(nbfl, 1)
+        print "(i1, es10.2)", l, norm2(S(:nbfl(l), :nbfl(l), l)) * &
+            norm2(inv(S(:nbfl(l), :nbfl(l), l)))
+    end do
+end if
 l_indep = .false.
 if (present(slater_l_indep)) l_indep = slater_l_indep
 useTT = .false.

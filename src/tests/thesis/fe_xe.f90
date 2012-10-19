@@ -91,7 +91,7 @@ do p = 4, 21
 
     print *, "SCF cycle:"
     call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha, C, P_, lam, &
-        Etot, slater_l_indep=.true., precalcTT=.true.)
+        Etot, slater_l_indep=.true., precalcTT=.true., show_cond=.true.)
     Ekin = kinetic_energy(nbfl, P_, T)
     call printlam(nbfl, lam, Ekin, Etot)
 

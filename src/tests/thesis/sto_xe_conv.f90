@@ -123,7 +123,8 @@ do Nb = 1, 50
 
     H = T + V
     print *, "SCF cycle:"
-    call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha_scf, C, P_, lam, Etot)
+    call doscf(nbfl, H, slater, S, focc, Nscf, tolE, tolP, alpha_scf, C, P_, &
+        lam, Etot, show_cond=.true.)
     Ekin = kinetic_energy(nbfl, P_, T)
     !call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     call printlam(nbfl, lam, Ekin, Etot)
