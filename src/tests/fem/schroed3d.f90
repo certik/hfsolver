@@ -221,12 +221,12 @@ select case(solver_type)
         allocate(c(Nb, Neig), lam(Neig))
         call eigh(A, B, lam, c)
     case (2)
-        M0 = 100
-        call eigh_feast(A, B, 0._dp, 6._dp, M0, lam, c)
+        M0 = 15
+        call eigh_feast(A, B, 0._dp, 5._dp, M0, lam, c)
         Neig = size(lam)
 end select
 print *, "Eigenvalues:"
-Neig = 20
+Neig = 10
 allocate(E_exact(Neig))
 call exact_energies(omega, E_exact)
 do i = 1, Neig

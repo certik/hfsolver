@@ -28,7 +28,7 @@ allocate(lam_(M0), c_(N, M0), res(M0))
 
 call feastinit(feastparam)
 feastparam(1)=1 !! change from default value
-call dfeast_sygv('F',N,A,LDA,B,LDA,feastparam,epsout,loop,Emin,Emax,M0, &
+call dfeast_sygv('L',N,A,LDA,B,LDA,feastparam,epsout,loop,Emin,Emax,M0, &
     lam_,c_,M,res,info)
 
 if (info /= 0) then
@@ -48,7 +48,7 @@ end do
 
 allocate(lam(M), c(N, M))
 lam = lam_(:M)
-c = c(:, :M)
+c = c_(:, :M)
 
 end subroutine
 
