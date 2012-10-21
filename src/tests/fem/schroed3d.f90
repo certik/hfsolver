@@ -78,7 +78,6 @@ do e = 1, Ne
     end do
     end do
     end do
-    fq = fq * jac_det * wtq
     do bz = 1, p+1
     do by = 1, p+1
     do bx = 1, p+1
