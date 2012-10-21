@@ -51,3 +51,4 @@ ADDTEST(test_bessel)
 
 add_subdirectory(thesis)
 add_subdirectory(fem)
+add_subdirectory(feast)
