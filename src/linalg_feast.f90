@@ -28,6 +28,8 @@ allocate(lam_(M0), c_(N, M0), res(M0))
 
 call feastinit(feastparam)
 feastparam(1)=1 !! change from default value
+feastparam(2) = 4  !! Nq
+feastparam(3) = 5  !! accuracy: 1e-x
 call dfeast_sygv('L',N,A,LDA,B,LDA,feastparam,epsout,loop,Emin,Emax,M0, &
     lam_,c_,M,res,info)
 
