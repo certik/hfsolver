@@ -186,7 +186,9 @@ subroutine dfeast_sygv(UPLO,N,A,LDA,B,LDB,fpm,epsout,loop,Emin,Emax,M0,E,X,mode,
      case(11) !!solve the linear system (ZeB-A)x=workc(1:N,1:M0) result in to workc
 
 
+        print *, "Solve (zgetrs) N =", N
         call ZGETRS( 'N', N, M0, Az, N, IPIVloc, workc, N, INFOloc )
+        print *, "Done"
         if (infoloc/=0) then
            info=-2
            return
