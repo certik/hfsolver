@@ -174,7 +174,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), E_exact(:)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
-integer :: i, j, k, Nex, Ney, Nez
+integer :: i, j, k, Nex, Ney, Nez, Neig
 
 Nex = 1
 Ney = 1
@@ -208,16 +208,17 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 2, ib)
 Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+Neig = min(Nb, 20)
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Neig), lam(Neig))
 
 print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
-allocate(E_exact(20))
+allocate(E_exact(Neig))
 call exact_energies(omega, E_exact)
-do i = 1, min(Nb, 20)
+do i = 1, Neig
     print *, i, lam(i), E_exact(i)
 end do
 end program
