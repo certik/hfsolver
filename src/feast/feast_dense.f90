@@ -173,7 +173,9 @@ subroutine dfeast_sygv(UPLO,N,A,LDA,B,LDB,fpm,epsout,loop,Emin,Emax,M0,E,X,mode,
 
 
 
+        print *, "Factorization (zgetrf) N =", N
         call ZGETRF(N,N,Az,N,IPIVloc,INFOloc)     
+        print *, "Done"
         if (infoloc/=0) then
            info=-2
            return
