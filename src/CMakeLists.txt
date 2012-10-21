@@ -3,7 +3,9 @@ set(SRC
     utils.f90
     mesh.f90
     linalg.f90
+    linalg_feast.f90
     lapack.f90
+    feast.f90
     openmp.f90
 
     special_functions.f90
@@ -37,6 +39,7 @@ set(SRC
     c_hfsolver.f90
 )
 
+# LIBINT
 if(WITH_LIBINT)
     set(SRC ${SRC}
         qc_libint.cpp
@@ -50,6 +53,7 @@ endif()
 
 add_library(hfsolver ${SRC})
 
+add_subdirectory(feast)
 add_subdirectory(tests)
 
 install(TARGETS hfsolver
