@@ -5,13 +5,15 @@ implicit none
 private
 public assemble_2d, Z, exact_energies
 
-real(dp), parameter :: Z = 2._dp
+real(dp), parameter :: Z = 1._dp
 
 contains
 
 real(dp) elemental function f(x, y)
 real(dp), intent(in) :: x, y
-f = -Z/sqrt(x**2 + y**2)
+real(dp) :: h
+h = 0.0
+f = -Z/sqrt(x**2 + y**2 + h**2)
 end function
 
 subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, Bm)
