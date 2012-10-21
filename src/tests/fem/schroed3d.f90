@@ -175,7 +175,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), E_exact(:)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
-integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type
+integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type, M0
 
 Nex = 1
 Ney = 1
@@ -209,18 +209,21 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 2, ib)
 Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
-Neig = min(Nb, 20)
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Neig), lam(Neig))
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
 print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
 print *, "Solving..."
-solver_type = 1
+solver_type = 2
 select case(solver_type)
     case (1)
+        Neig = Nb
+        allocate(c(Nb, Neig), lam(Neig))
         call eigh(A, B, lam, c)
     case (2)
-        call eigh_feast(A, B, 0._dp, 25._dp, Neig, lam, c)
+        M0 = 100
+        call eigh_feast(A, B, 0._dp, 10._dp, M0, lam, c)
+        Neig = size(lam)
 end select
 print *, "Eigenvalues:"
 allocate(E_exact(Neig))
