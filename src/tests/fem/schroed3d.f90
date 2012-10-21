@@ -162,6 +162,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d
 use schroed_assembly, only: assemble_3d, omega, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
+use linalg_feast, only: eigh_feast => eigh
 use constants, only: pi
 implicit none
 
@@ -174,7 +175,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), E_exact(:)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
-integer :: i, j, k, Nex, Ney, Nez, Neig
+integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type
 
 Nex = 1
 Ney = 1
@@ -214,7 +215,13 @@ allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Neig), lam(Neig))
 print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
 print *, "Solving..."
-call eigh(A, B, lam, c)
+solver_type = 1
+select case(solver_type)
+    case (1)
+        call eigh(A, B, lam, c)
+    case (2)
+        call eigh_feast(A, B, 0._dp, 25._dp, Neig, lam, c)
+end select
 print *, "Eigenvalues:"
 allocate(E_exact(Neig))
 call exact_energies(omega, E_exact)
