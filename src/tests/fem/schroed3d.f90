@@ -162,6 +162,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d
 use schroed_assembly, only: assemble_3d, omega, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
+use linalg_feast, only: eigh_feast => eigh
 use constants, only: pi
 implicit none
 
@@ -174,11 +175,11 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), E_exact(:)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
-integer :: i, j, k, Nex, Ney, Nez
+integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type, M0
 
-Nex = 1
-Ney = 1
-Nez = 1
+Nex = 3
+Ney = 3
+Nez = 3
 p = 4
 Nq = p+1
 rmax = 5  ! The size of the box in atomic units
@@ -208,16 +209,27 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 2, ib)
 Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+allocate(A(Nb, Nb), B(Nb, Nb))
 
 print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
 print *, "Solving..."
-call eigh(A, B, lam, c)
+solver_type = 2
+select case(solver_type)
+    case (1)
+        Neig = Nb
+        allocate(c(Nb, Neig), lam(Neig))
+        call eigh(A, B, lam, c)
+    case (2)
+        M0 = 15
+        call eigh_feast(A, B, 0._dp, 5._dp, M0, lam, c)
+        Neig = size(lam)
+end select
 print *, "Eigenvalues:"
-allocate(E_exact(20))
+Neig = 10
+allocate(E_exact(Neig))
 call exact_energies(omega, E_exact)
-do i = 1, min(Nb, 20)
+do i = 1, Neig
     print *, i, lam(i), E_exact(i)
 end do
 end program

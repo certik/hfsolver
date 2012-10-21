@@ -61,6 +61,9 @@ endif ()
 # ------------------------------------------------------------
 # hfsolver dependencies:
 
+# FEAST is included in src/feast
+set(LIBS ${LIBS} feast)
+
 # Lapack
 find_package(Lapack REQUIRED)
 set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
