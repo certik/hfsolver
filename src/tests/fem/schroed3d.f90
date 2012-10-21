@@ -22,6 +22,8 @@ integer, intent(in):: elems(:, :), ib(:, :, :, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xin), size(xin), size(xin)) :: phi_v, phi_dx, phi_dy, phi_dz
+real(dp), dimension(size(xiq), size(xiq), size(xiq), &
+    size(xiq), size(xiq), size(xiq)) :: Am_loc, Bm_loc
 real(dp), dimension(size(xiq), size(xiq), size(xiq)) :: fq
 real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
 integer :: Ne, p, e, i, j, iqx, iqy, iqz
@@ -67,6 +69,27 @@ zp = (xiq + 1) * jacz
 phi_dx = phi_dx / jacx
 phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
+! Precalculate element matrices:
+do bz = 1, p+1
+do by = 1, p+1
+do bx = 1, p+1
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        Am_loc(ax, ay, az, bx, by, bz) = sum(( &
+            phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
+            phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
+            phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
+            * jac_det * wtq) / 2
+        Bm_loc(ax, ay, az, bx, by, bz) = sum(( &
+            phi_v(:, :, :, ax, ay, az) * phi_v(:, :, :, bx, by, bz) &
+            * jac_det * wtq))
+    end do
+    end do
+    end do
+end do
+end do
+end do
 do e = 1, Ne
     x = xp + nodes(1, elems(1, e))
     y = yp + nodes(2, elems(1, e))
@@ -89,17 +112,11 @@ do e = 1, Ne
             i = ib(ax, ay, az, e)
             if (i == 0) cycle
             if (j > i) cycle
-            Am(i,j) = Am(i,j) + sum(( &
-                phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
-                phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
-                phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
-                * jac_det * wtq) / 2
+            Am(i,j) = Am(i,j) + Am_loc(ax, ay, az, bx, by, bz)
             Am(i,j) = Am(i,j) + sum(fq * &
                 phi_v(:, :, :, ax, ay, az)*phi_v(:, :, :, bx, by, bz) &
                 * jac_det * wtq)
-            Bm(i,j) = Bm(i,j) + sum(( &
-                phi_v(:, :, :, ax, ay, az) * phi_v(:, :, :, bx, by, bz) &
-                * jac_det * wtq))
+            Bm(i,j) = Bm(i,j) + Bm_loc(ax, ay, az, bx, by, bz)
         end do
         end do
         end do
