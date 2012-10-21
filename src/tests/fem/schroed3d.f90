@@ -177,9 +177,9 @@ integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
 real(dp) :: rmax
 integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type, M0
 
-Nex = 1
-Ney = 1
-Nez = 1
+Nex = 3
+Ney = 3
+Nez = 3
 p = 4
 Nq = p+1
 rmax = 5  ! The size of the box in atomic units
@@ -209,7 +209,7 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 2, ib)
 Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+allocate(A(Nb, Nb), B(Nb, Nb))
 
 print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
@@ -222,10 +222,11 @@ select case(solver_type)
         call eigh(A, B, lam, c)
     case (2)
         M0 = 100
-        call eigh_feast(A, B, 0._dp, 10._dp, M0, lam, c)
+        call eigh_feast(A, B, 0._dp, 6._dp, M0, lam, c)
         Neig = size(lam)
 end select
 print *, "Eigenvalues:"
+Neig = 20
 allocate(E_exact(Neig))
 call exact_energies(omega, E_exact)
 do i = 1, Neig
