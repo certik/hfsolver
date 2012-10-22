@@ -196,15 +196,8 @@ subroutine csr_matvec(Ap, Aj, Ax, x, y)
 integer, intent(in) :: Ap(:), Aj(:)
 real(dp), intent(in) :: Ax(:), x(:)
 real(dp), intent(out) :: y(:)
-real(dp) :: s
-integer :: i, j
-do i = 1, size(Ap)-1
-    s = 0
-    do j = Ap(i), Ap(i+1)-1
-        s = s + Ax(j) * x(Aj(j))
-    end do
-    y(i) = s
-end do
+integer :: i
+forall(i=1:size(Ap)-1) y(i) = sum(Ax(Ap(i):Ap(i+1)-1) * x(Aj(Ap(i):Ap(i+1)-1)))
 end subroutine
 
 end module
