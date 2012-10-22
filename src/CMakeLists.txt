@@ -7,6 +7,7 @@ set(SRC
     lapack.f90
     feast.f90
     openmp.f90
+    sparse.f90
 
     special_functions.f90
     solvers.f90
