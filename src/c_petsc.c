@@ -25,12 +25,9 @@ int petsc_solve(int n_, double complex *A_, double complex *b_, double complex *
     ierr = MatSetOption(A,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE);CHKERRQ(ierr);
     ierr = MatSetUp(A);CHKERRQ(ierr);
 
-    printf("  Converting matrix to PETSc\n");
     for (i=0; i<n; i++) col[i] = i;
-    for (i=0; i<n; i++) {
-        for (j=0; j<n; j++) value[j] = A_[i*n+j];
-        ierr = MatSetValues(A,1,&i,n,col,value,INSERT_VALUES);CHKERRQ(ierr);
-    }
+    printf("  Converting matrix to PETSc\n");
+    ierr = MatSetValues(A,n,col,n,col,A_,INSERT_VALUES);CHKERRQ(ierr);
     printf("    Done\n");
     ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
