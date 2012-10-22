@@ -49,6 +49,11 @@ ADDTEST(test_gaussians_molecules)
 ADDTEST(test_fm)
 ADDTEST(test_bessel)
 
+
+if(WITH_PETSC)
+    ADDTEST(test_petsc)
+endif()
+
 add_subdirectory(thesis)
 add_subdirectory(fem)
 add_subdirectory(feast)

@@ -51,6 +51,18 @@ else()
     )
 endif()
 
+# PETSC
+if(WITH_PETSC)
+    set(SRC ${SRC}
+        c_petsc.c
+        petsc.f90
+    )
+else()
+    set(SRC ${SRC}
+        petsc.dum.f90
+    )
+endif()
+
 add_library(hfsolver ${SRC})
 
 add_subdirectory(feast)
