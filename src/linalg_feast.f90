@@ -1,7 +1,8 @@
 module linalg_feast
 use types, only: dp
 use utils, only: stop_error, assert
-use feast, only: feastinit, dfeast_syev, dfeast_srci
+use feast, only: feastinit, dfeast_syev, dfeast_sygv_orig => dfeast_sygv, &
+    dfeast_srci
 use lapack, only: xerbla, zcopy, zgetrf, zgetrs, dgemm, dsymm
 use petsc_, only: petsc_init, petsc_finalize, solve
 implicit none
@@ -32,7 +33,9 @@ call feastinit(feastparam)
 feastparam(1)=1 !! change from default value
 feastparam(2) = 4  !! Nq
 feastparam(3) = 5  !! accuracy: 1e-x
-call dfeast_sygv('L',N,A,LDA,B,LDA,feastparam,epsout,loop,Emin,Emax,M0, &
+!call dfeast_sygv('L',N,A,LDA,B,LDA,feastparam,epsout,loop,Emin,Emax,M0, &
+!    lam_,c_,M,res,info)
+call dfeast_sygv_orig('L',N,A,LDA,B,LDA,feastparam,epsout,loop,Emin,Emax,M0, &
     lam_,c_,M,res,info)
 
 if (info /= 0) then
