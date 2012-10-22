@@ -9,7 +9,7 @@ implicit none
 private
 public coo2dense, dense2coo, getnnz, coo2csr, coo2csc, &
     csr_has_canonical_format, csr_sum_duplicates, csr_sort_indices, &
-    coo2csr_canonical
+    coo2csr_canonical, csr_matvec
 
 contains
 
@@ -188,6 +188,22 @@ do i = 1, size(Ap)-1
     idx(:l) = argsort(Aj(r1:r2))
     Aj(r1:r2) = Aj(r1+idx(:l)-1)
     Ax(r1:r2) = Ax(r1+idx(:l)-1)
+end do
+end subroutine
+
+subroutine csr_matvec(Ap, Aj, Ax, x, y)
+! Compute y = A*x for CSR matrix A and dense vectors x, y
+integer, intent(in) :: Ap(:), Aj(:)
+real(dp), intent(in) :: Ax(:), x(:)
+real(dp), intent(out) :: y(:)
+real(dp) :: s
+integer :: i, j
+do i = 1, size(Ap)-1
+    s = 0
+    do j = Ap(i), Ap(i+1)-1
+        s = s + Ax(j) * x(Aj(j))
+    end do
+    y(i) = s
 end do
 end subroutine
 

@@ -2,10 +2,10 @@ program test_sparse
 use types, only: dp
 use sparse, only: coo2dense, dense2coo, getnnz, coo2csr, &
     csr_has_canonical_format, csr_sum_duplicates, csr_sort_indices, &
-    coo2csr_canonical
+    coo2csr_canonical, csr_matvec
 use utils, only: assert
 
-real(dp), allocatable :: A(:, :), B(:, :), Ax(:), Bx(:)
+real(dp), allocatable :: A(:, :), B(:, :), Ax(:), Bx(:), x(:), y(:)
 integer, allocatable :: Ai(:), Aj(:), Bp(:), Bj(:)
 integer :: nnz
 
@@ -50,7 +50,11 @@ call assert(all(Bp == [1, 4, 7, 11, 14]))
 call assert(all(Bj == [1, 2, 5, 2, 3, 5, 1, 3, 4, 5, 2, 4, 5]))
 call assert(all(abs(Bx - [1, 7, 1, 2, 8, 2, 5, 3, 9, 3, 6, 4, 4]) < 1e-12_dp))
 call assert(csr_has_canonical_format(Bp, Bj))
-deallocate(A, B, Ai, Aj, Ax, Bp, Bj, Bx)
+allocate(x(5), y(4))
+x = [1, 2, 3, 4, 5]
+call csr_matvec(Bp, Bj, Bx, x, y)
+call assert(all(abs(y-matmul(A, x)) < 1e-12_dp))
+deallocate(A, B, Ai, Aj, Ax, Bp, Bj, Bx, x, y)
 
 
 allocate(Ai(5), Aj(5), Ax(5), A(3, 4), B(3, 4))
