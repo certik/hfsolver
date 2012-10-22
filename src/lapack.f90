@@ -195,6 +195,14 @@ interface
     COMPLEX(dp)        A( LDA, * )
     END SUBROUTINE
 
+    SUBROUTINE ZGETRS( TRANS, N, NRHS, A, LDA, IPIV, B, LDB, INFO )
+    import :: dp
+    CHARACTER          TRANS
+    INTEGER            INFO, LDA, LDB, N, NRHS
+    INTEGER            IPIV( * )
+    COMPLEX(dp)         A( LDA, * ), B( LDB, * )
+    END SUBROUTINE
+
     SUBROUTINE ZGETRI( N, A, LDA, IPIV, WORK, LWORK, INFO )
     import :: dp
     INTEGER            INFO, LDA, LWORK, N
@@ -280,6 +288,35 @@ interface
     INTEGER            INFO, LDA, LDU, LDVT, LWORK, M, N
     REAL(dp)           RWORK( * ), S( * )
     COMPLEX(dp)        A( LDA, * ), U( LDU, * ), VT( LDVT, * ), WORK( * )
+    END SUBROUTINE
+
+    SUBROUTINE XERBLA( SRNAME, INFO )
+    CHARACTER*(*)      SRNAME
+    INTEGER            INFO
+    END SUBROUTINE
+
+! BLAS
+
+    SUBROUTINE ZCOPY(N,ZX,INCX,ZY,INCY)
+    import :: dp
+    INTEGER INCX,INCY,N
+    COMPLEX(dp) ZX(*),ZY(*)
+    END SUBROUTINE
+
+    SUBROUTINE DGEMM(TRANSA,TRANSB,M,N,K,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
+    import :: dp
+    DOUBLE PRECISION ALPHA,BETA
+    INTEGER K,LDA,LDB,LDC,M,N
+    CHARACTER TRANSA,TRANSB
+    REAL(dp) A(LDA,*),B(LDB,*),C(LDC,*)
+    END SUBROUTINE
+
+    SUBROUTINE DSYMM(SIDE,UPLO,M,N,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
+    import :: dp
+    REAL(dp) ALPHA,BETA
+    INTEGER LDA,LDB,LDC,M,N
+    CHARACTER SIDE,UPLO
+    REAL(dp) A(LDA,*),B(LDB,*),C(LDC,*)
     END SUBROUTINE
 
 end interface

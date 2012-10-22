@@ -78,6 +78,46 @@ if(WITH_LIBINT)
     set(LIBS ${LIBS} ${LIBINT_LIBRARIES})
 endif()
 
+
+set(WITH_MPI no
+    CACHE BOOL "Build with MPI support")
+
+# PETSc
+set(WITH_PETSC no
+    CACHE BOOL "Build with PETSc support")
+
+if(WITH_PETSC)
+    set(WITH_MPI yes)
+
+    # Setup PETSc:
+    find_package(Petsc REQUIRED)
+    include_directories(${PETSC_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${PETSC_LIBRARIES})
+endif()
+
+# MPI
+if (WITH_MPI)
+    find_package(MPI REQUIRED)
+    include_directories(${MPI_INCLUDE_PATH})
+    set(LIBS ${LIBS} ${MPI_LIBRARIES})
+    set(CMAKE_C_FLAGS_DEBUG
+        "${CMAKE_C_FLAGS_DEBUG}   ${MPI_COMPILE_FLAGS}")
+    set(CMAKE_C_FLAGS_RELEASE
+        "${CMAKE_C_FLAGS_RELEASE} ${MPI_COMPILE_FLAGS}")
+    set(CMAKE_CXX_FLAGS_DEBUG
+        "${CMAKE_C_FLAGS_DEBUG}   ${MPI_COMPILE_FLAGS}")
+    set(CMAKE_CXX_FLAGS_RELEASE
+        "${CMAKE_C_FLAGS_RELEASE} ${MPI_COMPILE_FLAGS}")
+    set(CMAKE_Fortran_FLAGS_DEBUG
+        "${CMAKE_Fortran_FLAGS_DEBUG}   ${MPI_COMPILE_FLAGS}")
+    set(CMAKE_Fortran_FLAGS_RELEASE
+        "${CMAKE_Fortran_FLAGS_RELEASE} ${MPI_COMPILE_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG
+        "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   ${MPI_LINK_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE
+        "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${MPI_LINK_FLAGS}")
+endif()
+
 # ------------------------------------------------------------
 
 enable_testing()
@@ -108,5 +148,17 @@ if(WITH_LIBINT)
     message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
     message("LIBINT_LIBRARIES: ${LIBINT_LIBRARIES}")
 endif()
+message("WITH_PETSC: ${WITH_PETSC}")
+if(WITH_PETSC)
+    message("PETSC_INCLUDE_DIRS: ${PETSC_INCLUDE_DIRS}")
+    message("PETSC_LIBRARIES: ${PETSC_LIBRARIES}")
+endif()
 message("WITH_PYTHON: ${WITH_PYTHON}")
 message("WITH_OPENMP: ${WITH_OPENMP}")
+message("WITH_MPI: ${WITH_MPI}")
+if (WITH_MPI)
+    message("MPI_INCLUDE_PATH: ${MPI_INCLUDE_PATH}")
+    message("MPI_LIBRARIES: ${MPI_LIBRARIES}")
+    message("MPI_COMPILE_FLAGS: ${MPI_COMPILE_FLAGS}")
+    message("MPI_LINK_FLAGS: ${MPI_LINK_FLAGS}")
+endif()
