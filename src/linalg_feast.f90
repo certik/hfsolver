@@ -146,10 +146,10 @@ subroutine dfeast_sygv(UPLO,N,A,LDA,B,LDB,fpm,epsout,loop,Emin,Emax,M0,E,X,mode,
   integer :: mode
   double precision,dimension(*)    :: res
   integer :: info
-  integer :: ierr
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   integer :: ijob,infoloc
+  integer :: ierr!, i
   complex(kind=(kind(1.0d0))) :: Ze
   complex(kind=(kind(1.0d0))), dimension(:,:),pointer ::workc,Az
   double precision, dimension(:,:),pointer ::work,Aq,Sq
@@ -202,6 +202,10 @@ subroutine dfeast_sygv(UPLO,N,A,LDA,B,LDB,fpm,epsout,loop,Emin,Emax,M0,E,X,mode,
 
 
         print *, "Solve (zgetrs) N =", N
+!        do i = 1, M0
+!            print *, i
+!            ierr = solve(N, Az, workc(:, i), workc(:, i))
+!        end do
         call ZGETRS( 'N', N, M0, Az, N, IPIVloc, workc, N, INFOloc )
         print *, "Done"
         if (infoloc/=0) then
