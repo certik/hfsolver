@@ -3,6 +3,7 @@ use types, only: dp
 use utils, only: stop_error, assert
 use feast, only: feastinit, dfeast_syev, dfeast_srci
 use lapack, only: xerbla, zcopy, zgetrf, zgetrs, dgemm, dsymm
+use petsc_, only: petsc_init, petsc_finalize, solve
 implicit none
 private
 public eigh
@@ -131,9 +132,6 @@ subroutine dfeast_sygv(UPLO,N,A,LDA,B,LDB,fpm,epsout,loop,Emin,Emax,M0,E,X,mode,
   !=====================================================================
   ! Eric Polizzi 2009-2012
   ! ====================================================================
-  use petsc_, only: petsc_init, petsc_finalize
-  implicit none
-  !include 'f90_noruntime_interface.fi'
   character(len=1) :: UPLO
   integer :: N,LDA,LDB
   double precision,dimension(LDA,*):: A
