@@ -49,11 +49,13 @@ int petsc_solve(int n_, double complex *A_, double complex *b_, double complex *
     ierr = KSPSetFromOptions(ksp);CHKERRQ(ierr);
     // For a full list, see:
     // http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPType.html
-    ierr = KSPSetType(ksp, KSPMINRES);CHKERRQ(ierr);
+    ierr = KSPSetType(ksp, KSPCGS);CHKERRQ(ierr);
 
+    printf("  Solving...\n");
     ierr = KSPSolve(ksp,b,x);CHKERRQ(ierr);
+    printf("  Done\n");
 
-    ierr = KSPView(ksp,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+//    ierr = KSPView(ksp,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
 
     ierr = VecGetArray(x, &x_array);CHKERRQ(ierr);
     for (i=0; i<n; i++) x_[i] = x_array[i];
