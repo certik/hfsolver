@@ -215,17 +215,17 @@ subroutine dfeast_sygv(UPLO,N,A,LDA,B,LDB,fpm,epsout,loop,Emin,Emax,M0,E,X,mode,
      case(30) !! perform multiplication A*x(1:N,fpm(24):fpm(24)+fpm(25)-1) result in work(1:N,fpm(24)+fpm(25)-1)
 
         if ((UPLO=='F').or.(UPLO=='f')) then
-           call DGEMM('N','N',N,fpm(25),N,DONE,A,LDA,X(1,fpm(24)),N,DZERO,work(1,fpm(24):fpm(25-1)),N)
+           call DGEMM('N','N',N,fpm(25),N,DONE,A,LDA,X(1,fpm(24)),N,DZERO,work(1:N,fpm(24)),N)
         else
-           call DSYMM ('L', UPLO, N, fpm(25), DONE, A, LDA, X(1,fpm(24)), N, DZERO,work(1,fpm(24):fpm(25)-1), N)
+           call DSYMM ('L', UPLO, N, fpm(25), DONE, A, LDA, X(1,fpm(24)), N, DZERO,work(1:N,fpm(24)), N)
         endif
 
      case(40) !! perform multiplication B*x(1:N,fpm(24):fpm(24)+fpm(25)-1) result in work(1:N,fpm(24)+fpm(25)-1)
 
         if ((UPLO=='F').or.(UPLO=='f')) then
-           call DGEMM('N','N',N,fpm(25),N,DONE,B,LDB,X(1,fpm(24)),N,DZERO,work(1,fpm(24):fpm(25)-1),N)
+           call DGEMM('N','N',N,fpm(25),N,DONE,B,LDB,X(1,fpm(24)),N,DZERO,work(1:N,fpm(24)),N)
         else
-           call DSYMM ('L', UPLO, N, fpm(25), DONE, B, LDB, X(1,fpm(24)), N, DZERO,work(1,fpm(24):fpm(25)-1), N)
+           call DSYMM ('L', UPLO, N, fpm(25), DONE, B, LDB, X(1,fpm(24)), N, DZERO,work(1:N,fpm(24)), N)
         endif
 
      end select
