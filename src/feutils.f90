@@ -466,7 +466,7 @@ do i = 1, size(xin)
     if (i==n) cycle
     tmp(i) = (xi-xin(i))/(xin(n)-xin(i))
 end do
-! compute derivative of nth polynomal
+! compute derivative of nth polynomial
 dphih = 0
 do j = 1, size(xin)
     if (j == n) cycle
