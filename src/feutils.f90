@@ -440,12 +440,13 @@ end select
 end subroutine
 
 real(dp) pure function phih(xin, n, xi)
-! "phi hat": nth Lagrange polynomial with nodes xin at point xi in [-1,1]
+! "phi hat": nth Lagrange polynomial with nodes xin at point xi.
+! Value equals to 1 for xi=xin(n) and zero for all other nodes.
 real(dp), intent(in) :: xin(:) ! polynomial nodes
 integer, intent(in) :: n       ! polynomial index
-real(dp), intent(in) :: xi     ! point in [-1,1] at which to evaluate phih
+real(dp), intent(in) :: xi     ! point at which to evaluate phih
 integer :: i
-! compute nth polynomal: 1 at node n, 0 at all others
+! compute nth polynomial: 1 at node n, 0 at all others
 phih = 1
 do i = 1, size(xin)
     if (i == n) cycle
@@ -454,11 +455,11 @@ end do
 end function
 
 real(dp) pure function dphih(xin, n, xi)
-! "d phi hat": derivative of nth Lagrange polynomial with nodes xin at point xi
-! in [-1,1]
+! "d phi hat": derivative of nth Lagrange polynomial with nodes 'xin' at point
+! 'xi'.
 real(dp), intent(in) :: xin(:) ! polynomial nodes
 integer, intent(in) :: n       ! polynomial index
-real(dp), intent(in) :: xi     ! point in [-1,1] at which to evaluate dphih
+real(dp), intent(in) :: xi     ! point at which to evaluate dphih
 real(dp) :: term
 real(dp) :: tmp(size(xin))
 integer :: i, j
@@ -477,6 +478,26 @@ do j = 1, size(xin)
     end do
     dphih = dphih + term
 end do
+end function
+
+real(dp) pure function hermite_basis_1(xin, n, xi) result(h)
+! nth Hermite basis polynomial (first kind) with nodes 'xin' at point 'xi'.
+! Value equals to 1 for xi=xin(n) and zero for all other nodes. Derivatives are
+! zero for all nodes.
+real(dp), intent(in) :: xin(:) ! polynomial nodes
+integer, intent(in) :: n       ! polynomial index
+real(dp), intent(in) :: xi     ! point at which to evaluate phih
+h = (1-2*dphih(xin, n, xin(n))*(xi - xin(n))) * phih(xin, n, xi)**2
+end function
+
+real(dp) pure function hermite_basis_2(xin, n, xi) result(h)
+! nth Hermite basis polynomial (second kind) with nodes 'xin' at point 'xi'.
+! Value is zero for all nodes. Derivative equals to 1 for xi=xin(n) and zero
+! for all other nodes.
+real(dp), intent(in) :: xin(:) ! polynomial nodes
+integer, intent(in) :: n       ! polynomial index
+real(dp), intent(in) :: xi     ! point at which to evaluate phih
+h = (xi - xin(n)) * phih(xin, n, xi)**2
 end function
 
 end module
