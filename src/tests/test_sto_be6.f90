@@ -26,7 +26,7 @@ real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp) :: D
 !real(dp), parameter :: Dlist(*) = [1._dp, 10._dp, 100._dp, &
 !    1e4_dp, 1e6_dp, -1._dp]
-real(dp), parameter :: Dlist(*) = [-1._dp, 1 / 0.05_dp, 1 / 0.1_dp, &
+real(dp), parameter :: Dlist(*) = [1 / 0.4_dp, 1 / 0.1_dp, &
         0.2_dp, 0.3_dp, 0.4_dp, 0.5_dp]
 
 Lmax = 2
@@ -43,8 +43,9 @@ zl(:5, 1) = [5.6998_dp, 2.7850_dp, 4.1500_dp, 1.4387_dp, 0.9819_dp]
 nbfl(2) = 2
 nl(:2, 2) = [3, 3]
 zl(:2, 2) = [1.2662_dp, 7.8314_dp]
+zl = zl*2
 
-Z = 4
+Z = 6
 tolE = 1e-10_dp
 tolP = 1e-4_dp
 alpha = 0.6_dp
@@ -55,7 +56,7 @@ ndof = sum(nbfl)
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 
 open(newunit=u, file="be.log", status="replace")
-do j = 1, size(Dlist)
+do j = 1, 1 !size(Dlist)
     print *
     print *, "-----------------------------------------------------"
     print *, "total  DOFs =", ndof
