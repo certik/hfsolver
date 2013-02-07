@@ -26,7 +26,8 @@ real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp) :: D
 !real(dp), parameter :: Dlist(*) = [1._dp, 10._dp, 100._dp, &
 !    1e4_dp, 1e6_dp, -1._dp]
-real(dp), parameter :: Dlist(*) = [1._dp, 1e6_dp, -1._dp]
+real(dp), parameter :: Dlist(*) = [-1._dp, 1 / 0.05_dp, 1 / 0.1_dp, &
+        0.2_dp, 0.3_dp, 0.4_dp, 0.5_dp]
 
 Lmax = 2
 allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
@@ -63,7 +64,7 @@ do j = 1, size(Dlist)
     if (D < 0) then
         print *, "D = oo (Coulomb case)"
     else
-        print *, "D =", D
+        print *, "D =", D, "lam = 1/D =", 1/D
         call sto_V_screen(Z, nbfl, nl, zl, V, D)
         call slater_sto_screen(nbfl, nl, zl, slater, D)
     end if
