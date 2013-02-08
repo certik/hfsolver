@@ -24,26 +24,14 @@ integer :: n, Z, Nscf, Lmax, ndof, i, j, l, u
 real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp) :: D
-!real(dp), parameter :: Dlist(*) = [1._dp, 10._dp, 100._dp, &
-!    1e4_dp, 1e6_dp, -1._dp]
-real(dp), parameter :: mu(*) = [0._dp, 0.01_dp, 0.02_dp, 0.05_dp, 0.1_dp, &
-    0.125_dp, 0.167_dp, 0.2_dp, 0.25_dp, 0.3_dp, 0.333_dp, 0.4_dp, 0.5_dp, &
-    0.6_dp, 0.667_dp, 0.7_dp, 0.75_dp, 0.8_dp, 0.87_dp, 0.9_dp, 0.952_dp, 1._dp]
-real(dp), allocatable :: Dlist(:)
-
-allocate(Dlist(size(mu)))
-where (mu > 0)
-    Dlist = mu
-elsewhere
-    Dlist = -1
-end where
-Dlist = 1 / Dlist
+real(dp), parameter :: Dlist(*) = [-1._dp, 20._dp, 10._dp, 8._dp, 6._dp, &
+    5._dp, 4._dp, 3._dp, 2._dp, 1.5_dp, 1.25_dp, 1.15_dp, 1.05_dp]
 
 Lmax = 2
 allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
 nbfl = 0
 focc = 0
-focc(:2, 0) = [2, 2]
+focc(:2, 0) = [2]
 nbfl(0) = 5
 nl(:5, 0) = [1, 1, 3, 2, 2]
 zl(:5, 0) = [5.4297_dp, 2.9954_dp, 3.5810_dp, 1.1977_dp, 0.8923_dp]
@@ -77,7 +65,7 @@ do j = 1, size(Dlist)
     else
         print *, "D =", D, "lam = 1/D =", 1/D
         call sto_V_screen(Z, nbfl, nl, zl, V, D)
-        call slater_sto_screen(nbfl, nl, zl, slater, D)
+!        call slater_sto_screen(nbfl, nl, zl, slater, D)
     end if
 
     H = T + V
