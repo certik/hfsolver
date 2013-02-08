@@ -20,28 +20,22 @@ integer, allocatable :: nl(:, :), nbfl(:)
 real(dp), allocatable :: zl(:, :), focc(:, :)
 
 real(dp), allocatable :: S(:, :, :), T(:, :, :), V(:, :, :), slater(:, :)
-integer :: n, Z, Nscf, Lmax, ndof, i, j, l, u
+integer :: n, Z, Nscf, Lmax, ndof, j, u
 real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp) :: D
 real(dp), parameter :: Dlist(*) = [-1._dp, 20._dp, 10._dp, 8._dp, 6._dp, &
     5._dp, 4._dp, 3._dp, 2._dp, 1.5_dp, 1.25_dp, 1.15_dp, 1.05_dp]
 
-Lmax = 2
+Lmax = 0
 allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
 nbfl = 0
 focc = 0
 focc(:2, 0) = [2]
 nbfl(0) = 5
-nl(:5, 0) = [1, 1, 3, 2, 2]
-zl(:5, 0) = [5.4297_dp, 2.9954_dp, 3.5810_dp, 1.1977_dp, 0.8923_dp]
-nbfl(1) = 5
-nl(:5, 1) = [2, 2, 4, 3, 3]
-zl(:5, 1) = [5.6998_dp, 2.7850_dp, 4.1500_dp, 1.4387_dp, 0.9819_dp]
-nbfl(2) = 2
-nl(:2, 2) = [3, 3]
-zl(:2, 2) = [1.2662_dp, 7.8314_dp]
-zl = zl*2
+nl(:5, 0) = [2, 1, 2, 1, 1, 2, 1, 1]
+zl(:5, 0) = [18.890445_dp, 9.238787_dp, 7.517513_dp, 5.100368_dp, &
+    3.276630_dp, 2.270243_dp, 1.192963_dp, 0.930957_dp]
 
 Z = 6
 tolE = 1e-10_dp
@@ -76,12 +70,7 @@ do j = 1, size(Dlist)
 !    call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     print *, "Debye length D =", D
     call printlam(nbfl, lam, Ekin, Etot)
-    write(u, "(es23.16,' ',es23.16)") D, Etot
-    do l = 0, ubound(nbfl, 1)
-        do i = 1, nbfl(l)
-            write(u, "(i4,i4,' ',es23.16)") i, l, lam(i, l)
-        end do
-    end do
+    write(u, "(f10.2,' ',f12.4)") D, Etot
 end do
 close(u)
 
