@@ -32,9 +32,9 @@ allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
 nbfl = 0
 focc = 0
 focc(:2, 0) = [2]
-nbfl(0) = 5
-nl(:5, 0) = [2, 1, 2, 1, 1, 2, 1, 1]
-zl(:5, 0) = [18.890445_dp, 9.238787_dp, 7.517513_dp, 5.100368_dp, &
+nbfl(0) = 8
+nl(:8, 0) = [2, 1, 2, 1, 1, 2, 1, 1]
+zl(:8, 0) = [18.890445_dp, 9.238787_dp, 7.517513_dp, 5.100368_dp, &
     3.276630_dp, 2.270243_dp, 1.192963_dp, 0.930957_dp]
 
 Z = 6
@@ -48,6 +48,7 @@ ndof = sum(nbfl)
 allocate(P_(n, n, 0:Lmax), C(n, n, 0:Lmax), H(n, n, 0:Lmax), lam(n, 0:Lmax))
 
 open(newunit=u, file="be.log", status="replace")
+write(u, "(a10,' ',a10,' ',a12)") "D", "mu", "Model A"
 do j = 1, size(Dlist)
     print *
     print *, "-----------------------------------------------------"
@@ -70,7 +71,7 @@ do j = 1, size(Dlist)
 !    call printall(nbfl, nl, zl, lam, C, Ekin, Etot)
     print *, "Debye length D =", D
     call printlam(nbfl, lam, Ekin, Etot)
-    write(u, "(f10.2,' ',f12.4)") D, Etot
+    write(u, "(f10.2,' ',f10.3,' ',f12.4)") D, 1/D, Etot
 end do
 close(u)
 
