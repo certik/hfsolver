@@ -25,7 +25,7 @@ real(dp) :: alpha, Etot, tolE, tolP, Ekin
 real(dp), allocatable :: H(:, :, :), P_(:, :, :), C(:, :, :), lam(:, :)
 real(dp) :: D
 real(dp), parameter :: Dlist(*) = [-1._dp, 20._dp, 10._dp, 8._dp, 6._dp, &
-    5._dp, 4._dp, 3._dp, 2._dp, 1.5_dp, 1.25_dp, 1.15_dp, 1.05_dp]
+    5._dp, 4._dp, 3._dp, 2._dp, 1.5_dp, 1.25_dp, 1.15_dp, 1.05_dp, 1._dp]
 
 Lmax = 0
 allocate(nbfl(0:Lmax), nl(9, 0:Lmax), zl(9, 0:Lmax), focc(2, 0:Lmax))
