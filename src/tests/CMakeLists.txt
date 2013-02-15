@@ -51,6 +51,8 @@ ADDTEST(test_bessel)
 
 ADDTEST(test_sparse)
 
+ADDTEST(test_fourier)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
