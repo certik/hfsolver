@@ -18,7 +18,8 @@ complex(dp) :: p(size(x))
 complex(dp) :: F(size(x), size(x))
 integer :: N, i, j
 N = size(x)
-forall(i=0:N-1, j=0:N-1) F(i+1, j+1) = exp(-2*pi*i_*i*j/ N)
+forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(-2*pi*i_*i*j / N)
+forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 p = matmul(F, x)
 end function
 
@@ -31,7 +32,8 @@ complex(dp) :: x(size(p))
 complex(dp) :: F(size(p), size(p))
 integer :: N, i, j
 N = size(p)
-forall(i=0:N-1, j=0:N-1) F(i+1, j+1) = exp(+2*pi*i_*i*j/ N)
+forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(+2*pi*i_*i*j/ N)
+forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 x = matmul(F, p) / N
 end function
 
