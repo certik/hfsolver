@@ -134,7 +134,6 @@ use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
 use schroed2d_assembly, only: assemble_2d, Z, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
-use constants, only: pi
 implicit none
 
 integer :: Nn, Ne
