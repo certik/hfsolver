@@ -2,7 +2,6 @@ program test_sto
 use types, only: dp
 use sto, only: get_basis, stoints
 use utils, only: assert
-use constants, only: pi, ang2bohr, Ha2eV
 use scf, only: doscf, get_nuclear_energy
 implicit none
 

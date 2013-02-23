@@ -163,7 +163,6 @@ use schroed_assembly, only: assemble_3d, omega, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use linalg_feast, only: eigh_feast => eigh
-use constants, only: pi
 implicit none
 
 integer :: Nn, Ne

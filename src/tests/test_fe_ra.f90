@@ -3,7 +3,6 @@ program test_fe_ra
 use types, only: dp
 use sto, only: stoints2, get_basis2
 use utils, only: assert
-use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy
 use hfprint, only: printall, printlam
 use mesh, only: meshexp
