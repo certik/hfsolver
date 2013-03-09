@@ -10,7 +10,6 @@ program test_sto_be8
 use types, only: dp
 use sto, only: stoints2, get_basis2, slater_sto_screen, sto_V_screen
 use utils, only: assert
-use constants, only: pi, ang2bohr, Ha2eV
 use radialscf, only: doscf, kinetic_energy, slater2int22, &
     get_basis, radialC2C, &
     radiallam2lam
