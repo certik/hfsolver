@@ -20,7 +20,7 @@ exact_sol = sin(pi*x) * sin(pi*y) * sin(pi*z)
 end function
 
 subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, rhs)
-! Assemble on a 2D rectangular uniform mesh
+! Assemble on a 3D hexahedral uniform mesh
 real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :, :), &
     phihq(:, :), dphihq(:, :)
 integer, intent(in):: elems(:, :), ib(:, :, :, :)
