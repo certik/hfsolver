@@ -5,7 +5,7 @@ use utils, only: assert, stop_error
 use constants, only: pi
 implicit none
 private
-public assemble_3d, sol_error
+public assemble_3d, sol_error, integral
 
 contains
 
@@ -149,6 +149,26 @@ end do
 r = sqrt(r)
 end function
 
+real(dp) function integral(nodes, elems, wtq, fq) result(r)
+real(dp), intent(in) :: nodes(:, :)
+integer, intent(in) :: elems(:, :)
+real(dp), intent(in) :: wtq(:, :, :), fq(:, :, :, :)
+real(dp) :: jacx, jacy, jacz, l(3), jac_det
+integer :: e, Ne
+Ne = size(elems, 2)
+r = 0
+do e = 1, Ne
+    ! l is the diagonal vector:
+    l = nodes(:, elems(7, e)) - nodes(:, elems(1, e))
+    ! Assume rectangular shape:
+    jacx = l(1)/2
+    jacy = l(2)/2
+    jacz = l(3)/2
+    jac_det = abs(jacx*jacy*jacz)
+    r = r + sum(fq(:, :, :, e) * jac_det * wtq)
+end do
+end function
+
 end module
 
 ! ------------------------------------------------------------------------
@@ -159,7 +179,7 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d
-use poisson3d_assembly, only: assemble_3d, sol_error
+use poisson3d_assembly, only: assemble_3d, sol_error, integral
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use constants, only: pi
@@ -213,6 +233,7 @@ sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 error = sol_error(nodes, elems, xiq, wtq3, solq)
+print *, "INTEGRAL:", integral(nodes, elems, wtq3, solq*solq)
 
 end function
 
