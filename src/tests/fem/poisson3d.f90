@@ -23,7 +23,7 @@ function get_rhs(nodes, elems, xiq) result(fq)
 real(dp), intent(in):: nodes(:, :), xiq(:)
 integer, intent(in):: elems(:, :)
 integer :: Ne, e, iqx, iqy, iqz
-real(dp), dimension(size(xiq), size(xiq), size(xiq), size(xiq)) :: fq
+real(dp), dimension(size(xiq), size(xiq), size(xiq), size(elems, 2)) :: fq
 real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
 real(dp) :: lx, ly, lz
 real(dp) :: jacx, jacy, jacz, jac_det
@@ -257,7 +257,7 @@ sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 error = sol_error(nodes, elems, xiq, wtq3, solq)
-print *, "INTEGRAL:", integral(nodes, elems, wtq3, solq*solq)
+print *, "INTEGRAL:", integral(nodes, elems, wtq3, solq*rhsq)
 
 end function
 
