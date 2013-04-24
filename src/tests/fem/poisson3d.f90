@@ -257,7 +257,7 @@ sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 error = sol_error(nodes, elems, xiq, wtq3, solq)
-print *, "INTEGRAL:", integral(nodes, elems, wtq3, solq*rhsq)
+print *, "HARTREE ENERGY:", integral(nodes, elems, wtq3, solq*rhsq)
 
 end function
 
