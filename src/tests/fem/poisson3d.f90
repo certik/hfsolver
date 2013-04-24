@@ -63,7 +63,6 @@ integer :: Ne, p, e, i, j, iqx, iqy, iqz
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xin), size(xin), size(xin)) :: phi_v, phi_dx, phi_dy, phi_dz
 real(dp), dimension(size(xiq), size(xiq), size(xiq)) :: fq
-real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
 real(dp) :: lx, ly, lz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz, jac_det
@@ -100,16 +99,10 @@ jacx = lx/2
 jacy = ly/2
 jacz = lz/2
 jac_det = abs(jacx*jacy*jacz)
-xp = (xiq + 1) * jacx
-yp = (xiq + 1) * jacy
-zp = (xiq + 1) * jacz
 phi_dx = phi_dx / jacx
 phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
 do e = 1, Ne
-    x = xp + nodes(1, elems(1, e))
-    y = yp + nodes(2, elems(1, e))
-    z = zp + nodes(3, elems(1, e))
     fq = rhsq(:, :, :, e)
     fq = fq * jac_det * wtq
     do bz = 1, p+1
