@@ -4,6 +4,7 @@ macro(ADDPROG name)
 endmacro(ADDPROG)
 
 addprog(poisson2d)
+addprog(poisson3d)
 addprog(laplace2d_eig)
 addprog(schroed2d)
 addprog(schroed3d)
