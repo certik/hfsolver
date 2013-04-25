@@ -7,6 +7,14 @@ implicit none
 private
 public assemble_3d, integral, get_rhs, get_exact
 
+interface
+    real(dp) function func_xyz(x, y, z)
+    import :: dp
+    implicit none
+    real(dp), intent(in) :: x, y, z
+    end function
+end interface
+
 contains
 
 real(dp) elemental function f(x, y, z)
@@ -17,6 +25,41 @@ end function
 real(dp) elemental function exact_sol(x, y, z)
 real(dp), intent(in) :: x, y, z
 exact_sol = sin(pi*x) * sin(pi*y) * sin(pi*z)
+end function
+
+function func2quad(nodes, elems, xiq, func) result(fq)
+! Return an array of function 'func' values at quadrature points
+real(dp), intent(in):: nodes(:, :), xiq(:)
+procedure(func_xyz) :: func
+integer, intent(in):: elems(:, :)
+integer :: Ne, e, iqx, iqy, iqz
+real(dp), dimension(size(xiq), size(xiq), size(xiq), size(elems, 2)) :: fq
+real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
+real(dp) :: lx, ly, lz
+real(dp) :: jacx, jacy, jacz, jac_det
+lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
+lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
+jacx = lx/2
+jacy = ly/2
+jacz = lz/2
+jac_det = abs(jacx*jacy*jacz)
+xp = (xiq + 1) * jacx
+yp = (xiq + 1) * jacy
+zp = (xiq + 1) * jacz
+Ne = size(elems, 2)
+do e = 1, Ne
+    x = xp + nodes(1, elems(1, e))
+    y = yp + nodes(2, elems(1, e))
+    z = zp + nodes(3, elems(1, e))
+    do iqz = 1, size(xiq)
+    do iqy = 1, size(xiq)
+    do iqx = 1, size(xiq)
+        fq(iqx, iqy, iqz, e) = func(x(iqx), y(iqy), z(iqz))
+    end do
+    end do
+    end do
+end do
 end function
 
 function get_rhs(nodes, elems, xiq) result(fq)
