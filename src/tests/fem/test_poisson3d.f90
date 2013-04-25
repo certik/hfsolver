@@ -63,6 +63,7 @@ allocate(exactq(Nq, Nq, Nq, Ne))
 exactq = func2quad(nodes, elems, xiq, fexact)
 rhsq = func2quad(nodes, elems, xiq, frhs)
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, rhsq, A, rhs)
+print *, "Solving..."
 sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
@@ -89,7 +90,8 @@ use poisson3d_test_util, only: test_poisson
 use constants, only: pi
 implicit none
 
-call test_poisson(1, 1, 1, 8, sol, rhs, 1e-7_dp, 3.701102_dp, 1e-6_dp)
+call test_poisson(1, 1, 1, 8, sol, rhs, 1e-7_dp, 3*pi**2/8, 1e-11_dp)
+call test_poisson(2, 3, 5, 5, sol, rhs, 1e-5_dp, 3*pi**2/8, 1e-7_dp)
 
 contains
 
