@@ -5,7 +5,7 @@ use utils, only: assert, stop_error
 use constants, only: pi
 implicit none
 private
-public assemble_3d, integral, func2quad
+public assemble_3d, integral, func2quad, func_xyz
 
 interface
     real(dp) function func_xyz(x, y, z)
