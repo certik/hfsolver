@@ -12,11 +12,12 @@ implicit none
 
 contains
 
-subroutine test_poisson(Nex, Ney, Nez, p, fexact, frhs, &
+subroutine test_poisson(box_dim, Nex, Ney, Nez, p, fexact, frhs, &
         l2_error_eps, hartree_energy_exact, hartree_energy_eps)
 integer, intent(in) :: p
 procedure(func_xyz) :: fexact, frhs
 real(dp), intent(in) :: l2_error_eps, hartree_energy_exact, hartree_energy_eps
+real(dp), intent(in) :: box_dim(3)
 
 integer :: Nn, Ne
 ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
@@ -32,7 +33,7 @@ integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: hartree_energy, l2_error, hartree_energy_error
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
-    [0._dp, 0._dp, 0._dp], [1._dp, 1._dp, 1._dp], nodes, elems)
+    [0._dp, 0._dp, 0._dp], box_dim, nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = p+1
@@ -90,8 +91,10 @@ use poisson3d_test_util, only: test_poisson
 use constants, only: pi
 implicit none
 
-call test_poisson(1, 1, 1, 8, sol, rhs, 1e-7_dp, 3*pi**2/8, 1e-11_dp)
-call test_poisson(2, 3, 5, 5, sol, rhs, 1e-5_dp, 3*pi**2/8, 1e-7_dp)
+call test_poisson([1._dp, 1._dp, 1._dp], 1, 1, 1, 8, sol, rhs, &
+    1e-7_dp, 3*pi**2/8, 1e-11_dp)
+call test_poisson([1._dp, 1._dp, 1._dp], 2, 3, 5, 5, sol, rhs, &
+    1e-5_dp, 3*pi**2/8, 1e-7_dp)
 
 contains
 
