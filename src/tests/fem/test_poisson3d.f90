@@ -96,6 +96,12 @@ call test_poisson([1._dp, 1._dp, 1._dp], 1, 1, 1, 8, sol, rhs, &
 call test_poisson([1._dp, 1._dp, 1._dp], 2, 3, 5, 5, sol, rhs, &
     1e-5_dp, 3*pi**2/8, 1e-7_dp)
 
+call test_poisson([2._dp, 3._dp, 5._dp], 2, 2, 2, 8, sol, rhs, &
+    1e-2_dp, 45*pi**2/4, 1e-3_dp)
+
+call test_poisson([2._dp, 3._dp, 5._dp], 2, 3, 5, 6, sol, rhs, &
+    1e-4_dp, 45*pi**2/4, 1e-5_dp)
+
 contains
 
 real(dp) function rhs(x, y, z) result(r)
