@@ -66,6 +66,8 @@ real(dp), dimension(size(xiq), size(xiq), size(xiq)) :: fq
 real(dp) :: lx, ly, lz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz, jac_det
+real(dp), dimension(size(xiq), size(xiq), size(xiq), &
+    size(xiq), size(xiq), size(xiq)) :: Am_loc
 
 Ne = size(elems, 2)
 p = size(xin) - 1
@@ -102,6 +104,26 @@ jac_det = abs(jacx*jacy*jacz)
 phi_dx = phi_dx / jacx
 phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
+! Precalculate element matrices:
+print *, "Precalculating local element matrix..."
+do bz = 1, p+1
+do by = 1, p+1
+do bx = 1, p+1
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        Am_loc(ax, ay, az, bx, by, bz) = sum(( &
+            phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
+            phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
+            phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
+            * jac_det * wtq)
+    end do
+    end do
+    end do
+end do
+end do
+end do
+print *, "Assembly..."
 do e = 1, Ne
     fq = rhsq(:, :, :, e)
     fq = fq * jac_det * wtq
@@ -116,11 +138,7 @@ do e = 1, Ne
             i = ib(ax, ay, az, e)
             if (i == 0) cycle
             if (j > i) cycle
-            Am(i,j) = Am(i,j) + sum( &
-                (phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) &
-                +phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) &
-                +phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
-                    * jac_det * wtq)
+            Am(i,j) = Am(i,j) + Am_loc(ax, ay, az, bx, by, bz)
         end do
         end do
         end do
