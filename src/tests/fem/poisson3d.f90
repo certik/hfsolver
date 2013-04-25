@@ -5,7 +5,7 @@ use utils, only: assert, stop_error
 use constants, only: pi
 implicit none
 private
-public assemble_3d, integral, get_rhs, get_exact
+public assemble_3d, integral, func2quad
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -16,16 +16,6 @@ interface
 end interface
 
 contains
-
-real(dp) elemental function f(x, y, z)
-real(dp), intent(in) :: x, y, z
-f = 3 * pi**2 * sin(pi*x) * sin(pi*y) * sin(pi*z)
-end function
-
-real(dp) elemental function exact_sol(x, y, z)
-real(dp), intent(in) :: x, y, z
-exact_sol = sin(pi*x) * sin(pi*y) * sin(pi*z)
-end function
 
 function func2quad(nodes, elems, xiq, func) result(fq)
 ! Return an array of function 'func' values at quadrature points
@@ -56,72 +46,6 @@ do e = 1, Ne
     do iqy = 1, size(xiq)
     do iqx = 1, size(xiq)
         fq(iqx, iqy, iqz, e) = func(x(iqx), y(iqy), z(iqz))
-    end do
-    end do
-    end do
-end do
-end function
-
-function get_rhs(nodes, elems, xiq) result(fq)
-real(dp), intent(in):: nodes(:, :), xiq(:)
-integer, intent(in):: elems(:, :)
-integer :: Ne, e, iqx, iqy, iqz
-real(dp), dimension(size(xiq), size(xiq), size(xiq), size(elems, 2)) :: fq
-real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
-real(dp) :: lx, ly, lz
-real(dp) :: jacx, jacy, jacz, jac_det
-lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
-ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
-lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
-jacx = lx/2
-jacy = ly/2
-jacz = lz/2
-jac_det = abs(jacx*jacy*jacz)
-xp = (xiq + 1) * jacx
-yp = (xiq + 1) * jacy
-zp = (xiq + 1) * jacz
-Ne = size(elems, 2)
-do e = 1, Ne
-    x = xp + nodes(1, elems(1, e))
-    y = yp + nodes(2, elems(1, e))
-    z = zp + nodes(3, elems(1, e))
-    do iqz = 1, size(xiq)
-    do iqy = 1, size(xiq)
-    do iqx = 1, size(xiq)
-        fq(iqx, iqy, iqz, e) = f(x(iqx), y(iqy), z(iqz))
-    end do
-    end do
-    end do
-end do
-end function
-
-function get_exact(nodes, elems, xiq) result(fq)
-real(dp), intent(in):: nodes(:, :), xiq(:)
-integer, intent(in):: elems(:, :)
-integer :: Ne, e, iqx, iqy, iqz
-real(dp), dimension(size(xiq), size(xiq), size(xiq), size(elems, 2)) :: fq
-real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
-real(dp) :: lx, ly, lz
-real(dp) :: jacx, jacy, jacz, jac_det
-lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
-ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
-lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
-jacx = lx/2
-jacy = ly/2
-jacz = lz/2
-jac_det = abs(jacx*jacy*jacz)
-xp = (xiq + 1) * jacx
-yp = (xiq + 1) * jacy
-zp = (xiq + 1) * jacz
-Ne = size(elems, 2)
-do e = 1, Ne
-    x = xp + nodes(1, elems(1, e))
-    y = yp + nodes(2, elems(1, e))
-    z = zp + nodes(3, elems(1, e))
-    do iqz = 1, size(xiq)
-    do iqy = 1, size(xiq)
-    do iqx = 1, size(xiq)
-        fq(iqx, iqy, iqz, e) = exact_sol(x(iqx), y(iqy), z(iqz))
     end do
     end do
     end do
@@ -242,14 +166,23 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d
-use poisson3d_assembly, only: assemble_3d, integral, get_rhs, &
-    get_exact
+use poisson3d_assembly, only: assemble_3d, integral, func2quad
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use constants, only: pi
 implicit none
 
 contains
+
+real(dp) function f(x, y, z)
+real(dp), intent(in) :: x, y, z
+f = 3 * pi**2 * sin(pi*x) * sin(pi*y) * sin(pi*z)
+end function
+
+real(dp) function exact_sol(x, y, z)
+real(dp), intent(in) :: x, y, z
+exact_sol = sin(pi*x) * sin(pi*y) * sin(pi*z)
+end function
 
 real(dp) function solve_poisson(Nex, Ney, Nez, p) result(error)
 integer, intent(in) :: p
@@ -295,8 +228,8 @@ allocate(A(Nb, Nb), rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
 allocate(rhsq(Nq, Nq, Nq, Ne))
 allocate(exactq(Nq, Nq, Nq, Ne))
 
-rhsq = get_rhs(nodes, elems, xiq)
-exactq = get_exact(nodes, elems, xiq)
+rhsq = func2quad(nodes, elems, xiq, f)
+exactq = func2quad(nodes, elems, xiq, exact_sol)
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, rhsq, A, rhs)
 sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
