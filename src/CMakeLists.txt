@@ -38,6 +38,8 @@ set(SRC
     fe_mesh.f90
     fourier.f90
 
+    poisson3d_assembly.f90
+
     c_hfsolver.f90
 )
 
