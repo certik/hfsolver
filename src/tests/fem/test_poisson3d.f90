@@ -7,13 +7,16 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
+use utils, only: assert
 implicit none
 
 contains
 
-real(dp) function solve_poisson(Nex, Ney, Nez, p, fexact, frhs) result(error)
+subroutine test_poisson(Nex, Ney, Nez, p, fexact, frhs, &
+        l2_error_eps, hartree_energy_exact, hartree_energy_eps)
 integer, intent(in) :: p
 procedure(func_xyz) :: fexact, frhs
+real(dp), intent(in) :: l2_error_eps, hartree_energy_exact, hartree_energy_eps
 
 integer :: Nn, Ne
 ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
@@ -26,6 +29,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), rhs(:), sol(:), &
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
+real(dp) :: hartree_energy, l2_error, hartree_energy_error
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [0._dp, 0._dp, 0._dp], [1._dp, 1._dp, 1._dp], nodes, elems)
@@ -62,9 +66,16 @@ call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, rhsq, A, rhs)
 sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
-error = sqrt(integral(nodes, elems, wtq3, (solq-exactq)**2))
-print *, "HARTREE ENERGY:", integral(nodes, elems, wtq3, solq*rhsq)
-end function
+l2_error = sqrt(integral(nodes, elems, wtq3, (solq-exactq)**2))
+hartree_energy = integral(nodes, elems, wtq3, solq*rhsq)
+hartree_energy_error = abs(hartree_energy-hartree_energy_exact)
+print "(' L2 Error:',es10.2)", l2_error
+print *, "Hartree Energy (calculated):", hartree_energy
+print *, "Hartree Energy (exact):     ", hartree_energy_exact
+print "(' Hartree Energy (error):',es10.2)", hartree_energy_error
+call assert(l2_error < l2_error_eps)
+call assert(hartree_energy_error < hartree_energy_eps)
+end subroutine
 
 end module
 
@@ -74,14 +85,11 @@ end module
 
 program test_poisson3d
 use types, only: dp
-use poisson3d_test_util, only: solve_poisson
+use poisson3d_test_util, only: test_poisson
 use constants, only: pi
 implicit none
 
-real(dp) :: error
-
-error = solve_poisson(1, 1, 1, 8, sol, rhs)
-print *, "L2 error:", error
+call test_poisson(1, 1, 1, 8, sol, rhs, 1e-7_dp, 3.701102_dp, 1e-6_dp)
 
 contains
 
