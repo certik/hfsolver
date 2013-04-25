@@ -3,8 +3,11 @@ macro(ADDPROG name)
     target_link_libraries(${name} hfsolver ${LIBS})
 endmacro(ADDPROG)
 
+project(fem)
+
 addprog(poisson2d)
-addprog(poisson3d)
 addprog(laplace2d_eig)
 addprog(schroed2d)
 addprog(schroed3d)
+
+addtest(test_poisson3d)
