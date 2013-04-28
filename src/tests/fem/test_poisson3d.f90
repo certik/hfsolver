@@ -12,9 +12,9 @@ implicit none
 
 contains
 
-subroutine test_poisson(box_dim, Nex, Ney, Nez, p, fexact, frhs, &
+subroutine test_poisson(box_dim, Nex, Ney, Nez, p, ibc, fexact, frhs, &
         l2_error_eps, hartree_energy_exact, hartree_energy_eps)
-integer, intent(in) :: p
+integer, intent(in) :: p, ibc
 procedure(func_xyz) :: fexact, frhs
 real(dp), intent(in) :: l2_error_eps, hartree_energy_exact, hartree_energy_eps
 real(dp), intent(in) :: box_dim(3)
@@ -54,7 +54,7 @@ forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
-call define_connect_tensor_3d(Nex, Ney, Nez, p, 2, ib)
+call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
@@ -91,15 +91,15 @@ use poisson3d_test_util, only: test_poisson
 use constants, only: pi
 implicit none
 
-call test_poisson([1._dp, 1._dp, 1._dp], 1, 1, 1, 8, sol, rhs, &
+call test_poisson([1._dp, 1._dp, 1._dp], 1, 1, 1, 8, 2, sol, rhs, &
     1e-7_dp, 3*pi**2/8, 1e-11_dp)
-call test_poisson([1._dp, 1._dp, 1._dp], 2, 3, 5, 5, sol, rhs, &
+call test_poisson([1._dp, 1._dp, 1._dp], 2, 3, 5, 5, 2, sol, rhs, &
     1e-5_dp, 3*pi**2/8, 1e-7_dp)
 
-call test_poisson([2._dp, 3._dp, 5._dp], 2, 2, 2, 8, sol, rhs, &
+call test_poisson([2._dp, 3._dp, 5._dp], 2, 2, 2, 8, 2, sol, rhs, &
     1e-2_dp, 45*pi**2/4, 1e-3_dp)
 
-call test_poisson([2._dp, 3._dp, 5._dp], 2, 3, 5, 6, sol, rhs, &
+call test_poisson([2._dp, 3._dp, 5._dp], 2, 3, 5, 6, 2, sol, rhs, &
     1e-4_dp, 45*pi**2/4, 1e-5_dp)
 
 contains
