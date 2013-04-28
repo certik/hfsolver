@@ -186,7 +186,8 @@ subroutine define_connect_tensor_3d(nex, ney, nez, p, ibc, gn)
 ! 3D connectivity table for tensor-product order p elements
 integer, intent(in) :: nex, ney, nez ! Number of elements in x, y, z directions
 integer, intent(in) :: p ! Polynomial order of elements
-integer, intent(in) :: ibc ! Boundary condition: 1 = Neumann, 2 = Dirichlet
+! Boundary condition: 1 = Neumann, 2 = Dirichlet, 3 = periodic
+integer, intent(in) :: ibc
 ! gn(i, j, k, e) is the global node number of the local (i,j,k) node
 ! in the e-th element:
 integer, allocatable, intent(out) :: gn(:, :, :, :)
@@ -199,7 +200,7 @@ inode = 0
 do iz = 1, nez*p+1
     do iy = 1, ney*p+1
         do ix = 1, nex*p+1
-            if (ibc == 2 .and. (ix == 1 .or. ix == nex*p+1 .or. &
+            if (ibc >= 2 .and. (ix == 1 .or. ix == nex*p+1 .or. &
                 iy == 1 .or. iy == ney*p+1 .or. &
                 iz == 1 .or. iz == nez*p+1)) cycle
             inode = inode + 1
@@ -207,6 +208,68 @@ do iz = 1, nez*p+1
         end do
     end do
 end do
+if (ibc == 3) then
+    ! Now we need to connect the basis functions on the opposite sites of the
+    ! boundary.
+    ! top-bottom faces (middle part)
+    do ix = 2, nex*p
+        do iy = 2, ney*p
+            inode = inode + 1
+            nodes(ix, iy, 1)       = inode
+            nodes(ix, iy, nez*p+1) = inode
+        end do
+    end do
+    ! top-bottom faces (4 edges connecting them)
+    do iz = 2, nez*p
+        inode = inode + 1
+        nodes(1, 1, iz)             = inode
+        nodes(1, ney*p+1, iz)       = inode
+        nodes(nex*p+1, 1, iz)       = inode
+        nodes(nex*p+1, ney*p+1, iz) = inode
+    end do
+    ! left-right faces (middle part)
+    do iy = 2, ney*p
+        do iz = 2, nez*p
+            inode = inode + 1
+            nodes(1, iy, iz)       = inode
+            nodes(nex*p+1, iy, iz) = inode
+        end do
+    end do
+    ! left-right faces (4 edges connecting them)
+    do ix = 2, nex*p
+        inode = inode + 1
+        nodes(ix, 1, 1)             = inode
+        nodes(ix, 1, nez*p+1)       = inode
+        nodes(ix, ney*p+1, 1)       = inode
+        nodes(ix, ney*p+1, nez*p+1) = inode
+    end do
+    ! front-back faces (middle part)
+    do ix = 2, nex*p
+        do iz = 2, nez*p
+            inode = inode + 1
+            nodes(ix, 1, iz)       = inode
+            nodes(ix, ney*p+1, iz) = inode
+        end do
+    end do
+    ! front-back faces (4 edges connecting them)
+    do iy = 2, ney*p
+        inode = inode + 1
+        nodes(1, iy, 1)             = inode
+        nodes(1, iy, nez*p+1)       = inode
+        nodes(nex*p+1, iy, 1)       = inode
+        nodes(nex*p+1, iy, nez*p+1) = inode
+    end do
+    ! Corners (vertices)
+    inode = inode + 1
+    nodes(1, 1, 1)                   = inode
+    nodes(1, ney*p+1, 1)             = inode
+    nodes(nex*p+1, 1, 1)             = inode
+    nodes(nex*p+1, ney*p+1, 1)       = inode
+    nodes(1, 1, nez*p+1)             = inode
+    nodes(1, ney*p+1, nez*p+1)       = inode
+    nodes(nex*p+1, 1, nez*p+1)       = inode
+    nodes(nex*p+1, ney*p+1, nez*p+1) = inode
+end if
 ! Construct connectivity table of global nodes in each element
 allocate(gn(p+1, p+1, p+1, Nex*Ney*Nez))
 iel = 0
