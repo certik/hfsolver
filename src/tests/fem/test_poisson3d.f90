@@ -102,6 +102,12 @@ call test_poisson([2._dp, 3._dp, 5._dp], 2, 2, 2, 8, 2, sol, rhs, &
 call test_poisson([2._dp, 3._dp, 5._dp], 2, 3, 5, 6, 2, sol, rhs, &
     1e-4_dp, 45*pi**2/4, 1e-5_dp)
 
+call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol, rhs, &
+    8e-2_dp, 3*pi**2, 5e-7_dp)
+
+call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol2, rhs2, &
+    1e-1_dp, 3*pi**2, 5e-6_dp)
+
 contains
 
 real(dp) function rhs(x, y, z) result(r)
@@ -112,6 +118,16 @@ end function
 real(dp) function sol(x, y, z) result(r)
 real(dp), intent(in) :: x, y, z
 r = sin(pi*x) * sin(pi*y) * sin(pi*z)
+end function
+
+real(dp) function rhs2(x, y, z) result(r)
+real(dp), intent(in) :: x, y, z
+r = 3 * pi**2 * sin(pi*(x+0.5_dp)) * sin(pi*(y+0.5_dp)) * sin(pi*(z+0.5_dp))
+end function
+
+real(dp) function sol2(x, y, z) result(r)
+real(dp), intent(in) :: x, y, z
+r = sin(pi*(x+0.5_dp)) * sin(pi*(y+0.5_dp)) * sin(pi*(z+0.5_dp))
 end function
 
 end program
