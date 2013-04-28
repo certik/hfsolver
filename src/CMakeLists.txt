@@ -39,6 +39,7 @@ set(SRC
     fourier.f90
 
     poisson3d_assembly.f90
+    interp3d.f90
 
     c_hfsolver.f90
 )
