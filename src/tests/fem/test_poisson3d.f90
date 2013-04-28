@@ -68,6 +68,7 @@ print *, "Solving..."
 sol = solve(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
+if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))
 l2_error = sqrt(integral(nodes, elems, wtq3, (solq-exactq)**2))
 hartree_energy = integral(nodes, elems, wtq3, solq*rhsq)
 hartree_energy_error = abs(hartree_energy-hartree_energy_exact)
@@ -103,10 +104,10 @@ call test_poisson([2._dp, 3._dp, 5._dp], 2, 3, 5, 6, 2, sol, rhs, &
     1e-4_dp, 45*pi**2/4, 1e-5_dp)
 
 call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol, rhs, &
-    8e-2_dp, 3*pi**2, 5e-7_dp)
+    2e-5_dp, 3*pi**2, 5e-7_dp)
 
 call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol2, rhs2, &
-    1e-1_dp, 3*pi**2, 5e-6_dp)
+    2e-4_dp, 3*pi**2, 5e-6_dp)
 
 contains
 
