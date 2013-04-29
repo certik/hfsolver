@@ -40,6 +40,7 @@ set(SRC
 
     poisson3d_assembly.f90
     interp3d.f90
+    isolve.f90
 
     c_hfsolver.f90
 )

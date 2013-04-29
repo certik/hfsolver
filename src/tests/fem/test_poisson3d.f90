@@ -7,6 +7,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
+use isolve, only: solve_cg
 use utils, only: assert
 implicit none
 
@@ -65,7 +66,8 @@ exactq = func2quad(nodes, elems, xiq, fexact)
 rhsq = func2quad(nodes, elems, xiq, frhs)
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, rhsq, A, rhs)
 print *, "Solving..."
-sol = solve(A, rhs)
+!sol = solve(A, rhs)
+sol = solve_cg(A, rhs)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))
