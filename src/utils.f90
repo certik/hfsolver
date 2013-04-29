@@ -7,7 +7,8 @@ use types, only: dp
 implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
-    stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random
+    stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random, &
+    zeros
 
 interface str
     module procedure str_int, str_real, str_real_n
@@ -278,6 +279,12 @@ do i = 1, n
     u(i) = a + (i-1)*dx
 end do
 end subroutine
+
+function zeros(n) result(x)
+integer, intent(in) :: n
+real(dp) :: x(n)
+x = 0
+end function
 
 subroutine assert(condition)
 ! If condition == .false., it aborts the program.
