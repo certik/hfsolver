@@ -7,7 +7,8 @@ public trilinear
 contains
 
 real(dp) function trilinear(x, p1, p2, values) result(r)
-! Returns trilinear interpolation of a point x0 using uniform data values
+! Returns trilinear interpolation of a point 'x' using uniform data 'values'
+! specified in a box determined by 'p1' and 'p2' points.
 real(dp), intent(in) :: x(:) ! The 3D coordinates of a point to interpolate
 real(dp), intent(in) :: p1(:) ! The lower left front corner is p1(3)
 real(dp), intent(in) :: p2(:) ! The upper right back corner is p2(3)
