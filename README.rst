@@ -30,6 +30,9 @@ Only cmake, Lapack and gfortran is needed::
 Additional features can be turned on in ``CMakeCache.txt`` or on the command
 line. See the ``CMakeLists.txt`` for available options.
 
+.. image:: https://travis-ci.org/certik/hfsolver.png?branch=master
+    :target: https://travis-ci.org/certik/hfsolver
+
 License
 -------
 
