@@ -15,14 +15,15 @@ real(dp), intent(in) :: x0(:) ! Initial guess
 real(dp), intent(in) :: tol ! Tolerance in residual
 integer, intent(in) :: maxiter ! Maximum number of iterations
 real(dp) :: x(size(b)) ! solution
-real(dp), dimension(size(b)) :: r, p, Ap
-real(dp) :: r2, r2old, alpha
+real(dp), dimension(size(b)) :: r, p, Ap, z
+real(dp) :: r2, r2old, alpha, res_norm
 integer :: i
 
 x = x0
 r = b - matmul(A, x)
-p = r
-r2old = dot_product(r, r)    ! ||A x - b||^2
+z = precond(r)
+p = z
+r2old = dot_product(r, z)
 print *, "Conjugate Gradient solver"
 print *, "Iter    Residual ||A x - b||"
 do i = 1, maxiter
@@ -30,19 +31,37 @@ do i = 1, maxiter
     alpha = r2old / dot_product(p, Ap)
     x = x + alpha * p
     r = r - alpha * Ap
-    r2 = dot_product(r, r)  ! Good approximation for ||A x - b||^2
+    res_norm = sqrt(dot_product(r, r))  ! Good approximation to ||A x - b||
 
-    print "(i4, '      ', es10.2)", i, sqrt(r2)
-    if (sqrt(r2) < tol) then
+    print "(i4, '      ', es10.2)", i, res_norm
+    if (res_norm < tol) then
         r = matmul(A, x) - b
         write(*, '(1x,a,es10.2)') "Solution vector residual ||A x - b||/||bv||: ",  sqrt(dot_product(r, r) / dot_product(b, b))
         return
     end if
 
-    p = r + r2 / r2old * p
+    z = precond(r)
+    r2 = dot_product(r, z)
+    p = z + r2 / r2old * p
     r2old = r2
 end do
 call stop_error("Solution did not converge.")
+
+contains
+
+    function precond(x) result(y)
+    ! Calculates y = M^-1 x
+    real(dp), intent(in) :: x(:)
+    real(dp) :: y(size(x))
+    integer :: i
+    ! No preconditioning:
+    ! y = x
+    ! Jacobi normalization: M = diag(A):
+    do i = 1, size(x)
+        y(i) = x(i) / A(i, i)
+    end do
+    end function
+
 end function
 
 end module
