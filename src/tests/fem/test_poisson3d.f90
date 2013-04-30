@@ -9,6 +9,7 @@ use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros
+use constants, only: pi
 implicit none
 
 contains
@@ -64,7 +65,13 @@ allocate(exactq(Nq, Nq, Nq, Ne))
 
 exactq = func2quad(nodes, elems, xiq, fexact)
 rhsq = func2quad(nodes, elems, xiq, frhs)
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, rhsq, A, rhs)
+! Make the rhsq net neutral (zero integral):
+rhsq = rhsq - integral(nodes, elems, wtq3, rhsq) / &
+    (box_dim(1)*box_dim(2)*box_dim(3))
+! TODO: put the 4*pi factor into assembly
+call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, 4*pi*rhsq, A, rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, rhsq)
 print *, "Solving..."
 !sol = solve(A, rhs)
 sol = solve_cg(A, rhs, zeros(size(rhs)), 1e-12_dp, 200)
@@ -72,7 +79,7 @@ call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))
 l2_error = sqrt(integral(nodes, elems, wtq3, (solq-exactq)**2))
-hartree_energy = integral(nodes, elems, wtq3, solq*rhsq)
+hartree_energy = integral(nodes, elems, wtq3, solq*rhsq) / 2
 hartree_energy_error = abs(hartree_energy-hartree_energy_exact)
 print "(' L2 Error:',es10.2)", l2_error
 print *, "Hartree Energy (calculated):", hartree_energy
