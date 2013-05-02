@@ -66,9 +66,10 @@ allocate(exactq(Nq, Nq, Nq, Ne))
 exactq = func2quad(nodes, elems, xiq, fexact)
 rhsq = func2quad(nodes, elems, xiq, frhs)
 ! Make the rhsq net neutral (zero integral):
-rhsq = rhsq - integral(nodes, elems, wtq3, rhsq) / &
-    (box_dim(1)*box_dim(2)*box_dim(3))
-! TODO: put the 4*pi factor into assembly
+if (ibc == 3) then
+    rhsq = rhsq - integral(nodes, elems, wtq3, rhsq) / &
+        (box_dim(1)*box_dim(2)*box_dim(3))
+end if
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, 4*pi*rhsq, A, rhs)
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, rhsq)
@@ -102,27 +103,27 @@ use constants, only: pi
 implicit none
 
 call test_poisson([1._dp, 1._dp, 1._dp], 1, 1, 1, 8, 2, sol, rhs, &
-    1e-7_dp, 3*pi**2/8, 1e-11_dp)
+    1e-7_dp, 3*pi/64, 1e-11_dp)
 call test_poisson([1._dp, 1._dp, 1._dp], 2, 3, 5, 5, 2, sol, rhs, &
-    1e-5_dp, 3*pi**2/8, 1e-7_dp)
+    1e-5_dp, 3*pi/64, 1e-7_dp)
 
 call test_poisson([2._dp, 3._dp, 5._dp], 2, 2, 2, 8, 2, sol, rhs, &
-    1e-2_dp, 45*pi**2/4, 1e-3_dp)
+    1e-2_dp, 45*pi/32, 1e-3_dp)
 
 call test_poisson([2._dp, 3._dp, 5._dp], 2, 3, 5, 6, 2, sol, rhs, &
-    1e-4_dp, 45*pi**2/4, 1e-5_dp)
+    1e-4_dp, 45*pi/32, 1e-5_dp)
 
 call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol, rhs, &
-    2e-5_dp, 3*pi**2, 5e-7_dp)
+    2e-5_dp, 3*pi/8, 5e-7_dp)
 
 call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol2, rhs2, &
-    2e-4_dp, 3*pi**2, 5e-6_dp)
+    2e-4_dp, 3*pi/8, 5e-6_dp)
 
 contains
 
 real(dp) function rhs(x, y, z) result(r)
 real(dp), intent(in) :: x, y, z
-r = 3 * pi**2 * sin(pi*x) * sin(pi*y) * sin(pi*z)
+r = 3._dp/4 * pi * sin(pi*x) * sin(pi*y) * sin(pi*z)
 end function
 
 real(dp) function sol(x, y, z) result(r)
@@ -132,7 +133,7 @@ end function
 
 real(dp) function rhs2(x, y, z) result(r)
 real(dp), intent(in) :: x, y, z
-r = 3 * pi**2 * sin(pi*(x+0.5_dp)) * sin(pi*(y+0.5_dp)) * sin(pi*(z+0.5_dp))
+r = 3._dp/4 * pi * sin(pi*(x+0.5_dp)) * sin(pi*(y+0.5_dp)) * sin(pi*(z+0.5_dp))
 end function
 
 real(dp) function sol2(x, y, z) result(r)
