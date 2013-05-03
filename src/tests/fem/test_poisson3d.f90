@@ -32,7 +32,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), rhs(:), sol(:), &
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: hartree_energy, l2_error, hartree_energy_error
+real(dp) :: hartree_energy, l2_error, hartree_energy_error, background
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [0._dp, 0._dp, 0._dp], box_dim, nodes, elems)
@@ -67,8 +67,10 @@ exactq = func2quad(nodes, elems, xiq, fexact)
 rhsq = func2quad(nodes, elems, xiq, frhs)
 ! Make the rhsq net neutral (zero integral):
 if (ibc == 3) then
-    rhsq = rhsq - integral(nodes, elems, wtq3, rhsq) / &
+    background = integral(nodes, elems, wtq3, rhsq) / &
         (box_dim(1)*box_dim(2)*box_dim(3))
+    print *, "Subtracting constant background: ", background
+    rhsq = rhsq - background
 end if
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, 4*pi*rhsq, A, rhs)
 print *, "sum(rhs):    ", sum(rhs)
@@ -119,6 +121,16 @@ call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol, rhs, &
 call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol2, rhs2, &
     2e-4_dp, 3*pi/8, 5e-6_dp)
 
+call test_poisson([2._dp, 2._dp, 2._dp], 2, 2, 2, 4, 3, sol3, rhs3, &
+    5e-13_dp, 128/(35*pi), 1e-14_dp)
+
+! Analytically I am getting for the Hartree integral: 1152/(35*pi)
+!   http://nbviewer.ipython.org/5506706
+! Which is 9/44 times the FE value.
+! Also the solution does not seem to agree.
+call test_poisson([2._dp, 4._dp, 2._dp], 1, 1, 1, 4, 3, sol4, rhs4, &
+    40._dp, 5632/(35*pi), 5e-12_dp)
+
 contains
 
 real(dp) function rhs(x, y, z) result(r)
@@ -139,6 +151,26 @@ end function
 real(dp) function sol2(x, y, z) result(r)
 real(dp), intent(in) :: x, y, z
 r = sin(pi*(x+0.5_dp)) * sin(pi*(y+0.5_dp)) * sin(pi*(z+0.5_dp))
+end function
+
+real(dp) function rhs3(x, y, z) result(r)
+real(dp), intent(in) :: x, y, z
+r = 3 * ((x-1)**2 + (y-1)**2 + (z-1)**2 - 1) / pi
+end function
+
+real(dp) function sol3(x, y, z) result(r)
+real(dp), intent(in) :: x, y, z
+r = -((x-1)**4 + (y-1)**4 + (z-1)**4) + 2*((x-1)**2 + (y-1)**2 + (z-1)**2)
+end function
+
+real(dp) function rhs4(x, y, z) result(r)
+real(dp), intent(in) :: x, y, z
+r = 3*((x-1)**2 + (y-2)**2 + (z-1)**2 - 2) / pi
+end function
+
+real(dp) function sol4(x, y, z) result(r)
+real(dp), intent(in) :: x, y, z
+r = -((x-1)**4 + (y-2)**4 + (z-1)**4) + 4*((x-1)**2 + (y-2)**2 + (z-1)**2)
 end function
 
 end program
