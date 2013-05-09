@@ -69,9 +69,7 @@ integer :: n, i, n_row, nnz, cumsum, temp, row, dest
 n_row = size(Bp)-1
 nnz = size(Ai)
 Bp = 0
-do n = 1, nnz
-    Bp(Ai(n)) = Bp(Ai(n)) + 1
-end do
+forall(n = 1:nnz) Bp(Ai(n)) = Bp(Ai(n)) + 1
 cumsum = 1
 do i = 1, n_row
     temp = Bp(i)
