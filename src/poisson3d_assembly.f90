@@ -174,9 +174,10 @@ end do
 print *, "Converting COO -> CSR..."
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
     matBp, matBj, matBx)
-print *, "CSR matrix, dimension:", size(matBp)-1
-print *, "CSR matrix, number of nonzeros:", size(matBx), &
-    "density", real(size(matBx), dp) / (size(matBp)-1)**2
+print *, "CSR Matrix:"
+print *, "    dimension:", size(matBp)-1
+print *, "    number of nonzeros:", size(matBx)
+print "('     density:', f7.2, '%')", size(matBx) * 100._dp / (size(matBp)-1)**2
 end subroutine
 
 real(dp) function integral(nodes, elems, wtq, fq) result(r)
