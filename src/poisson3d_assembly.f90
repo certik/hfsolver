@@ -171,6 +171,7 @@ do e = 1, Ne
     end do
     end do
 end do
+print *, "Converting COO -> CSR..."
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
     matBp, matBj, matBx)
 print *, "CSR matrix, dimension:", size(matBp)-1
