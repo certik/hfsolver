@@ -200,4 +200,49 @@ forall (i=1:size(Ap)-1)
 end forall
 end function
 
+integer function lower_bound(A, val) result(i)
+! Returns the lowest index "i" into the sorted array A so that A(i) >= val
+! It uses bisection.
+integer, intent(in) :: A(:), val
+integer :: l, idx
+if (A(1) >= val) then
+    i = 1
+    return
+end if
+if (A(size(A)) < val) then
+    i = size(A)+1
+    return
+end if
+l = 1
+i = size(A)
+! Now we always have A(l) < val; A(i) >= val and we must make sure that "i" is
+! the lowest possible such index.
+do while (l + 1 < i)
+    idx = (l+i) / 2
+    if (A(idx) < val) then
+        l = idx
+    else
+        i = idx
+    end if
+end do
+end function
+
+
+real(dp) function csr_getvalue(Ap, Aj, Ax, i, j) result(r)
+! Returns A(i, j) where the matrix A is given in the CSR format using
+! (Ap, Aj, Ax) triple. Assumes A to be in canonical CSR format.
+integer, intent(in) :: Ap(:), Aj(:)
+real(dp), intent(in) :: Ax(:)
+integer, intent(in) :: i, j
+integer :: row_start, row_end, offset
+row_start = Ap(i)
+row_end = Ap(i+1)-1
+offset = lower_bound(Aj(row_start:row_end), j) + row_start - 1
+if (offset <= row_end .and. Aj(offset) == j) then
+    r = Ax(offset)
+else
+    r = 0
+end if
+end function
+
 end module
