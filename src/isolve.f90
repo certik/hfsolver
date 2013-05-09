@@ -1,7 +1,7 @@
 module isolve
 use types, only: dp
 use utils, only: stop_error
-use sparse, only: csr_matvec
+use sparse, only: csr_matvec, csr_getvalue
 implicit none
 private
 public solve_cg
@@ -55,15 +55,13 @@ contains
     ! Calculates y = M^-1 x
     real(dp), intent(in) :: x(:)
     real(dp) :: y(size(x))
-    ! TODO: allow to retrieve elements (i, j) from the CSR matrix (write a
-    ! subroutine and reenble this:
-    !integer :: i
+    integer :: i
     ! No preconditioning:
-    y = x
+    !y = x
     ! Jacobi normalization: M = diag(A):
-    !do i = 1, size(x)
-    !    y(i) = x(i) / A(i, i)
-    !end do
+    do i = 1, size(x)
+        y(i) = x(i) / csr_getvalue(Ap, Aj, Ax, i, i)
+    end do
     end function
 
 end function
