@@ -195,7 +195,9 @@ integer, intent(in) :: Ap(:), Aj(:)
 real(dp), intent(in) :: Ax(:), x(:)
 real(dp) :: y(size(x))
 integer :: i
-forall(i=1:size(Ap)-1) y(i) = sum(Ax(Ap(i):Ap(i+1)-1) * x(Aj(Ap(i):Ap(i+1)-1)))
+forall (i=1:size(Ap)-1)
+    y(i) = dot_product(Ax(Ap(i):Ap(i+1)-1), x(Aj(Ap(i):Ap(i+1)-1)))
+end forall
 end function
 
 end module
