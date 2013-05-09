@@ -26,10 +26,11 @@ integer :: Nn, Ne
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq, Nb
-real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), rhs(:), sol(:), &
+real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
+        rhs(:), sol(:), &
         fullsol(:), solq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
         rhsq(:, :, :, :), exactq(:, :, :, :)
-integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
+integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: hartree_energy, l2_error, hartree_energy_error, background
@@ -59,7 +60,7 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
 print *, "DOFs =", Nb
-allocate(A(Nb, Nb), rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
+allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
 allocate(rhsq(Nq, Nq, Nq, Ne))
 allocate(exactq(Nq, Nq, Nq, Ne))
 
@@ -72,12 +73,13 @@ if (ibc == 3) then
     print *, "Subtracting constant background: ", background
     rhsq = rhsq - background
 end if
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, 4*pi*rhsq, A, rhs)
+call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, 4*pi*rhsq, &
+    Ap, Aj, Ax, rhs)
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, rhsq)
 print *, "Solving..."
 !sol = solve(A, rhs)
-sol = solve_cg(A, rhs, zeros(size(rhs)), 1e-12_dp, 200)
+sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 200)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))

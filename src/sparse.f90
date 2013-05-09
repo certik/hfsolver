@@ -189,13 +189,13 @@ do i = 1, size(Ap)-1
 end do
 end subroutine
 
-subroutine csr_matvec(Ap, Aj, Ax, x, y)
+function csr_matvec(Ap, Aj, Ax, x) result(y)
 ! Compute y = A*x for CSR matrix A and dense vectors x, y
 integer, intent(in) :: Ap(:), Aj(:)
 real(dp), intent(in) :: Ax(:), x(:)
-real(dp), intent(out) :: y(:)
+real(dp) :: y(size(x))
 integer :: i
 forall(i=1:size(Ap)-1) y(i) = sum(Ax(Ap(i):Ap(i+1)-1) * x(Aj(Ap(i):Ap(i+1)-1)))
-end subroutine
+end function
 
 end module
