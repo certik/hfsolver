@@ -29,7 +29,7 @@ r2old = dot_product(r, z)
 print *, "Conjugate Gradient solver"
 print *, "Iter    Residual ||A x - b||"
 do i = 1, maxiter
-    Ap_ = csr_matvec(Ap, Aj, Ax, x)
+    Ap_ = csr_matvec(Ap, Aj, Ax, p)
     alpha = r2old / dot_product(p, Ap_)
     x = x + alpha * p
     r = r - alpha * Ap_
