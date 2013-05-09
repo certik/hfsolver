@@ -2,7 +2,7 @@ program test_sparse
 use types, only: dp
 use sparse, only: coo2dense, dense2coo, getnnz, coo2csr, &
     csr_has_canonical_format, csr_sum_duplicates, csr_sort_indices, &
-    coo2csr_canonical, csr_matvec
+    coo2csr_canonical, csr_matvec, csr_getvalue
 use utils, only: assert
 
 real(dp), allocatable :: A(:, :), B(:, :), Ax(:), Bx(:), x(:), y(:)
@@ -88,6 +88,19 @@ call assert(all(Bp == [1, 2, 4, 5]))
 call assert(all(Bj == [1, 3, 4, 2]))
 call assert(all(abs(Bx - [5, 7, 1, 3]) < 1e-12_dp))
 call assert(csr_has_canonical_format(Bp, Bj))
+
+call assert(csr_getvalue(Bp, Bj, Bx, 1, 1) == 5)
+call assert(csr_getvalue(Bp, Bj, Bx, 1, 2) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 1, 3) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 1, 4) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 2, 1) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 2, 2) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 2, 3) == 7)
+call assert(csr_getvalue(Bp, Bj, Bx, 2, 4) == 1)
+call assert(csr_getvalue(Bp, Bj, Bx, 3, 1) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 3, 2) == 3)
+call assert(csr_getvalue(Bp, Bj, Bx, 3, 3) == 0)
+call assert(csr_getvalue(Bp, Bj, Bx, 3, 4) == 0)
 
 deallocate(A, B, Ai, Aj, Ax, Bp, Bj, Bx)
 

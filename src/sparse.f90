@@ -9,7 +9,7 @@ implicit none
 private
 public coo2dense, dense2coo, getnnz, coo2csr, coo2csc, &
     csr_has_canonical_format, csr_sum_duplicates, csr_sort_indices, &
-    coo2csr_canonical, csr_matvec
+    coo2csr_canonical, csr_matvec, csr_getvalue
 
 contains
 
