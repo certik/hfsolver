@@ -238,11 +238,13 @@ integer :: row_start, row_end, offset
 row_start = Ap(i)
 row_end = Ap(i+1)-1
 offset = lower_bound(Aj(row_start:row_end), j) + row_start - 1
-if (offset <= row_end .and. Aj(offset) == j) then
-    r = Ax(offset)
-else
-    r = 0
+if (offset <= row_end) then
+    if (Aj(offset) == j) then
+        r = Ax(offset)
+        return
+    end if
 end if
+r = 0
 end function
 
 end module
