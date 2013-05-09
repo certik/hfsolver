@@ -3,6 +3,7 @@ use types, only: dp
 use linalg, only: inv
 use utils, only: assert, stop_error
 use constants, only: pi
+use sparse, only: coo2csr_canonical
 implicit none
 private
 public assemble_3d, integral, func2quad, func_xyz
@@ -53,7 +54,7 @@ end do
 end function
 
 subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, &
-        rhsq, Am, rhs)
+        rhsq, matBp, matBj, matBx, rhs)
 ! Assemble Poisson equation on a 3D hexahedral uniform mesh
 ! It solves:
 !   -\Nabla^2 V(x, y, z) = f(x, y, z)
@@ -62,7 +63,11 @@ subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, &
 real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :, :), &
     phihq(:, :), dphihq(:, :), rhsq(:, :, :, :)
 integer, intent(in):: elems(:, :), ib(:, :, :, :)
-real(dp), intent(out):: Am(:,:), rhs(:)
+real(dp), intent(out):: rhs(:)
+integer, allocatable, intent(out) :: matBp(:), matBj(:)
+real(dp), allocatable, intent(out) :: matBx(:)
+integer, allocatable :: matAi(:), matAj(:)
+real(dp), allocatable :: matAx(:)
 integer :: Ne, p, e, i, j, iqx, iqy, iqz
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xin), size(xin), size(xin)) :: phi_v, phi_dx, phi_dy, phi_dz
@@ -72,6 +77,7 @@ integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz, jac_det
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xiq), size(xiq), size(xiq)) :: Am_loc
+integer :: idx, maxidx
 
 Ne = size(elems, 2)
 p = size(xin) - 1
@@ -96,7 +102,7 @@ do ax = 1, p+1
 end do
 end do
 end do
-Am=0; rhs=0
+rhs=0
 ! Precalculate as much as possible:
 lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
 ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
@@ -128,6 +134,10 @@ end do
 end do
 end do
 print *, "Assembly..."
+idx = 0
+maxidx = Ne*(p+1)**6
+print *, "Number of COO matrix entries:", maxidx
+allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
 do e = 1, Ne
     fq = rhsq(:, :, :, e)
     fq = fq * jac_det * wtq
@@ -142,7 +152,17 @@ do e = 1, Ne
             i = ib(ax, ay, az, e)
             if (i == 0) cycle
             if (j > i) cycle
-            Am(i,j) = Am(i,j) + Am_loc(ax, ay, az, bx, by, bz)
+            idx = idx + 1
+            matAi(idx) = i
+            matAj(idx) = j
+            matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+            if (i /= j) then
+                ! Symmetric contribution
+                idx = idx + 1
+                matAi(idx) = j
+                matAj(idx) = i
+                matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+            end if
         end do
         end do
         end do
@@ -151,11 +171,11 @@ do e = 1, Ne
     end do
     end do
 end do
-do j = 1, size(Am, 2)
-    do i = 1, j-1
-        Am(i, j) = Am(j, i)
-    end do
-end do
+call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
+    matBp, matBj, matBx)
+print *, "CSR matrix, dimension:", size(matBp)-1
+print *, "CSR matrix, number of nonzeros:", size(matBx), &
+    "density", real(size(matBx), dp) / (size(matBp)-1)**2
 end subroutine
 
 real(dp) function integral(nodes, elems, wtq, fq) result(r)
