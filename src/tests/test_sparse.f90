@@ -52,7 +52,7 @@ call assert(all(abs(Bx - [1, 7, 1, 2, 8, 2, 5, 3, 9, 3, 6, 4, 4]) < 1e-12_dp))
 call assert(csr_has_canonical_format(Bp, Bj))
 allocate(x(5), y(4))
 x = [1, 2, 3, 4, 5]
-call csr_matvec(Bp, Bj, Bx, x, y)
+y = csr_matvec(Bp, Bj, Bx, x)
 call assert(all(abs(y-matmul(A, x)) < 1e-12_dp))
 deallocate(A, B, Ai, Aj, Ax, Bp, Bj, Bx, x, y)
 
