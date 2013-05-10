@@ -34,6 +34,7 @@ select case (k)
     case (4)
         res_ = V4(D_, r1_, r2_)
     case default
+        res_ = 0 ! silence gfortran warning
         call stop_error("k = " // str(k) // " not implemented.")
 end select
 res = real(res_, dp)
@@ -86,6 +87,7 @@ select case (k)
     case (4)
         res_ = S4(alpha, t)
     case default
+        res_ = 0 ! silence gfortran warning
         call stop_error("k = " // str(k) // " not implemented.")
 end select
 res_ = res_ * exp(-alpha) / rmax

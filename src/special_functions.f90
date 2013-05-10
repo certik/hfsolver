@@ -157,6 +157,7 @@ else if (m1 == 0 .and. m2 == 0) then
     ! Convert to case C
     r = gauntr(l3, m3, l1, m1, l2, m2, ck, Lmax)
 else
+    r = 0 ! silence gfortran warning
     call stop_error("Internal error.")
 end if
 
@@ -608,6 +609,7 @@ select case (k)
     case (4)
         r = 105/x**4 + 105/x**3 + 45/x**2 + 10/x + 1
     case default
+        r = 0 ! silence gfortran warning
         call stop_error("k = " // str(k) // " not implemented.")
 end select
 r = r * sqrt(pi/(2*x))
