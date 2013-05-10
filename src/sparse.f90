@@ -110,6 +110,7 @@ real(dp), allocatable, intent(out) :: Bx(:)
 integer, allocatable :: Bj_(:)
 real(dp), allocatable :: Bx_(:)
 integer :: nnz
+! TODO: debug this and try to reallocate
 allocate(Bp(maxval(Ai)+1), Bj_(size(Ai)), Bx_(size(Ai)))
 print *, "coo2csr"
 call coo2csr(Ai, Aj, Ax, Bp, Bj_, Bx_)
