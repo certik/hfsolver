@@ -177,7 +177,8 @@ call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
 print *, "CSR Matrix:"
 print *, "    dimension:", size(matBp)-1
 print *, "    number of nonzeros:", size(matBx)
-print "('     density:', f7.2, '%')", size(matBx) * 100._dp / (size(matBp)-1)**2
+print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
+    (size(matBp)-1._dp)**2
 end subroutine
 
 real(dp) function integral(nodes, elems, wtq, fq) result(r)
