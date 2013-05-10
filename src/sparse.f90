@@ -4,7 +4,7 @@ module sparse
 ! scipy.sparse.sparsetools
 
 use types, only: dp
-use sorting, only: argsort
+use sorting, only: argsort, iargsort_quicksort
 implicit none
 private
 public coo2dense, dense2coo, getnnz, coo2csr, coo2csc, &
@@ -111,9 +111,13 @@ integer, allocatable :: Bj_(:)
 real(dp), allocatable :: Bx_(:)
 integer :: nnz
 allocate(Bp(maxval(Ai)+1), Bj_(size(Ai)), Bx_(size(Ai)))
+print *, "coo2csr"
 call coo2csr(Ai, Aj, Ax, Bp, Bj_, Bx_)
+print *, "csr_sort_indices"
 call csr_sort_indices(Bp, Bj_, Bx_)
+print *, "csr_sum_duplicates"
 call csr_sum_duplicates(Bp, Bj_, Bx_)
+print *, "done"
 nnz = Bp(size(Bp))-1
 allocate(Bj(nnz), Bx(nnz))
 Bj = Bj_(:nnz)
@@ -183,7 +187,7 @@ do i = 1, size(Ap)-1
     r1 = Ap(i)
     r2 = Ap(i+1)-1
     l = r2-r1+1
-    idx(:l) = argsort(Aj(r1:r2))
+    idx(:l) = iargsort_quicksort(Aj(r1:r2))
     Aj(r1:r2) = Aj(r1+idx(:l)-1)
     Ax(r1:r2) = Ax(r1+idx(:l)-1)
 end do

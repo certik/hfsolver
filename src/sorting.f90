@@ -7,7 +7,7 @@ use types, only: dp
 use utils, only: stop_error
 implicit none
 private
-public sort, sortpairs, argsort
+public sort, sortpairs, argsort, iargsort_quicksort
 
 ! overload argsort
 interface argsort
@@ -140,6 +140,84 @@ a = argsort(nums)
 nums = nums(a)
 mats = mats(:, :, a)
 end subroutine
+
+pure elemental subroutine swap_int(x,y)
+  integer, intent(in out) :: x,y
+  integer :: z
+  z = x
+  x = y
+  y = z
+end subroutine
+
+pure subroutine interchange_sort_map_int(vec,map)
+  integer, intent(in out) :: vec(:)
+  integer, intent(in out) :: map(:)
+  integer :: i,j
+  do i = 1,size(vec) - 1
+     j = minloc(vec(i:),1)
+     if (j > 1) then
+        call swap_int(vec(i),vec(i + j - 1))
+        call swap_int(map(i),map(i + j - 1))
+     end if
+  end do
+end subroutine
+
+pure function iargsort_quicksort(vec_) result(map)
+  integer, intent(in) :: vec_(:)
+  integer :: map(size(vec_))
+  integer, parameter :: levels = 300
+  integer, parameter :: max_interchange_sort_size = 20
+  integer :: i,left,right,l_bound(levels),u_bound(levels)
+  integer :: pivot
+  integer :: vec(size(vec_))
+
+  vec = vec_
+
+  forall(i=1:size(vec)) map(i) = i
+
+  l_bound(1) = 1
+  u_bound(1) = size(vec)
+  i = 1
+  do while(i >= 1)
+     left = l_bound(i)
+     right = u_bound(i)
+     if (right - left < max_interchange_sort_size) then
+        if (left < right) call interchange_sort_map_int(vec(left:right),map(left:right))
+        i = i - 1
+     else
+        pivot = (vec(left) + vec(right)) / 2
+        left = left - 1
+        right = right + 1
+        do
+           do
+              left = left + 1
+              if (vec(left) >= pivot) exit
+           end do
+           do
+              right = right - 1
+              if (vec(right) <= pivot) exit
+           end do
+           if (left < right) then
+              call swap_int(vec(left),vec(right))
+              call swap_int(map(left),map(right))
+           elseif(left == right) then
+              if (left == l_bound(i)) then
+                 left = left + 1
+              else
+                 right = right - 1
+              end if
+              exit
+           else
+              exit
+           end if
+           end do
+           u_bound(i + 1) = u_bound(i)
+           l_bound(i + 1) = left
+           u_bound(i) = right
+           i = i + 1
+     end if
+  end do
+end function
 
 function iargsort(a) result(b)
 ! Returns the indices that would sort an array.
