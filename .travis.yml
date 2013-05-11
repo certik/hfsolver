@@ -39,7 +39,7 @@ script:
         python test_modified_bessel.py;
     else
         if [ "${TEST_SLOW}" == "yes" ]; then
-          ctest --output-on-failure -L slow;
+          ctest -V --output-on-failure -L slow;
         else
           ctest --output-on-failure -LE slow;
         fi
