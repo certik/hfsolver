@@ -9,5 +9,6 @@ addprog(poisson2d)
 addprog(laplace2d_eig)
 addprog(schroed2d)
 addprog(schroed3d)
+addprog(conv_poisson3d)
 
 addtest(test_poisson3d)

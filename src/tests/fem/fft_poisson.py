@@ -1,15 +1,13 @@
-from numpy import empty, pi, meshgrid, linspace, sum
+from numpy import empty, pi, meshgrid, linspace, sum, sin, exp
 from numpy.fft import fftn, fftfreq, ifftn
-E_exact = 128/(35*pi)
-print "Hartree Energy (exact):      %.15f" % E_exact
 f = open("conv.txt", "w")
-for N in range(3, 384, 10):
+for N in range(3, 50, 2):
     print "N =", N
     L = 2.
-    x1d = linspace(0, L, N)
+    x1d = linspace(0, L, N+1)[:-1]
     x, y, z = meshgrid(x1d, x1d, x1d)
 
-    nr = 3 * ((x-1)**2 + (y-1)**2 + (z-1)**2 - 1) / pi
+    nr = 3*pi*exp(sin(pi*x)*sin(pi*y)*sin(pi*z))/4
     ng = fftn(nr) / N**3
 
     G1d = N * fftfreq(N) * 2*pi/L
@@ -22,8 +20,4 @@ for N in range(3, 384, 10):
     E = sum(tmp) * L**3
     print "Hartree Energy (calculated): %.15f" % E
     f.write("%d %.15f\n" % (N, E))
-
-    Vh = 4*pi*ng / G2
-    Vhr = ifftn(Vh).real
-    print 0.5 * sum(Vhr*nr) * L**3
 f.close()
