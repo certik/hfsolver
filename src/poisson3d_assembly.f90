@@ -57,7 +57,7 @@ subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, &
         rhsq, matBp, matBj, matBx, rhs)
 ! Assemble Poisson equation on a 3D hexahedral uniform mesh
 ! It solves:
-!   -\Nabla^2 V(x, y, z) = f(x, y, z)
+!   \nabla^2 V(x, y, z) = -f(x, y, z)
 ! where f(x, y, z) is specified in "rhsq". Typically, one would use f = 4*pi*n,
 ! where "n" is the positive particle density.
 real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :, :), &
