@@ -166,9 +166,11 @@ else
 end if
 end function
 
-real(dp) function rhs(x, y, z) result(r)
+real(dp) function rhs(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-r = 3*pi*exp(sin(pi*(x+L/2))*sin(pi*(y+L/2))*sin(pi*(z+L/2)))/4
+real(dp) :: r
+r = sqrt(x**2+y**2+z**2)
+n = exp(-5*r**2)
 end function
 
 end program
