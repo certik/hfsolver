@@ -16,11 +16,11 @@ public free_energy
 
 contains
 
-subroutine free_energy(box_dim, Nex, Ney, Nez, p, ibc, frhs, Eh, Nb)
+subroutine free_energy(box_dim, Nex, Ney, Nez, p, ibc, frhs, Eh, Een, Nb)
 integer, intent(in) :: p, ibc
 procedure(func_xyz) :: fexact, frhs
 real(dp), intent(in) :: box_dim(3)
-real(dp), intent(out) :: Eh
+real(dp), intent(out) :: Eh, Een
 integer, intent(out) :: Nb
 
 integer :: Nn, Ne
@@ -31,7 +31,7 @@ integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
         rhs(:), sol(:), &
         fullsol(:), solq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
-        rhsq(:, :, :, :), exactq(:, :, :, :)
+        rhsq(:, :, :, :), exactq(:, :, :, :), Venq(:, :, :, :)
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
@@ -64,6 +64,7 @@ Nb = maxval(ib)
 print *, "DOFs =", Nb
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
 allocate(rhsq(Nq, Nq, Nq, Ne))
+allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(exactq(Nq, Nq, Nq, Ne))
 
 rhsq = func2quad(nodes, elems, xiq, frhs)
@@ -85,7 +86,9 @@ call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))
 Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
+Een = integral(nodes, elems, wtq3, solq*Venq) / 2
 print *, "Hartree Energy:", Eh
+print *, "Electron-nucleus energy:", Een
 end subroutine
 
 end module
@@ -99,16 +102,15 @@ use types, only: dp
 use ofmd_utils, only: free_energy
 use constants, only: pi
 implicit none
-real(dp) :: E
+real(dp) :: Eh, Een
 integer :: u, p, DOF, N
 real(dp) :: Z, Rcut, Ediff
 
 open(newunit=u, file="H.pseudo", status="old")
 read(u, *) Z, N, Rcut, Ediff
 p = 4
-call free_energy([2._dp, 2._dp, 2._dp], 3, 3, 3, p, 3, rhs, E, DOF)
-print *, p, DOF, E
-print *, Z, N, Rcut, Ediff
+call free_energy([2._dp, 2._dp, 2._dp], 3, 3, 3, p, 3, rhs, Eh, Een, DOF)
+print *, p, DOF, Eh, Een
 
 contains
 
