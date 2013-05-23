@@ -16,10 +16,10 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(box_dim, Nex, Ney, Nez, p, ibc, frhs, Eh, Een, Nb)
+subroutine free_energy(L, Nex, Ney, Nez, p, ibc, fVen, frhs, Eh, Een, Nb)
 integer, intent(in) :: p, ibc
-procedure(func_xyz) :: fexact, frhs
-real(dp), intent(in) :: box_dim(3)
+procedure(func_xyz) :: fVen, frhs
+real(dp), intent(in) :: L
 real(dp), intent(out) :: Eh, Een
 integer, intent(out) :: Nb
 
@@ -36,9 +36,14 @@ integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: background
+real(dp) :: Lx, Ly, Lz
+
+Lx = L
+Ly = L
+Lz = L
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
-    [0._dp, 0._dp, 0._dp], box_dim, nodes, elems)
+    [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = p+1
@@ -67,11 +72,11 @@ allocate(rhsq(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(exactq(Nq, Nq, Nq, Ne))
 
+Venq = func2quad(nodes, elems, xiq, fVen)
 rhsq = func2quad(nodes, elems, xiq, frhs)
 ! Make the rhsq net neutral (zero integral):
 if (ibc == 3) then
-    background = integral(nodes, elems, wtq3, rhsq) / &
-        (box_dim(1)*box_dim(2)*box_dim(3))
+    background = integral(nodes, elems, wtq3, rhsq) / (Lx*Ly*Lz)
     print *, "Subtracting constant background: ", background
     rhsq = rhsq - background
 end if
@@ -86,7 +91,7 @@ call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))
 Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
-Een = integral(nodes, elems, wtq3, solq*Venq) / 2
+Een = integral(nodes, elems, wtq3, solq*Venq)
 print *, "Hartree Energy:", Eh
 print *, "Electron-nucleus energy:", Een
 end subroutine
@@ -132,17 +137,33 @@ real(dp) :: Eh, Een
 integer :: p, DOF
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:)
+real(dp) :: Rcut, L
 
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
+Rcut = R(size(R))
 p = 4
-call free_energy([2._dp, 2._dp, 2._dp], 3, 3, 3, p, 3, rhs, Eh, Een, DOF)
+L = 2
+call free_energy(L, 3, 3, 3, p, 3, Ven, rhs, Eh, Een, DOF)
 print *, p, DOF, Eh, Een
 
 contains
 
+real(dp) function Ven(x, y, z) result(V)
+real(dp), intent(in) :: x, y, z
+real(dp) :: r
+! One atom in the center:
+r = sqrt(x**2+y**2+z**2)
+if (r < Rcut) then
+    ! TODO: interpolate this using the R,V arrays:
+    V = -(Z/(2*Rcut))*(3 - (r/Rcut)**2)
+else
+    V = -Z/r
+end if
+end function
+
 real(dp) function rhs(x, y, z) result(r)
 real(dp), intent(in) :: x, y, z
-r = 3*pi*exp(sin(pi*x)*sin(pi*y)*sin(pi*z))/4
+r = 3*pi*exp(sin(pi*(x+L/2))*sin(pi*(y+L/2))*sin(pi*(z+L/2)))/4
 end function
 
 end program
