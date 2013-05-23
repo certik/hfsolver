@@ -38,6 +38,7 @@ set(SRC
     fe_mesh.f90
     fourier.f90
 
+    splines.f90
     poisson3d_assembly.f90
     interp3d.f90
     isolve.f90
