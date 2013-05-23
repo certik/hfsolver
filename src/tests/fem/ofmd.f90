@@ -144,18 +144,20 @@ real(dp) :: Rcut, L
 
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
 Rcut = R(size(R))
+Rcut = 0.3_dp
 p = 4
 L = 2
 call free_energy(L, 3, 3, 3, p, 3, Ven, rhs, Eh, Een, DOF)
 print *, p, DOF, Eh, Een
+print *, "Rcut =", Rcut
 
 contains
 
-real(dp) function Ven(x, y, z) result(V)
-real(dp), intent(in) :: x, y, z
+real(dp) function Ven(x_, y_, z_) result(V)
+real(dp), intent(in) :: x_, y_, z_
 real(dp) :: r
 ! One atom in the center:
-r = sqrt(x**2+y**2+z**2)
+r = sqrt(x_**2+y_**2+z_**2)
 if (r < Rcut) then
     ! TODO: interpolate this using the R,V arrays:
     V = -(Z/(2*Rcut))*(3 - (r/Rcut)**2)
