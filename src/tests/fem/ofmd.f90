@@ -12,7 +12,7 @@ use utils, only: assert, zeros
 use constants, only: pi
 implicit none
 private
-public free_energy
+public free_energy, read_pseudo
 
 contains
 
@@ -91,6 +91,30 @@ print *, "Hartree Energy:", Eh
 print *, "Electron-nucleus energy:", Een
 end subroutine
 
+subroutine read_pseudo(filename, R, V, Z, Ediff)
+! Reads the pseudopotential from the file 'filename'.
+character(len=*), intent(in) :: filename   ! File to read from, e.g. "H.pseudo"
+real(dp), allocatable, intent(out) :: R(:) ! radial grid [0, Rcut]
+! potential on the radial grid. The potential smoothly changes into -1/R for
+! r > Rcut, where Rcut = R(size(R)) is the cut-off radius
+real(dp), allocatable, intent(out) :: V(:)
+real(dp), intent(out) :: Z     ! Nuclear charge
+real(dp), intent(out) :: Ediff ! The energy correction
+real(dp) :: Rcut
+integer :: N, i, u
+open(newunit=u, file=filename, status="old")
+read(u, *) Z, N, Rcut, Ediff
+allocate(R(N), V(N))
+do i = 1, N
+    read(u, *) R(i), V(i)
+end do
+close(u)
+! The file contains a grid from [0, 1], so we need to rescale it:
+R = R*Rcut
+! We need to add the minus sign to the potential ourselves:
+V = -V
+end subroutine
+
 end module
 
 
@@ -99,15 +123,15 @@ end module
 
 program ofmd
 use types, only: dp
-use ofmd_utils, only: free_energy
+use ofmd_utils, only: free_energy, read_pseudo
 use constants, only: pi
 implicit none
 real(dp) :: Eh, Een
-integer :: u, p, DOF, N
-real(dp) :: Z, Rcut, Ediff
+integer :: p, DOF
+real(dp) :: Z, Ediff
+real(dp), allocatable :: R(:), V(:)
 
-open(newunit=u, file="H.pseudo", status="old")
-read(u, *) Z, N, Rcut, Ediff
+call read_pseudo("H.pseudo", R, V, Z, Ediff)
 p = 4
 call free_energy([2._dp, 2._dp, 2._dp], 3, 3, 3, p, 3, rhs, Eh, Een, DOF)
 print *, p, DOF, Eh, Een
