@@ -11,16 +11,16 @@ use isolve, only: solve_cg
 use utils, only: assert, zeros
 use constants, only: pi
 implicit none
+private
+public free_energy
 
 contains
 
-subroutine test_poisson(box_dim, Nex, Ney, Nez, p, ibc, fexact, frhs, &
-        hartree_energy_exact, hartree_energy, Nb)
+subroutine free_energy(box_dim, Nex, Ney, Nez, p, ibc, frhs, Eh, Nb)
 integer, intent(in) :: p, ibc
 procedure(func_xyz) :: fexact, frhs
-real(dp), intent(in) :: hartree_energy_exact
 real(dp), intent(in) :: box_dim(3)
-real(dp), intent(out) :: hartree_energy
+real(dp), intent(out) :: Eh
 integer, intent(out) :: Nb
 
 integer :: Nn, Ne
@@ -35,7 +35,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: l2_error, hartree_energy_error, background
+real(dp) :: background
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [0._dp, 0._dp, 0._dp], box_dim, nodes, elems)
@@ -66,7 +66,6 @@ allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
 allocate(rhsq(Nq, Nq, Nq, Ne))
 allocate(exactq(Nq, Nq, Nq, Ne))
 
-exactq = func2quad(nodes, elems, xiq, fexact)
 rhsq = func2quad(nodes, elems, xiq, frhs)
 ! Make the rhsq net neutral (zero integral):
 if (ibc == 3) then
@@ -85,15 +84,8 @@ sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 200)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) solq = solq + (exactq(1, 1, 1, 1) - solq(1, 1, 1, 1))
-l2_error = sqrt(integral(nodes, elems, wtq3, (solq-exactq)**2))
-hartree_energy = integral(nodes, elems, wtq3, solq*rhsq) / 2
-hartree_energy_error = abs(hartree_energy-hartree_energy_exact)
-print "(' L2 Error:',es10.2)", l2_error
-print *, "Hartree Energy (calculated):", hartree_energy
-print *, "Hartree Energy (exact):     ", hartree_energy_exact
-print "(' Hartree Energy (error):',es10.2)", hartree_energy_error
-!call assert(l2_error < l2_error_eps)
-!call assert(hartree_energy_error < hartree_energy_eps)
+Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
+print *, "Hartree Energy:", Eh
 end subroutine
 
 end module
@@ -104,27 +96,25 @@ end module
 
 program ofmd
 use types, only: dp
-use ofmd_utils, only: test_poisson
+use ofmd_utils, only: free_energy
 use constants, only: pi
 implicit none
 real(dp) :: E
-integer :: p, DOF
+integer :: u, p, DOF, N
+real(dp) :: Z, Rcut, Ediff
 
+open(newunit=u, file="H.pseudo", status="old")
+read(u, *) Z, N, Rcut, Ediff
 p = 4
-call test_poisson([2._dp, 2._dp, 2._dp], 3, 3, 3, p, 3, sol3, rhs3, &
-    1.41399174842279707_dp, E, DOF)
+call free_energy([2._dp, 2._dp, 2._dp], 3, 3, 3, p, 3, rhs, E, DOF)
 print *, p, DOF, E
+print *, Z, N, Rcut, Ediff
 
 contains
 
-real(dp) function rhs3(x, y, z) result(r)
+real(dp) function rhs(x, y, z) result(r)
 real(dp), intent(in) :: x, y, z
 r = 3*pi*exp(sin(pi*x)*sin(pi*y)*sin(pi*z))/4
-end function
-
-real(dp) function sol3(x, y, z) result(r)
-real(dp), intent(in) :: x, y, z
-r = -((x-1)**4 + (y-1)**4 + (z-1)**4) + 2*((x-1)**2 + (y-1)**2 + (z-1)**2)
 end function
 
 end program
