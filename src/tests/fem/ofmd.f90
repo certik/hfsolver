@@ -16,11 +16,11 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, ibc, fVen, frhs, Eh, Een, Nb)
+subroutine free_energy(L, Nex, Ney, Nez, p, ibc, fVen, frhs, Eh, Een, Ek, Nb)
 integer, intent(in) :: p, ibc
 procedure(func_xyz) :: fVen, frhs
 real(dp), intent(in) :: L
-real(dp), intent(out) :: Eh, Een
+real(dp), intent(out) :: Eh, Een, Ek
 integer, intent(out) :: Nb
 
 integer :: Nn, Ne
@@ -31,12 +31,13 @@ integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
         rhs(:), sol(:), &
         fullsol(:), solq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
-        rhsq(:, :, :, :), Venq(:, :, :, :)
+        rhsq(:, :, :, :), Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :)
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: background
 real(dp) :: Lx, Ly, Lz
+real(dp) :: beta
 
 Lx = L
 Ly = L
@@ -70,6 +71,8 @@ print *, "DOFs =", Nb
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
 allocate(rhsq(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
+allocate(y(Nq, Nq, Nq, Ne))
+allocate(F0(Nq, Nq, Nq, Ne))
 
 Venq = func2quad(nodes, elems, xiq, fVen)
 rhsq = func2quad(nodes, elems, xiq, frhs)
@@ -93,10 +96,21 @@ if (ibc == 3) then
     print *, "Subtracting average sol.: ", background
     solq = solq - background
 end if
+! Hartree energy
 Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
+! Electron-nucleus energy
 Een = integral(nodes, elems, wtq3, Venq*rhsq)
+! Kinetic energy using Perrot parametrization
+beta = 1 ! TODO: calculate beta from temperature
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * rhsq
+! TODO: the density must be positive, so this should be imposed somewhere else.
+! The f(y) fails for negative "y".
+y = abs(y)
+F0 = rhsq / beta * f(y)
+Ek = integral(nodes, elems, wtq3, F0)
 print *, "Hartree Energy:", Eh
 print *, "Electron-nucleus energy:", Een
+print *, "Kinetic energy:", Ek
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
@@ -125,13 +139,13 @@ R = R*Rcut
 V = -V
 end subroutine
 
-real(dp) function f(y)
+real(dp) elemental function f(y)
 ! Function f(y) from Appendix A in [1].
 !
 ! [1] Perrot, F. (1979). Gradient correction to the statistical electronic free
 ! energy at nonzero temperatures: Application to equation-of-state
 ! calculations. Physical Review A, 20(2), 586–594.
-real(dp), intent(in) :: y
+real(dp), intent(in) :: y ! must be positive
 real(dp), parameter :: y0 = 3*pi/(4*sqrt(2._dp))
 real(dp), parameter :: c(*) = [-0.8791880215_dp, 0.1989718742_dp, &
     0.1068697043e-2_dp, -0.8812685726e-2_dp, 0.1272183027e-1_dp, &
@@ -168,7 +182,7 @@ program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
 implicit none
-real(dp) :: Eh, Een
+real(dp) :: Eh, Een, Ek
 integer :: p, DOF
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:)
@@ -179,8 +193,8 @@ Rcut = R(size(R))
 Rcut = 0.3_dp
 p = 4
 L = 2
-call free_energy(L, 3, 3, 3, p, 3, Ven, rhs, Eh, Een, DOF)
-print *, p, DOF, Eh, Een
+call free_energy(L, 3, 3, 3, p, 3, Ven, rhs, Eh, Een, Ek, DOF)
+print *, p, DOF, Eh, Een, Ek
 print *, "Rcut =", Rcut
 
 contains
