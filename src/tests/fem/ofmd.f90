@@ -134,7 +134,6 @@ end module
 program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
-use constants, only: pi
 implicit none
 real(dp) :: Eh, Een
 integer :: p, DOF
