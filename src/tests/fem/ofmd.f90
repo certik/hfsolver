@@ -94,7 +94,7 @@ if (ibc == 3) then
     solq = solq - background
 end if
 Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
-Een = integral(nodes, elems, wtq3, solq*Venq)
+Een = integral(nodes, elems, wtq3, Venq*rhsq)
 print *, "Hartree Energy:", Eh
 print *, "Electron-nucleus energy:", Een
 end subroutine
