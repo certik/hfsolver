@@ -125,6 +125,39 @@ R = R*Rcut
 V = -V
 end subroutine
 
+real(dp) function f(y)
+! Function f(y) from Appendix A in [1].
+!
+! [1] Perrot, F. (1979). Gradient correction to the statistical electronic free
+! energy at nonzero temperatures: Application to equation-of-state
+! calculations. Physical Review A, 20(2), 586–594.
+real(dp), intent(in) :: y
+real(dp), parameter :: y0 = 3*pi/(4*sqrt(2._dp))
+real(dp), parameter :: c(*) = [-0.8791880215_dp, 0.1989718742_dp, &
+    0.1068697043e-2_dp, -0.8812685726e-2_dp, 0.1272183027e-1_dp, &
+    -0.9772758583e-2_dp, 0.3820630477e-2_dp, -0.5971217041e-3_dp]
+real(dp), parameter :: d(*) = [0.7862224183_dp, -0.1882979454e1_dp, &
+    0.5321952681_dp, 0.2304457955e1_dp, -0.1614280772e2_dp, &
+    0.5228431386e2_dp, -0.9592645619e2_dp, 0.9462230172e2_dp, &
+    -0.3893753937e2_dp]
+real(dp) :: u
+integer :: i
+if (y <= y0) then
+    f = log(y)
+    do i = 0, 7
+        f = f + c(i+1) * y**i
+    end do
+else
+    u = y**(2._dp / 3)
+    f = d(1)*u
+    do i = 1, 8
+        f = f + d(i+1) / u**(2*i-1)
+    end do
+    ! Note: Few terms in [1] have "y" instead of "u" in them for y > y0, but
+    ! that is obviously a typo.
+end if
+end function
+
 end module
 
 
