@@ -37,6 +37,7 @@ set(SRC
     debye_potential_series.f90
     fe_mesh.f90
     fourier.f90
+    xc.f90
 
     splines.f90
     poisson3d_assembly.f90
