@@ -16,14 +16,14 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, ibc, fVen, frhs, Eh, Een, Ek, Nb)
-integer, intent(in) :: p, ibc
+subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, frhs, Eh, Een, Ek, Nb)
+integer, intent(in) :: p
 procedure(func_xyz) :: fVen, frhs
-real(dp), intent(in) :: L
+real(dp), intent(in) :: L, T_au
 real(dp), intent(out) :: Eh, Een, Ek
 integer, intent(out) :: Nb
 
-integer :: Nn, Ne
+integer :: Nn, Ne, ibc
 ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
@@ -38,6 +38,8 @@ integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: background
 real(dp) :: Lx, Ly, Lz
 real(dp) :: beta
+
+ibc = 3 ! Periodic boundary condition
 
 Lx = L
 Ly = L
@@ -76,6 +78,7 @@ allocate(F0(Nq, Nq, Nq, Ne))
 
 Venq = func2quad(nodes, elems, xiq, fVen)
 rhsq = func2quad(nodes, elems, xiq, frhs)
+Een = integral(nodes, elems, wtq3, Venq*rhsq)
 ! Make the rhsq net neutral (zero integral):
 if (ibc == 3) then
     background = integral(nodes, elems, wtq3, rhsq) / (Lx*Ly*Lz)
@@ -99,9 +102,8 @@ end if
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
 ! Electron-nucleus energy
-Een = integral(nodes, elems, wtq3, Venq*rhsq)
 ! Kinetic energy using Perrot parametrization
-beta = 1 ! TODO: calculate beta from temperature
+beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * rhsq
 ! TODO: the density must be positive, so this should be imposed somewhere else.
 ! The f(y) fails for negative "y".
@@ -181,19 +183,22 @@ end module
 program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
+use constants, only: Ha2eV
 implicit none
 real(dp) :: Eh, Een, Ek
 integer :: p, DOF
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:)
-real(dp) :: Rcut, L
+real(dp) :: Rcut, L, T_eV, T_au
 
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
 Rcut = R(size(R))
 Rcut = 0.3_dp
 p = 4
 L = 2
-call free_energy(L, 3, 3, 3, p, 3, Ven, rhs, Eh, Een, Ek, DOF)
+T_eV = 0.0862_dp
+T_au = T_ev / Ha2eV
+call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ek, DOF)
 print *, p, DOF, Eh, Een, Ek
 print *, "Rcut =", Rcut
 
