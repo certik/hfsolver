@@ -10,17 +10,19 @@ use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use constants, only: pi
+use xc, only: xc_pz
 implicit none
 private
 public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, frhs, Eh, Een, Ek, Nb)
+subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, frhs, Eh, Een, Ek, &
+        Exc, Nb)
 integer, intent(in) :: p
 procedure(func_xyz) :: fVen, frhs
 real(dp), intent(in) :: L, T_au
-real(dp), intent(out) :: Eh, Een, Ek
+real(dp), intent(out) :: Eh, Een, Ek, Exc
 integer, intent(out) :: Nb
 
 integer :: Nn, Ne, ibc
@@ -31,13 +33,14 @@ integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
         rhs(:), sol(:), &
         fullsol(:), solq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
-        rhsq(:, :, :, :), Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :)
+        Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :), &
+        exc_density(:, :, :, :), nq_pos(:, :, :, :), nq_neutral(:, :, :, :)
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
-integer :: i, j, k
+integer :: i, j, k, m
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: background, background2
+real(dp) :: background
 real(dp) :: Lx, Ly, Lz
-real(dp) :: beta
+real(dp) :: beta, tmp
 
 ibc = 3 ! Periodic boundary condition
 
@@ -71,49 +74,60 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
 print *, "DOFs =", Nb
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
-allocate(rhsq(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
+allocate(exc_density(Nq, Nq, Nq, Ne))
+allocate(nq_pos(Nq, Nq, Nq, Ne))
+allocate(nq_neutral(Nq, Nq, Nq, Ne))
 
 Venq = func2quad(nodes, elems, xiq, fVen)
-rhsq = func2quad(nodes, elems, xiq, frhs)
-Een = integral(nodes, elems, wtq3, Venq*rhsq)
-! Make the rhsq net neutral (zero integral):
-if (ibc == 3) then
-    background = integral(nodes, elems, wtq3, rhsq) / (Lx*Ly*Lz)
-    print *, "Subtracting constant background: ", background
-    rhsq = rhsq - background
-end if
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, 4*pi*rhsq, &
-    Ap, Aj, Ax, rhs)
+nq_pos = func2quad(nodes, elems, xiq, frhs)
+! Make the charge density net neutral (zero integral):
+background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
+print *, "Subtracting constant background: ", background
+nq_neutral = nq_pos - background
+call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
 print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, rhsq)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
 print *, "Solving..."
 !sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 200)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
-if (ibc == 3) then
-    background2 = integral(nodes, elems, wtq3, solq) / (Lx*Ly*Lz)
-    print *, "Subtracting average sol.: ", background2
-    solq = solq - background2
-end if
+! This is not needed as the constant cancels out in the Eh integral:
+! background = integral(nodes, elems, wtq3, solq) / (Lx*Ly*Lz)
+! print *, "Subtracting average sol.: ", background
+! solq = solq - background
+
 ! Hartree energy
-Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
+Eh = integral(nodes, elems, wtq3, solq*nq_neutral) / 2
 ! Electron-nucleus energy
+Een = integral(nodes, elems, wtq3, Venq*nq_pos)
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". We'll use the
 ! original density.
-! TODO: create a variable nq and nq_neutral
-y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * (rhsq+background)
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
 if (any(y < 0)) call stop_error("Density must be positive")
-F0 = (rhsq+background) / beta * f(y)
+F0 = nq_pos / beta * f(y)
 Ek = integral(nodes, elems, wtq3, F0)
+! Exchange and correlation energy
+do m = 1, Ne
+do k = 1, Nq
+do j = 1, Nq
+do i = 1, Nq
+    call xc_pz(nq_pos(i, j, k, m), exc_density(i, j, k, m), tmp)
+end do
+end do
+end do
+end do
+Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
 print *, "Hartree Energy:", Eh
 print *, "Electron-nucleus energy:", Een
 print *, "Kinetic energy:", Ek
+print *, "Exchange correlation energy:", Exc
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
@@ -186,7 +200,7 @@ use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
 use constants, only: Ha2eV
 implicit none
-real(dp) :: Eh, Een, Ek
+real(dp) :: Eh, Een, Ek, Exc
 integer :: p, DOF
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:)
@@ -199,8 +213,8 @@ p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ek, DOF)
-print *, p, DOF, Eh, Een, Ek
+call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ek, Exc, DOF)
+!print *, p, DOF, Eh, Een, Ek, Exc
 print *, "Rcut =", Rcut
 print *, "T_au =", T_au
 
