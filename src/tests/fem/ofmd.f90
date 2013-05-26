@@ -104,6 +104,9 @@ call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, solq*nq_neutral) / 2
 ! Electron-nucleus energy
+background = integral(nodes, elems, wtq3, Venq) / (Lx*Ly*Lz)
+print *, "Subtracting average Venq.: ", background
+Venq = Venq - background
 Een = integral(nodes, elems, wtq3, Venq*nq_pos)
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
