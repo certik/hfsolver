@@ -6,11 +6,11 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public get_Vxc
+public get_Vxc_vwn
 
 contains
 
-subroutine get_Vxc(R, rho, relat, c, exc, Vxc)
+subroutine get_Vxc_vwn(R, rho, relat, c, exc, Vxc)
 real(dp), intent(in) :: R(:) ! radial grid
 real(dp), intent(in) :: rho(:) ! charge density
 logical, intent(in) :: relat ! .true. return RLDA, otherwise LDA
@@ -19,16 +19,11 @@ real(dp), intent(out) :: Vxc(:), exc(:)
 
 integer :: i
 do i = 1, size(R)
-    call getvxc_scalar(rho(i), relat, c, exc(i), Vxc(i))
+    call xc_vwn(rho(i), relat, c, exc(i), Vxc(i))
 end do
 end subroutine
 
-real(dp) function get_Y(y, b, c)
-real(dp), intent(in) :: y, b, c
-get_Y = y**2 + b*y + c
-end function
-
-subroutine getvxc_scalar(n, relat, c_light, exc, Vxc)
+subroutine xc_vwn(n, relat, c_light, exc, Vxc)
 ! Calculates XC LDA density and potential from the charge density "n".
 real(dp), intent(in) :: n ! charge density (scalar)
 real(dp), intent(in) :: c_light ! speed of light
@@ -72,6 +67,14 @@ if (relat) then
 end if
 exc = ex + ec
 Vxc = Vx + Vc
+
+contains
+
+    real(dp) function get_Y(y, b, c)
+    real(dp), intent(in) :: y, b, c
+    get_Y = y**2 + b*y + c
+    end function
+
 end subroutine
 
 end module
