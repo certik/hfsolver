@@ -202,6 +202,7 @@ T_au = T_ev / Ha2eV
 call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ek, DOF)
 print *, p, DOF, Eh, Een, Ek
 print *, "Rcut =", Rcut
+print *, "T_au =", T_au
 
 contains
 
