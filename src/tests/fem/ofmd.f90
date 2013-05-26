@@ -8,7 +8,7 @@ use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
-use utils, only: assert, zeros
+use utils, only: assert, zeros, stop_error
 use constants, only: pi
 implicit none
 private
@@ -35,7 +35,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: background
+real(dp) :: background, background2
 real(dp) :: Lx, Ly, Lz
 real(dp) :: beta
 
@@ -95,20 +95,21 @@ sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 200)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
 if (ibc == 3) then
-    background = integral(nodes, elems, wtq3, solq) / (Lx*Ly*Lz)
-    print *, "Subtracting average sol.: ", background
-    solq = solq - background
+    background2 = integral(nodes, elems, wtq3, solq) / (Lx*Ly*Lz)
+    print *, "Subtracting average sol.: ", background2
+    solq = solq - background2
 end if
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, solq*rhsq) / 2
 ! Electron-nucleus energy
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
-y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * rhsq
-! TODO: the density must be positive, so this should be imposed somewhere else.
-! The f(y) fails for negative "y".
-y = abs(y)
-F0 = rhsq / beta * f(y)
+! The density must be positive, the f(y) fails for negative "y". We'll use the
+! original density.
+! TODO: create a variable nq and nq_neutral
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * (rhsq+background)
+if (any(y < 0)) call stop_error("Density must be positive")
+F0 = (rhsq+background) / beta * f(y)
 Ek = integral(nodes, elems, wtq3, F0)
 print *, "Hartree Energy:", Eh
 print *, "Electron-nucleus energy:", Een
