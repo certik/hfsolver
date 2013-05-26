@@ -107,6 +107,8 @@ Eh = integral(nodes, elems, wtq3, solq*nq_neutral) / 2
 background = integral(nodes, elems, wtq3, Venq) / (Lx*Ly*Lz)
 print *, "Subtracting average Venq.: ", background
 Venq = Venq - background
+! TODO: the above 3 lines can be removed just by changing nq_pos to nq_neutral
+! below. We need to figure out the proper normalization here.
 Een = integral(nodes, elems, wtq3, Venq*nq_pos)
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
