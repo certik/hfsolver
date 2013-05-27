@@ -226,7 +226,7 @@ print "('    Een  = ', f14.8)", Een
 print "('    Eee  = ', f14.8)", Eh
 print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
-print "('    Etot = ', f14.8)", Etot
+print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 contains
 
