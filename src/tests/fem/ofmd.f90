@@ -17,12 +17,12 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, frhs, Eh, Een, Ek, &
+subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, frhs, Eh, Een, Ts, &
         Exc, Nb)
 integer, intent(in) :: p
 procedure(func_xyz) :: fVen, frhs
 real(dp), intent(in) :: L, T_au
-real(dp), intent(out) :: Eh, Een, Ek, Exc
+real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
 
 integer :: Nn, Ne, ibc
@@ -117,7 +117,7 @@ beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
 if (any(y < 0)) call stop_error("Density must be positive")
 F0 = nq_pos / beta * f(y)
-Ek = integral(nodes, elems, wtq3, F0)
+Ts = integral(nodes, elems, wtq3, F0)
 ! Exchange and correlation energy
 do m = 1, Ne
 do k = 1, Nq
@@ -201,7 +201,7 @@ use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
 use constants, only: Ha2eV
 implicit none
-real(dp) :: Eh, Een, Ek, Exc, Etot
+real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:)
@@ -214,14 +214,14 @@ p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ek, Exc, DOF)
-Etot = Ek + Een + Eh + Exc
+call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ts, Exc, DOF)
+Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
 print *, "Rcut =", Rcut
 print *, "T_au =", T_au
 print *, "Summary of energies [a.u.]:"
-print "('    Ekin = ', f14.8)", Ek
+print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
 print "('    Eee  = ', f14.8)", Eh
 print "('    Exc  = ', f14.8)", Exc
