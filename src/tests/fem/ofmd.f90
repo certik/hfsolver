@@ -32,7 +32,7 @@ integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
         rhs(:), sol(:), &
-        fullsol(:), solq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
+        fullsol(:), Vhq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
         Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :), &
         exc_density(:, :, :, :), nq_pos(:, :, :, :), nq_neutral(:, :, :, :)
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
@@ -73,7 +73,7 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
 print *, "DOFs =", Nb
-allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), solq(Nq, Nq, Nq, Ne))
+allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
@@ -95,14 +95,14 @@ print *, "Solving..."
 !sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 200)
 call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, solq)
+call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 ! This is not needed as the constant cancels out in the Eh integral:
 ! background = integral(nodes, elems, wtq3, solq) / (Lx*Ly*Lz)
 ! print *, "Subtracting average sol.: ", background
 ! solq = solq - background
 
 ! Hartree energy
-Eh = integral(nodes, elems, wtq3, solq*nq_neutral) / 2
+Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
 ! Electron-nucleus energy
 background = integral(nodes, elems, wtq3, Venq) / (Lx*Ly*Lz)
 print *, "Subtracting average Venq.: ", background
