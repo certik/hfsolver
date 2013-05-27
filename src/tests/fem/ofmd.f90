@@ -17,10 +17,10 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, frhs, Eh, Een, Ts, &
+subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, fn_pos, Eh, Een, Ts, &
         Exc, Nb)
 integer, intent(in) :: p
-procedure(func_xyz) :: fVen, frhs
+procedure(func_xyz) :: fVen, fn_pos
 real(dp), intent(in) :: L, T_au
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
@@ -82,7 +82,7 @@ allocate(nq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
 
 Venq = func2quad(nodes, elems, xiq, fVen)
-nq_pos = func2quad(nodes, elems, xiq, frhs)
+nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 print *, "Subtracting constant background: ", background
