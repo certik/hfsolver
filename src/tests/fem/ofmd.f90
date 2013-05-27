@@ -105,11 +105,11 @@ call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
 ! Electron-nucleus energy
 background = integral(nodes, elems, wtq3, Venq) / (Lx*Ly*Lz)
-print *, "Subtracting average Venq.: ", background
+print *, "Subtracting average from Ven: ", background
 Venq = Venq - background
-! TODO: the above 3 lines can be removed just by changing nq_pos to nq_neutral
-! below. We need to figure out the proper normalization here.
-Een = integral(nodes, elems, wtq3, Venq*nq_pos)
+! TODO: the above 3 lines can be removed because the "background" scalar shift
+! gets cancelled anyway due to using nq_neutral below:
+Een = integral(nodes, elems, wtq3, Venq*nq_neutral)
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". We'll use the
