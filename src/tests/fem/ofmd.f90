@@ -196,20 +196,20 @@ use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF, Nx, Ny, Nz, u
+integer :: p, DOF !, Nx, Ny, Nz, u
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :), values(:, :, :)
 real(dp) :: Rcut, L, T_eV, T_au
 
-open(newunit=u, file="plots/Ven_reg128.txt", status="old")
-read(u, *) Nx, Ny, Nz
-allocate(values(Nx, Ny, Nz))
-read(u, *) values
-close(u)
+!open(newunit=u, file="plots/Ven_reg128.txt", status="old")
+!read(u, *) Nx, Ny, Nz
+!allocate(values(Nx, Ny, Nz))
+!read(u, *) values
+!close(u)
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
-call loadtxt("Venr.txt", D)
-allocate(c(0:4, size(D, 1)-1))
-call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
+!call loadtxt("Venr.txt", D)
+!allocate(c(0:4, size(D, 1)-1))
+!call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
 p = 4
@@ -239,15 +239,17 @@ if (r < Rcut) then
 else
     V = -Z/r
 end if
+V = V*exp(-r/5)
 end function
 
 real(dp) function Ven(x, y, z) result(V)
 real(dp), intent(in) :: x, y, z
 integer :: i, j, k
+integer, parameter :: N = 20
 V = 0
-do i = -3, 3
-do j = -3, 3
-do k = -3, 3
+do i = -N, N
+do j = -N, N
+do k = -N, N
     V = V + Vion(sqrt((x+i*L)**2+(y+j*L)**2+(z+k*L)**2))
 end do
 end do
