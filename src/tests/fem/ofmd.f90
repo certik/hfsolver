@@ -191,14 +191,19 @@ program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
 use constants, only: Ha2eV
+use utils, only: loadtxt
+use splines, only: spline3pars, iixmin, poly3
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF
 real(dp) :: Z, Ediff
-real(dp), allocatable :: R(:), V(:)
+real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :)
 real(dp) :: Rcut, L, T_eV, T_au
 
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
+call loadtxt("Venr.txt", D)
+allocate(c(0:4, size(D, 1)-1))
+call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
 p = 4
@@ -232,6 +237,18 @@ if (r < Rcut) then
 else
     V = -Z/r
 end if
+end function
+
+real(dp) function Ven_splines(x_, y_, z_) result(V)
+real(dp), intent(in) :: x_, y_, z_
+real(dp) :: r
+integer :: ip
+! One atom in the center:
+r = sqrt(x_**2+y_**2+z_**2)
+if (r >= 1) r = 1
+ip = 0
+ip = iixmin(r, D(:, 1), ip)
+V = poly3(r, c(:, ip))
 end function
 
 real(dp) function rhs(x, y, z) result(n)
