@@ -52,7 +52,7 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-Nq = p+1
+Nq = 15
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
@@ -81,6 +81,7 @@ allocate(exc_density(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
 
+! Fixme: Venq is the charge density here
 Venq = func2quad(nodes, elems, xiq, fVen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 ! Make the charge density net neutral (zero integral):
@@ -93,9 +94,25 @@ print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
 print *, "Solving..."
 !sol = solve(A, rhs)
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 200)
+sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+
+! FIXME: Venq is the charge density here -- rename the variable
+background = integral(nodes, elems, wtq3, Venq) / (Lx*Ly*Lz)
+print *, "Subtracting constant background (Ven): ", background
+Venq = Venq - background
+call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+    4*pi*Venq, Ap, Aj, Ax, rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, Venq)
+print *, "Solving..."
+sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call c2fullc_3d(in, ib, sol, fullsol)
+! Venq is now the Ven potential
+call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+!print *, Venq
+!stop "OK"
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
@@ -190,7 +207,7 @@ end module
 program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy, read_pseudo
-use constants, only: Ha2eV
+use constants, only: Ha2eV, pi
 use utils, only: loadtxt
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
@@ -212,7 +229,7 @@ call read_pseudo("H.pseudo", R, V, Z, Ediff)
 !call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
-p = 4
+p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
@@ -234,26 +251,16 @@ contains
 
 real(dp) function Vion(r) result(V)
 real(dp), intent(in) :: r
-if (r < Rcut) then
-    V = -(Z/(2*Rcut))*(3 - (r/Rcut)**2)
-else
-    V = -Z/r
-end if
-V = V*exp(-r/5)
+real(dp), parameter :: alpha = 6
+! Density:
+V = -Z*alpha**3/pi**(3./2)*exp(-alpha**2*R**2)
+! Corresponds to the potential:
+!V = -Z*erf(alpha*R)/R
 end function
 
 real(dp) function Ven(x, y, z) result(V)
 real(dp), intent(in) :: x, y, z
-integer :: i, j, k
-integer, parameter :: N = 20
-V = 0
-do i = -N, N
-do j = -N, N
-do k = -N, N
-    V = V + Vion(sqrt((x+i*L)**2+(y+j*L)**2+(z+k*L)**2))
-end do
-end do
-end do
+V = Vion(sqrt(x**2+y**2+z**2))
 end function
 
 real(dp) function Ven_splines(x_, y_, z_) result(V)
