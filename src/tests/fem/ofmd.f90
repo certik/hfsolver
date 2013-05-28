@@ -193,6 +193,7 @@ use ofmd_utils, only: free_energy, read_pseudo
 use constants, only: Ha2eV
 use utils, only: loadtxt
 use splines, only: spline3pars, iixmin, poly3
+use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF
@@ -249,6 +250,12 @@ if (r >= 1) r = 1
 ip = 0
 ip = iixmin(r, D(:, 1), ip)
 V = poly3(r, c(:, ip))
+end function
+
+real(dp) function Ven_interp3d(x, y, z) result(V)
+real(dp), intent(in) :: x, y, z
+V = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], &
+        values)
 end function
 
 real(dp) function rhs(x, y, z) result(n)
