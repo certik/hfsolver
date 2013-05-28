@@ -52,7 +52,7 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-Nq = 15
+Nq = 20
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
@@ -229,11 +229,11 @@ call read_pseudo("H.pseudo", R, V, Z, Ediff)
 !call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
-p = 5
+p = 7
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 3, 3, 3, p, T_au, Ven, rhs, Eh, Een, Ts, Exc, DOF)
+call free_energy(L, 5, 5, 5, p, T_au, Ven, rhs, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
@@ -251,9 +251,9 @@ contains
 
 real(dp) function Vion(r) result(V)
 real(dp), intent(in) :: r
-real(dp), parameter :: alpha = 6
+real(dp), parameter :: alpha = 12
 ! Density:
-V = -Z*alpha**3/pi**(3./2)*exp(-alpha**2*R**2)
+V = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 ! Corresponds to the potential:
 !V = -Z*erf(alpha*R)/R
 end function
