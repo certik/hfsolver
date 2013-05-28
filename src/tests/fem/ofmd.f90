@@ -232,17 +232,26 @@ print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 contains
 
-real(dp) function Ven(x_, y_, z_) result(V)
-real(dp), intent(in) :: x_, y_, z_
-real(dp) :: r
-! One atom in the center:
-r = sqrt(x_**2+y_**2+z_**2)
+real(dp) function Vion(r) result(V)
+real(dp), intent(in) :: r
 if (r < Rcut) then
-    ! TODO: interpolate this using the R,V arrays:
     V = -(Z/(2*Rcut))*(3 - (r/Rcut)**2)
 else
     V = -Z/r
 end if
+end function
+
+real(dp) function Ven(x, y, z) result(V)
+real(dp), intent(in) :: x, y, z
+integer :: i, j, k
+V = 0
+do i = -3, 3
+do j = -3, 3
+do k = -3, 3
+    V = V + Vion(sqrt((x+i*L)**2+(y+j*L)**2+(z+k*L)**2))
+end do
+end do
+end do
 end function
 
 real(dp) function Ven_splines(x_, y_, z_) result(V)
