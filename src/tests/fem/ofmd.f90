@@ -196,11 +196,16 @@ use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF
+integer :: p, DOF, Nx, Ny, Nz, u
 real(dp) :: Z, Ediff
-real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :)
+real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :), values(:, :, :)
 real(dp) :: Rcut, L, T_eV, T_au
 
+open(newunit=u, file="plots/Ven_reg128.txt", status="old")
+read(u, *) Nx, Ny, Nz
+allocate(values(Nx, Ny, Nz))
+read(u, *) values
+close(u)
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
 call loadtxt("Venr.txt", D)
 allocate(c(0:4, size(D, 1)-1))
