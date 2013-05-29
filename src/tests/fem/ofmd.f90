@@ -283,9 +283,10 @@ end function
 
 real(dp) function rhs(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
+real(dp), parameter :: alpha = 5, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
-n = exp(-5*r**2)
+n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 end function
 
 end program
