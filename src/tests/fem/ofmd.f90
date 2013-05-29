@@ -17,10 +17,11 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fVen, fn_pos, Eh, Een, Ts, &
+subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, Ts, &
         Exc, Nb)
 integer, intent(in) :: p
-procedure(func_xyz) :: fVen, fn_pos
+procedure(func_xyz) :: fnen ! (negative) ionic particle density
+procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
 real(dp), intent(in) :: L, T_au
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
@@ -33,6 +34,7 @@ integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
         rhs(:), sol(:), &
         fullsol(:), Vhq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
+        nenq(:, :, :, :), &
         Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :), &
         exc_density(:, :, :, :), nq_pos(:, :, :, :), nq_neutral(:, :, :, :)
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
@@ -75,14 +77,14 @@ Nb = maxval(ib)
 print *, "DOFs =", Nb
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
+allocate(nenq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
 allocate(exc_density(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
 
-! Fixme: Venq is the charge density here
-Venq = func2quad(nodes, elems, xiq, fVen)
+nenq = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
@@ -98,21 +100,17 @@ sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
-! FIXME: Venq is the charge density here -- rename the variable
-background = integral(nodes, elems, wtq3, Venq) / (Lx*Ly*Lz)
+background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
 print *, "Subtracting constant background (Ven): ", background
-Venq = Venq - background
+nenq = nenq - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*Venq, Ap, Aj, Ax, rhs)
+    4*pi*nenq, Ap, Aj, Ax, rhs)
 print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, Venq)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
 print *, "Solving..."
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
-! Venq is now the Ven potential
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
-!print *, Venq
-!stop "OK"
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
@@ -229,11 +227,11 @@ call read_pseudo("H.pseudo", R, V, Z, Ediff)
 !call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
-p = 7
+p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 5, 5, 5, p, T_au, Ven, rhs, Eh, Een, Ts, Exc, DOF)
+call free_energy(L, 5, 5, 5, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
@@ -249,18 +247,15 @@ print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 contains
 
-real(dp) function Vion(r) result(V)
-real(dp), intent(in) :: r
+real(dp) function nen(x, y, z_) result(n)
+real(dp), intent(in) :: x, y, z_
 real(dp), parameter :: alpha = 12
-! Density:
-V = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
+real(dp) :: r
+r = sqrt(x**2+y**2+z_**2)
+! This density:
+n = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 ! Corresponds to the potential:
 !V = -Z*erf(alpha*R)/R
-end function
-
-real(dp) function Ven(x, y, z) result(V)
-real(dp), intent(in) :: x, y, z
-V = Vion(sqrt(x**2+y**2+z**2))
 end function
 
 real(dp) function Ven_splines(x_, y_, z_) result(V)
@@ -281,7 +276,7 @@ V = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], &
         values)
 end function
 
-real(dp) function rhs(x, y, z) result(n)
+real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
 real(dp), parameter :: alpha = 5, Z_ = 1
 real(dp) :: r
