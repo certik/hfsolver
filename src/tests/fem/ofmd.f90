@@ -88,7 +88,8 @@ nenq = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
-print *, "Subtracting constant background: ", background
+print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
 nq_neutral = nq_pos - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nq_neutral, Ap, Aj, Ax, rhs)
@@ -101,7 +102,8 @@ call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
 background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
-print *, "Subtracting constant background (Ven): ", background
+print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
 nenq = nenq - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nenq, Ap, Aj, Ax, rhs)
