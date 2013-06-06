@@ -3,7 +3,7 @@ module ofmd_utils
 use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
-    c2fullc_3d, fe2quad_3d
+    c2fullc_3d, fe2quad_3d, vtk_save
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
@@ -113,6 +113,7 @@ print *, "Solving..."
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2

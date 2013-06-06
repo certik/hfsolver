@@ -27,7 +27,8 @@ use solvers, only: solve_sym
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
-    define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d
+    define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
+    vtk_save
 
 contains
 
@@ -396,6 +397,88 @@ do ie = 1, size(elems, 2)
     end do
     end do
 end do
+end subroutine
+
+subroutine vtk_save(filename, nx, ny, nz, nodes, elems, xiq, fq)
+character(len=*), intent(in) :: filename
+integer, intent(in) :: nx, ny, nz
+real(dp), intent(in):: nodes(:, :)
+integer, intent(in) :: elems(:, :)
+real(dp), intent(in) :: xiq(:)
+real(dp), intent(in) :: fq(:, :, :, :)
+integer :: Ne, e, iqx, iqy, iqz, i, j, k, Nq
+real(dp), dimension(size(xiq)) :: x, y, z, xp, yp, zp
+real(dp) :: qdata(nx*size(xiq), ny*size(xiq), nz*size(xiq))
+real(dp) :: lx, ly, lz
+real(dp) :: jacx, jacy, jacz, jac_det
+integer :: u
+
+Nq = size(xiq)
+
+open(newunit=u, file=filename, status="replace")
+write(u, "(a)") "# vtk DataFile Version 2.0"
+write(u, "(a)") "Function at quadrature points"
+write(u, "(a)") "ASCII"
+write(u, "(a)") "DATASET RECTILINEAR_GRID"
+write(u, "(a, i8, i8, i8)") "DIMENSIONS", nx*Nq, ny*Nq, nz*Nq
+
+Ne = size(elems, 2)
+lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
+lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
+jacx = lx/2
+jacy = ly/2
+jacz = lz/2
+jac_det = abs(jacx*jacy*jacz)
+xp = (xiq + 1) * jacx
+yp = (xiq + 1) * jacy
+zp = (xiq + 1) * jacz
+! Note: this depends on the exact order 'elems' is constructed
+write(u, "(a, ' ', i8, ' ', a)") "X_COORDINATES", nx*Nq, "float"
+do e = 1, nx*ny*nz, ny*nz
+    x = xp + nodes(1, elems(1, e))
+    do iqz = 1, Nq
+        write(u, *) x(iqz)
+    end do
+end do
+write(u, "(a, ' ', i8, ' ', a)") "Y_COORDINATES", ny*Nq, "float"
+do e = 1, ny*nz, nz
+    y = yp + nodes(2, elems(1, e))
+    do iqz = 1, Nq
+        write(u, *) y(iqz)
+    end do
+end do
+write(u, "(a, ' ', i8, ' ', a)") "Z_COORDINATES", nz*Nq, "float"
+do e = 1, nz
+    z = zp + nodes(3, elems(1, e))
+    do iqz = 1, Nq
+        write(u, *) z(iqz)
+    end do
+end do
+
+e = 1
+do i = 1, nx
+do j = 1, ny
+do k = 1, nz
+    do iqx = 1, Nq
+    do iqy = 1, Nq
+    do iqz = 1, Nq
+        qdata((i-1)*Nq + iqx, (j-1)*Nq + iqy, (k-1)*Nq + iqz) = &
+            fq(iqx, iqy, iqz, e)
+    end do
+    end do
+    end do
+    e = e + 1
+end do
+end do
+end do
+
+write(u, "(a, ' ', i10)") "POINT_DATA", size(qdata)
+write(u, "(a)") "SCALARS MyFunction float"
+write(u, "(a)") "LOOKUP_TABLE default"
+write(u, *) qdata
+
+close(u)
 end subroutine
 
 end module
