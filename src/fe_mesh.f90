@@ -521,13 +521,14 @@ integer :: i, Ne
 Ne = size(elems, 2)
 do i = 1, Ne
     ! xa, xb are two opposite corners of the hexahedron
-    xa = nodes(:, elems(1, e))
-    xb = nodes(:, elems(7, e))
+    xa = nodes(:, elems(1, i))
+    xb = nodes(:, elems(7, i))
     if (point_in_hex(xa, xb, x)) then
         e = i
         return
     end if
 end do
+e = 0
 call stop_error("The point 'x' is not inside the mesh.")
 end function
 
@@ -535,7 +536,7 @@ logical pure function point_in_hex(p1, p2, x) result(r)
 ! Returns .true. if the point 'x' is in the hexahedron specified by the two
 ! opposite corners p1 (lower, left, front) and p2 (upper, right, back).
 real(dp), intent(in) :: p1(:), p2(:), x(:)
-r = all(p1 < x) .and. all(x < p2)
+r = all(p1 <= x) .and. all(x <= p2)
 end function
 
 end module
