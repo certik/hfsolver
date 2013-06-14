@@ -482,6 +482,21 @@ write(u, *) qdata
 close(u)
 end subroutine
 
+subroutine line_save(filename, xin, nodes, elems, in, fullu, x1, x2, n)
+character(len=*), intent(in) :: filename
+real(dp), intent(in):: xin(:), nodes(:, :), fullu(:), x1(:), x2(:)
+integer, intent(in):: elems(:, :), in(:, :, :, :), n
+integer :: i, u
+real(dp) :: x(3), val
+open(newunit=u, file=filename, status="replace")
+do i = 1, n
+    x = x1 + (i-1) * (x2-x1) / (n-1)
+    val = fe_eval_xyz(xin, nodes, elems, in, fullu, x)
+    write(u, *) x, val
+end do
+close(u)
+end subroutine
+
 real(dp) function fe_eval_xyz(xin, nodes, elems, in, fullu, x) result(val)
 real(dp), intent(in):: xin(:), nodes(:, :), x(:), fullu(:)
 integer, intent(in):: elems(:, :), in(:, :, :, :)
