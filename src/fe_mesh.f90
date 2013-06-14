@@ -24,6 +24,7 @@ use types
 use utils, only: stop_error
 use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
+use feutils, only: phih
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
@@ -480,5 +481,61 @@ write(u, *) qdata
 
 close(u)
 end subroutine
+
+real(dp) function fe_eval_xyz(xin, nodes, elems, in, fullu, x) result(val)
+real(dp), intent(in):: xin(:), nodes(:, :), x(:), fullu(:)
+integer, intent(in):: elems(:, :), in(:, :, :, :)
+real(dp), dimension(3) :: l, jac, xi, xa, xb
+integer :: nx, ny, nz, p, e
+
+e = get_element_3d(nodes, elems, x)
+
+! xa, xb are two opposite corners of the hexahedron
+xa = nodes(:, elems(1, e))
+xb = nodes(:, elems(7, e))
+! l is the diagonal vector:
+l = xb - xa
+! Assume hexahedral shape:
+jac = l / 2
+! xi is in the reference domain [-1, 1]^3
+xi = (x-xa) / jac - 1
+
+p = size(xin) - 1
+val = 0
+do nz = 1, p+1
+do ny = 1, p+1
+do nx = 1, p+1
+    val = val + fullu(in(nx, ny, nz, e)) * &
+        phih(xin, nx, xi(1)) * phih(xin, ny, xi(2)) * phih(xin, nz, xi(3))
+end do
+end do
+end do
+end function
+
+integer function get_element_3d(nodes, elems, x) result(e)
+! Returns the element that containst the point 'x'
+real(dp), intent(in) :: nodes(:, :), x(:)
+integer, intent(in) :: elems(:, :)
+real(dp) :: xa(3), xb(3)
+integer :: i, Ne
+Ne = size(elems, 2)
+do i = 1, Ne
+    ! xa, xb are two opposite corners of the hexahedron
+    xa = nodes(:, elems(1, e))
+    xb = nodes(:, elems(7, e))
+    if (point_in_hex(xa, xb, x)) then
+        e = i
+        return
+    end if
+end do
+call stop_error("The point 'x' is not inside the mesh.")
+end function
+
+logical pure function point_in_hex(p1, p2, x) result(r)
+! Returns .true. if the point 'x' is in the hexahedron specified by the two
+! opposite corners p1 (lower, left, front) and p2 (upper, right, back).
+real(dp), intent(in) :: p1(:), p2(:), x(:)
+r = all(p1 < x) .and. all(x < p2)
+end function
 
 end module
