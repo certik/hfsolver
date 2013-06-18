@@ -13,3 +13,4 @@ addprog(conv_poisson3d)
 addprog(ofmd)
 
 addtest(test_poisson3d)
+addtest(test_free_energy)
