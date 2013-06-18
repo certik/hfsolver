@@ -226,11 +226,11 @@ real(dp) :: Rcut, L, T_eV, T_au
 
 Z = 1
 Rcut = 0.3_dp
-p = 6
+p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 5, 5, 5, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy(L, 8, 8, 8, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
