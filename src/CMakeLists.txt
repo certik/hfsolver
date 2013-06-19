@@ -45,6 +45,8 @@ set(SRC
     isolve.f90
 
     c_hfsolver.f90
+
+    optimize.f90
 )
 
 # LIBINT
