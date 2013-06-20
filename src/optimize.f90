@@ -6,7 +6,7 @@ use types, only: dp
 use utils, only: stop_error
 implicit none
 private
-public bisect, brent
+public bisect, brent, bracket
 
 interface
     real(dp) function func(x)
@@ -219,6 +219,10 @@ do while (fc < fb)
     end if
     xa = xb; xb = xc; xc = w
     fa = fb; fb = fc; fc = fw
+    if (verbose_) then
+        print "(i2, ':  xa = ', f23.12, ' xb = ', f23.12, ' xc = ', f23.12)", &
+            iter, xa, xb, xc
+    end if
 end do
 end subroutine
 
