@@ -237,6 +237,15 @@ do iter = 1, max_iter
     eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
+
+contains
+
+    real(dp) function f(theta)
+    real(dp), intent(in) :: theta
+    psi_ = cos(theta) * psi + sin(theta) * eta
+    f = free_energy(psi_)
+    end function
+
 end subroutine
 
 end module
