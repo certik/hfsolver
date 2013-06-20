@@ -12,11 +12,19 @@ call assert(abs(xmin - 0) < eps)
 call brent(f1, -1._dp, 0._dp, 1._dp, eps, 20, xmin, fxmin)
 call assert(abs(xmin - 0) < eps)
 
+call brent(f2, -4._dp, 0._dp, 4._dp, eps, 30, xmin, fxmin)
+call assert(abs(xmin - 0.865474033101_dp) < eps)
+
 contains
 
 real(dp) function f1(x) result(y)
 real(dp), intent(in) :: x
 y = x**2
+end function
+
+real(dp) function f2(x) result(y)
+real(dp), intent(in) :: x
+y = (cos(x) - x**3)**2
 end function
 
 end program
