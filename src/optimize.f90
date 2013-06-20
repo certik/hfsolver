@@ -49,8 +49,8 @@ procedure(func) :: f
 real(dp), intent(in) :: xa, xb, xc, tol
 integer, intent(in) :: maxiter
 real(dp), intent(out) :: xmin, fxmin
-real(dp), parameter :: mintol = 1e-11_dp, golden_ratio = (1+sqrt(5._dp))/2, &
-        cg = 1 - golden_ratio
+real(dp), parameter :: mintol = 1e-12_dp, golden_ratio = (1+sqrt(5._dp))/2, &
+        cg = 2 - golden_ratio
 real(dp) :: tol1, tol2, tmp1, tmp2, deltax, dx_temp, rat, xmid, &
         a, b, p, u, v, w, x, fu, fv, fw, fx
 integer :: iter

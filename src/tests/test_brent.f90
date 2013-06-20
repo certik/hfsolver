@@ -2,11 +2,15 @@ program test_brent
 
 use types, only: dp
 use optimize, only: brent
+use utils, only: assert
 implicit none
-real(dp) :: xmin, fxmin
+real(dp) :: xmin, fxmin, eps
+eps = 1e-12_dp
 
-call brent(f1, -1._dp, 0._dp, 1._dp, 1e-12_dp, 200, xmin, fxmin)
-print *, xmin, fxmin
+call brent(f1, -1._dp, 0.5_dp, 1._dp, eps, 20, xmin, fxmin)
+call assert(abs(xmin - 0) < eps)
+call brent(f1, -1._dp, 0._dp, 1._dp, eps, 20, xmin, fxmin)
+call assert(abs(xmin - 0) < eps)
 
 contains
 
