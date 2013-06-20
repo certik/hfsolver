@@ -207,14 +207,36 @@ end function
 
 subroutine free_energy_minimization(n)
 psi = sqrt(n)
-H = ... / derivative
+H = free_energy_derivative(psi)
 mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * H)
 ksi = 2*mu*psi - H
 phi = ksi
-phi2 = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, 0.5_dp * psi * H)
-* psi
-ksi = 2*mu*psi - H
-
+phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
+eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+theta = pi/2
+free_energy_ = free_energy(psi)
+do iter = 1, max_iter
+    theta_a = 0
+    theta_b = mod(theta, 2*pi)
+    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20)
+    call brent(f, theta_a, theta_b, theta_c, eps, 30, theta, free_energy_min)
+    psi_prev = psi
+    psi = cos(theta) * psi + sin(theta) * eta
+    free_energy_ = free_energy_min
+    if ( / last three free energies withing eps / ) then
+        n = psi**2
+        return
+    end if
+    H = free_energy_derivative(psi)
+    ksi_prev = ksi
+    ksi = 2*mu*psi - H
+    gamma_n = integral(nodes, elems, wtq3, ksi**2)
+    gamma_d = integral(nodes, elems, wtq3, ksi_prev**2)
+    phi = ksi + gamma_n / gamma_d * phi
+    phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
+    eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+end do
+call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 end subroutine
 
 end module
