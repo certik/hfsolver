@@ -6,7 +6,7 @@ use types, only: dp
 use utils, only: stop_error
 implicit none
 private
-public bisect
+public bisect, brent
 
 interface
     real(dp) function func(x)

@@ -53,6 +53,8 @@ ADDTEST(test_sparse)
 
 ADDTEST(test_fourier)
 
+ADDTEST(test_brent)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
