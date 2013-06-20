@@ -157,5 +157,69 @@ end do
 call stop_error("brent: The maximum number of iterations exceeded.")
 end subroutine
 
+subroutine bracket(f, xa, xb, xc, grow_limit, maxiter, verbose)
+procedure(func) :: f
+real(dp), intent(inout) :: xa, xb
+real(dp), intent(out) :: xc
+real(dp), intent(in) :: grow_limit
+integer, intent(in) :: maxiter
+logical, intent(in), optional :: verbose
+real(dp), parameter :: golden_ratio = (1+sqrt(5._dp))/2
+real(dp) :: denom, dum, fa, fb, fc, fw, tmp1, tmp2, val, w, wlim
+integer :: iter
+logical :: verbose_
+verbose_ = .false.
+if (present(verbose)) verbose_ = verbose
+
+fa = f(xa)
+fb = f(xb)
+if (fa < fb) then                      ! Switch so fa > fb
+    dum = xa; xa = xb; xb = dum
+    dum = fa; fa = fb; fb = dum
+end if
+xc = xb + golden_ratio*(xb - xa)
+fc = f(xc)
+iter = 0
+do while (fc < fb)
+    tmp1 = (xb - xa)*(fb - fc)
+    tmp2 = (xb - xc)*(fb - fa)
+    val = tmp2 - tmp1
+    if (abs(val) < tiny(1.0_dp)) then
+        denom = 2*tiny(1.0_dp)
+    else
+        denom = 2*val
+    end if
+    w = xb - ((xb - xc)*tmp2 - (xb - xa)*tmp1) / denom
+    wlim = xb + grow_limit*(xc - xb)
+    if (iter > maxiter) call stop_error("Too many iterations.")
+    iter = iter + 1
+    if ((w - xc)*(xb - w) > 0) then
+        fw = f(w)
+        if (fw < fc) then
+            xa = xb; xb = w; fa = fb; fb = fw
+            return
+        else if (fw > fb) then
+            xc = w; fc = fw
+            return
+        end if
+        w = xc + golden_ratio*(xc - xb)
+        fw = f(w)
+    else if ((w - wlim)*(wlim - xc) >= 0) then
+        w = wlim
+        fw = f(w)
+    else if ((w - wlim)*(xc - w) > 0) then
+        fw = f(w)
+        if (fw < fc) then
+            xb = xc; xc = w; w = xc + golden_ratio*(xc - xb)
+            fb = fc; fc = fw; fw = f(w)
+        end if
+    else
+        w = xc + golden_ratio*(xc - xb)
+        fw = f(w)
+    end if
+    xa = xb; xb = xc; xc = w
+    fa = fb; fb = fc; fc = fw
+end do
+end subroutine
 
 end module
