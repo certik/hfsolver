@@ -205,6 +205,18 @@ else
 end if
 end function
 
+subroutine free_energy_minimization(n)
+psi = sqrt(n)
+H = ... / derivative
+mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * H)
+ksi = 2*mu*psi - H
+phi = ksi
+phi2 = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, 0.5_dp * psi * H)
+* psi
+ksi = 2*mu*psi - H
+
+end subroutine
+
 end module
 
 
