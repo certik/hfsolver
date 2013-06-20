@@ -44,16 +44,21 @@ end do
 c = (a_ + b_)/2
 end function
 
-subroutine brent(f, xa, xb, xc, tol, maxiter, xmin, fxmin)
+subroutine brent(f, xa, xb, xc, tol, maxiter, xmin, fxmin, verbose)
 procedure(func) :: f
 real(dp), intent(in) :: xa, xb, xc, tol
 integer, intent(in) :: maxiter
 real(dp), intent(out) :: xmin, fxmin
+logical, intent(in), optional :: verbose
 real(dp), parameter :: mintol = 1e-12_dp, golden_ratio = (1+sqrt(5._dp))/2, &
         cg = 2 - golden_ratio
 real(dp) :: tol1, tol2, tmp1, tmp2, deltax, dx_temp, rat, xmid, &
         a, b, p, u, v, w, x, fu, fv, fw, fx
 integer :: iter
+logical :: verbose_
+verbose_ = .false.
+if (present(verbose)) verbose_ = verbose
+
 x = xb; w = xb; v = xb
 fx = f(x)
 fw = fx; fv = fx
@@ -66,6 +71,10 @@ else
 end if
 deltax = 0
 do iter = 1, maxiter
+    if (verbose_) then
+        print "(i2, ':  x = ', f23.12, '     tol = ', es10.2)", iter, x, &
+            (b - a) / 2
+    end if
     tol1 = tol*abs(x) + mintol
     tol2 = 2*tol1
     xmid = 0.5_dp*(a + b)
