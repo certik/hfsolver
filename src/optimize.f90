@@ -103,7 +103,7 @@ do iter = 1, maxiter
         deltax = rat
         if ((p > tmp2*(a - x)) .and. (p < tmp2*(b - x)) .and. &
                 (abs(p) < abs(0.5_dp*tmp2*dx_temp))) then ! check parabolic fit
-            rat = p*1.0 / tmp2        ! if parabolic step is useful.
+            rat = p / tmp2            ! if parabolic step is useful.
             u = x + rat
             if ((u - a) < tol2 .or. (b - u) < tol2) then
                 if (xmid - x >= 0) then
