@@ -86,6 +86,13 @@ allocate(nq_neutral(Nq, Nq, Nq, Ne))
 
 nenq = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
+
+! TODO: isolate parts that actually compute total energy from nenq and nq_pos,
+! and call that from the minimization routine. Then call the minimization from
+! here. And change
+! free_energy() to self_consistency(). The test_freenergy test will keep
+! testing our old code. Later we can refactor common parts out.
+
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
@@ -113,13 +120,6 @@ print *, "Solving..."
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
-print *, "Saving Ven to VTK"
-call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
-print *, "Saving values of Ven on a line"
-call line_save("Venq_line.txt", xin, nodes, elems, in, fullsol, &
-    [0._dp, 0._dp, 0._dp], [1._dp, 0._dp, 0._dp], 500)
-print *, "    Done."
-
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
