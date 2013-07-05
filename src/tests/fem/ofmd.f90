@@ -11,6 +11,7 @@ use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use constants, only: pi
 use xc, only: xc_pz
+use optimize, only: bracket, brent
 implicit none
 private
 public free_energy_min, read_pseudo
@@ -32,13 +33,18 @@ real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
-        wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
-        nenq_pos(:, :, :, :), &
-        nq_pos(:, :, :, :)
+        wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
+real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
+    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
-integer :: i, j, k
+integer :: i, j, k, iter, max_iter
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: Lx, Ly, Lz
+real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
+    gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
+
+energy_eps = 1e-10_dp
+brent_eps = 1e-10_dp
+max_iter = 30
 
 ibc = 3 ! Periodic boundary condition
 
@@ -73,22 +79,88 @@ Nb = maxval(ib)
 print *, "DOFs =", Nb
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
+allocate(Hpsi(Nq, Nq, Nq, Ne))
+allocate(psi(Nq, Nq, Nq, Ne))
+allocate(psi_(Nq, Nq, Nq, Ne))
+allocate(psi_prev(Nq, Nq, Nq, Ne))
+allocate(phi(Nq, Nq, Nq, Ne))
+allocate(phi_prime(Nq, Nq, Nq, Ne))
+allocate(ksi(Nq, Nq, Nq, Ne))
+allocate(ksi_prev(Nq, Nq, Nq, Ne))
+allocate(eta(Nq, Nq, Nq, Ne))
 
 nenq_pos = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 
+psi = sqrt(nq_pos)
+call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
+    xiq, wtq3, T_au, &
+    nenq_pos, psi**2, phihq, dphihq, Hpsi) ! Hpsi = <x|H|psi> = H psi(x, y, z)
+mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
+ksi = 2*mu*psi - Hpsi
+phi = ksi
+phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
+eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc)
+    nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+allocate(free_energies(max_iter))
+do iter = 1, max_iter
+    theta_a = 0
+    theta_b = mod(theta, 2*pi)
+    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20)
+    call brent(f, theta_a, theta_b, theta_c, brent_eps, 30, theta, &
+        free_energy_)
+    ! TODO: We probably don't need to recalculate free_energy_ here:
+    psi_prev = psi
+    psi = cos(theta) * psi + sin(theta) * eta
+    call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
+        T_au, &
+        nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+    free_energies(iter) = free_energy_
+    if (iter > 3) then
+        last3 = maxval(free_energies(iter-3:iter)) - &
+            minval(free_energies(iter-3:iter))
+        if (last3 < energy_eps) then
+            nq_pos = psi**2
+            return
+        end if
+    end if
+    call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
+        xiq, wtq3, T_au, &
+        nenq_pos, psi**2, phihq, dphihq, Hpsi)
+    ksi_prev = ksi
+    ksi = 2*mu*psi - Hpsi
+    gamma_n = integral(nodes, elems, wtq3, ksi**2)
+    gamma_d = integral(nodes, elems, wtq3, ksi_prev**2)
+    phi = ksi + gamma_n / gamma_d * phi
+    phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
+    eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+end do
+call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
+
+contains
+
+    real(dp) function f(theta) result(energy)
+    real(dp), intent(in) :: theta
+    psi_ = cos(theta) * psi + sin(theta) * eta
+    call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
+        T_au, &
+        nenq_pos, psi_**2, phihq, dphihq, Eh, Een, Ts, Exc, energy)
+    end function
+
 end subroutine
 
+
+
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc)
+    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc, Etot)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
-real(dp), intent(out) :: Eh, Een, Ts, Exc
+real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
     nq_neutral, Venq, Vhq, nenq_neutral
@@ -156,6 +228,64 @@ end do
 end do
 end do
 Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
+Etot = Ts + Een + Eh + Exc
+end subroutine
+
+subroutine free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
+        xiq, wtq3, T_au, &
+        nenq_pos, nq_pos, phihq, dphihq, Hpsi)
+real(dp), intent(in) :: nodes(:, :)
+integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
+real(dp), intent(in) :: Lx, Ly, Lz, T_au
+real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
+    dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
+real(dp), intent(out) :: Hpsi(:, :, :, :)
+
+real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
+    nq_neutral, Venq, Vhq, nenq_neutral
+integer, allocatable :: Ap(:), Aj(:)
+real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
+real(dp) :: background
+integer :: Nn, Ne, Nq
+Nn = size(nodes, 2)
+Ne = size(elems, 2)
+Nq = size(xiq)
+allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
+allocate(y(Nq, Nq, Nq, Ne))
+allocate(F0(Nq, Nq, Nq, Ne))
+allocate(exc_density(Nq, Nq, Nq, Ne))
+allocate(nq_neutral(Nq, Nq, Nq, Ne))
+allocate(Venq(Nq, Nq, Nq, Ne))
+! Make the charge density net neutral (zero integral):
+background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
+print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nq_neutral = nq_pos - background
+call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
+print *, "Solving..."
+!sol = solve(A, rhs)
+sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call c2fullc_3d(in, ib, sol, fullsol)
+call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+
+background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
+print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nenq_neutral = nenq_pos - background
+call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
+print *, "Solving..."
+sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call c2fullc_3d(in, ib, sol, fullsol)
+call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+
+! TODO: Calculate Hpsi here
+Hpsi = T_au
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
@@ -216,49 +346,6 @@ else
     ! that is obviously a typo.
 end if
 end function
-
-subroutine free_energy_minimization(n)
-psi = sqrt(n)
-H = free_energy_derivative(psi)
-mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * H)
-ksi = 2*mu*psi - H
-phi = ksi
-phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
-eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
-theta = pi/2
-free_energy_ = free_energy(psi)
-do iter = 1, max_iter
-    theta_a = 0
-    theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20)
-    call brent(f, theta_a, theta_b, theta_c, eps, 30, theta, free_energy_min)
-    psi_prev = psi
-    psi = cos(theta) * psi + sin(theta) * eta
-    free_energy_ = free_energy_min
-    if ( / last three free energies withing eps / ) then
-        n = psi**2
-        return
-    end if
-    H = free_energy_derivative(psi)
-    ksi_prev = ksi
-    ksi = 2*mu*psi - H
-    gamma_n = integral(nodes, elems, wtq3, ksi**2)
-    gamma_d = integral(nodes, elems, wtq3, ksi_prev**2)
-    phi = ksi + gamma_n / gamma_d * phi
-    phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
-    eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
-end do
-call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
-
-contains
-
-    real(dp) function f(theta)
-    real(dp), intent(in) :: theta
-    psi_ = cos(theta) * psi + sin(theta) * eta
-    f = free_energy(psi_)
-    end function
-
-end subroutine
 
 end module
 
