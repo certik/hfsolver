@@ -285,7 +285,8 @@ real(dp) :: Rcut, L, T_eV, T_au
 !allocate(values(Nx, Ny, Nz))
 !read(u, *) values
 !close(u)
-call read_pseudo("H.pseudo", R, V, Z, Ediff)
+!call read_pseudo("H.pseudo", R, V, Z, Ediff)
+allocate(R(1), V(1)); Z=1; Ediff=0
 !call loadtxt("Venr.txt", D)
 !allocate(c(0:4, size(D, 1)-1))
 !call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
