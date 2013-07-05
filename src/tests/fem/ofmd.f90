@@ -13,12 +13,12 @@ use constants, only: pi
 use xc, only: xc_pz
 implicit none
 private
-public free_energy, read_pseudo
+public free_energy_min, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, Ts, &
-        Exc, Nb)
+subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, &
+    Ts, Exc, Nb)
 integer, intent(in) :: p
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
 procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
@@ -31,18 +31,14 @@ integer :: Nn, Ne, ibc
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq
-real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
-        rhs(:), sol(:), &
-        fullsol(:), Vhq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
-        nenq(:, :, :, :), &
-        Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :), &
-        exc_density(:, :, :, :), nq_pos(:, :, :, :), nq_neutral(:, :, :, :)
-integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
-integer :: i, j, k, m
+real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
+        wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
+        nenq_pos(:, :, :, :), &
+        nq_pos(:, :, :, :)
+integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
+integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: background
 real(dp) :: Lx, Ly, Lz
-real(dp) :: beta, tmp
 
 ibc = 3 ! Periodic boundary condition
 
@@ -75,24 +71,40 @@ call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
 print *, "DOFs =", Nb
+allocate(nenq_pos(Nq, Nq, Nq, Ne))
+allocate(nq_pos(Nq, Nq, Nq, Ne))
+
+nenq_pos = func2quad(nodes, elems, xiq, fnen)
+nq_pos = func2quad(nodes, elems, xiq, fn_pos)
+
+call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
+    nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc)
+end subroutine
+
+subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
+    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc)
+real(dp), intent(in) :: nodes(:, :)
+integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
+real(dp), intent(in) :: Lx, Ly, Lz, T_au
+real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
+    dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
+real(dp), intent(out) :: Eh, Een, Ts, Exc
+
+real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
+    nq_neutral, Venq, Vhq, nenq_neutral
+integer, allocatable :: Ap(:), Aj(:)
+real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
+real(dp) :: background, beta, tmp
+integer :: i, j, k, m, Nn, Ne, Nq
+Nn = size(nodes, 2)
+Ne = size(elems, 2)
+Nq = size(xiq)
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
-allocate(Venq(Nq, Nq, Nq, Ne))
-allocate(nenq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
 allocate(exc_density(Nq, Nq, Nq, Ne))
-allocate(nq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
-
-nenq = func2quad(nodes, elems, xiq, fnen)
-nq_pos = func2quad(nodes, elems, xiq, fn_pos)
-
-! TODO: isolate parts that actually compute total energy from nenq and nq_pos,
-! and call that from the minimization routine. Then call the minimization from
-! here. And change
-! free_energy() to self_consistency(). The test_freenergy test will keep
-! testing our old code. Later we can refactor common parts out.
-
+allocate(Venq(Nq, Nq, Nq, Ne))
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
@@ -108,14 +120,14 @@ sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
-background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
+background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
 print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
 print *, "Subtracting constant background (Q/V): ", background
-nenq = nenq - background
+nenq_neutral = nenq_pos - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nenq, Ap, Aj, Ax, rhs)
+    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
 print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
 print *, "Solving..."
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
@@ -256,7 +268,7 @@ end module
 
 program ofmd
 use types, only: dp
-use ofmd_utils, only: free_energy, read_pseudo
+use ofmd_utils, only: free_energy_min, read_pseudo
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt
 use splines, only: spline3pars, iixmin, poly3
@@ -283,7 +295,7 @@ p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 5, 5, 5, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy_min(L, 5, 5, 5, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
