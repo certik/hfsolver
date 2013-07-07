@@ -109,7 +109,8 @@ do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
     call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.true.)
-    call brent(f, theta_a, theta_b, theta_c, brent_eps, 30, theta, &
+    print *, "bracket:", theta_a, theta_b, theta_c
+    call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
         free_energy_, verbose=.true.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
