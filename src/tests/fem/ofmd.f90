@@ -108,15 +108,22 @@ allocate(free_energies(max_iter))
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20)
+    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.true.)
     call brent(f, theta_a, theta_b, theta_c, brent_eps, 30, theta, &
-        free_energy_)
+        free_energy_, verbose=.true.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
         nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+    print *, "Summary of energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eh
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u.')", free_energy_
     free_energies(iter) = free_energy_
     if (iter > 3) then
         last3 = maxval(free_energies(iter-3:iter)) - &
