@@ -245,7 +245,7 @@ real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
     nq_neutral, Venq, Vhq, nenq_neutral
 integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
-real(dp) :: background
+real(dp) :: background, beta
 integer :: Nn, Ne, Nq
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
@@ -284,8 +284,12 @@ sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 
-! TODO: Calculate Hpsi here
-Hpsi = T_au
+beta = 1/T_au
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
+if (any(y < 0)) call stop_error("Density must be positive")
+F0 = nq_pos / beta * f(y)
+
+Hpsi = F0 + Vhq + Venq
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
