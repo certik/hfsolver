@@ -249,7 +249,7 @@ real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
 real(dp), intent(out) :: Hpsi(:, :, :, :)
 
-real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
+real(dp), allocatable, dimension(:, :, :, :) :: y, dF0dn, exc_density, &
     nq_neutral, Venq, Vhq, nenq_neutral, Vxc
 integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
@@ -260,7 +260,7 @@ Ne = size(elems, 2)
 Nq = size(xiq)
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
-allocate(F0(Nq, Nq, Nq, Ne))
+allocate(dF0dn(Nq, Nq, Nq, Ne))
 allocate(exc_density(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
@@ -296,7 +296,8 @@ call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
 if (any(y < 0)) call stop_error("Density must be positive")
-F0 = nq_pos / beta * f(y, deriv=.true.)
+dF0dn = 1 / beta * f(y) + nq_pos / beta * f(y, deriv=.true.) * &
+    pi**2 / sqrt(2._dp) * beta**(3._dp/2)
 ! Exchange and correlation potential
 do m = 1, Ne
 do k = 1, Nq
@@ -308,7 +309,7 @@ end do
 end do
 end do
 
-Hpsi = F0 + Vhq + Venq + Vxc
+Hpsi = dF0dn + Vhq + Venq + Vxc
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
