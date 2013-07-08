@@ -134,6 +134,8 @@ do iter = 1, max_iter
             return
         end if
     end if
+    ! TODO: calculate the derivative together with the free energy, as pretty
+    ! much the whole calculation is shared.
     call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
         xiq, wtq3, T_au, &
         nenq_pos, psi**2, phihq, dphihq, Hpsi)
