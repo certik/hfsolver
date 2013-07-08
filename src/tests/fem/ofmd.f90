@@ -296,7 +296,7 @@ call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
 if (any(y < 0)) call stop_error("Density must be positive")
-F0 = nq_pos / beta * f(y)
+F0 = nq_pos / beta * f(y, deriv=.true.)
 ! Exchange and correlation potential
 do m = 1, Ne
 do k = 1, Nq
