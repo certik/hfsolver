@@ -250,11 +250,11 @@ real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
 real(dp), intent(out) :: Hpsi(:, :, :, :)
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
-    nq_neutral, Venq, Vhq, nenq_neutral
+    nq_neutral, Venq, Vhq, nenq_neutral, Vxc
 integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
-real(dp) :: background, beta
-integer :: Nn, Ne, Nq
+real(dp) :: background, beta, tmp
+integer :: Nn, Ne, Nq, i, j, k, m
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = size(xiq)
@@ -264,6 +264,7 @@ allocate(F0(Nq, Nq, Nq, Ne))
 allocate(exc_density(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
+allocate(Vxc(Nq, Nq, Nq, Ne))
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
@@ -296,8 +297,18 @@ beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
 if (any(y < 0)) call stop_error("Density must be positive")
 F0 = nq_pos / beta * f(y)
+! Exchange and correlation potential
+do m = 1, Ne
+do k = 1, Nq
+do j = 1, Nq
+do i = 1, Nq
+    call xc_pz(nq_pos(i, j, k, m), tmp, Vxc(i, j, k, m))
+end do
+end do
+end do
+end do
 
-Hpsi = F0 + Vhq + Venq
+Hpsi = F0 + Vhq + Venq + Vxc
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
