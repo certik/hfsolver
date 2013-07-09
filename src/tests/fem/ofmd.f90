@@ -44,7 +44,7 @@ real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
-max_iter = 30
+max_iter = 200
 
 ibc = 3 ! Periodic boundary condition
 
@@ -110,7 +110,6 @@ do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
     call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.false.)
-    print *, "bracket:", theta_a, theta_b, theta_c
     call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
         free_energy_, verbose=.false.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
