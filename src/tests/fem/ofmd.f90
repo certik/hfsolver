@@ -96,6 +96,7 @@ psi = sqrt(nq_pos)
 call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
     xiq, wtq3, T_au, &
     nenq_pos, psi**2, phihq, dphihq, Hpsi) ! Hpsi = <x|H|psi> = H psi(x, y, z)
+Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
 mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
 ksi = 2*mu*psi - Hpsi
 phi = ksi
@@ -139,6 +140,7 @@ do iter = 1, max_iter
     call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
         xiq, wtq3, T_au, &
         nenq_pos, psi**2, phihq, dphihq, Hpsi)
+    Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
     ksi_prev = ksi
     ksi = 2*mu*psi - Hpsi
     gamma_n = integral(nodes, elems, wtq3, ksi**2)
@@ -244,6 +246,10 @@ end subroutine
 subroutine free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
         xiq, wtq3, T_au, &
         nenq_pos, nq_pos, phihq, dphihq, Hpsi)
+! Returns "delta F / delta n", the functional derivative with respect to the
+! density "n". Use the relation
+!     d/dpsi = 2 psi d/dn
+! to obtain the derivative with respect to psi (i.e. multiply Hpsi by 2*psi).
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
@@ -255,7 +261,7 @@ real(dp), allocatable, dimension(:, :, :, :) :: y, dF0dn, exc_density, &
     nq_neutral, Venq, Vhq, nenq_neutral, Vxc
 integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
-real(dp) :: background, beta, tmp
+real(dp) :: background, beta, tmp, dydn
 integer :: Nn, Ne, Nq, i, j, k, m
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
@@ -296,10 +302,12 @@ call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 
 beta = 1/T_au
-y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
+y    = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
+dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
 if (any(y < 0)) call stop_error("Density must be positive")
-dF0dn = 1 / beta * f(y) + nq_pos / beta * f(y, deriv=.true.) * &
-    pi**2 / sqrt(2._dp) * beta**(3._dp/2)
+! F0 = nq_pos / beta * f(y)
+! d F0 / d n =
+dF0dn = 1 / beta * f(y) + nq_pos / beta * f(y, deriv=.true.) * dydn
 ! Exchange and correlation potential
 do m = 1, Ne
 do k = 1, Nq
