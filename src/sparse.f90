@@ -99,7 +99,7 @@ real(dp), intent(out) :: Bx(:)
 call coo2csr(Aj, Ai, Ax, Bp, Bi, Bx)
 end subroutine
 
-subroutine coo2csr_canonical(Ai, Aj, Ax, Bp, Bj, Bx)
+subroutine coo2csr_canonical(Ai, Aj, Ax, Bp, Bj, Bx, verbose)
 ! Converts from COO (Ai, Aj, Ax) into CSR (Bp, Bj, Bx)
 ! Row and column indices are *not* assumed to be ordered.
 ! Duplicate entries are summed up and the indices are ordered.
@@ -107,18 +107,22 @@ integer, intent(in) :: Ai(:), Aj(:)
 real(dp), intent(in) :: Ax(:)
 integer, allocatable, intent(out) :: Bp(:), Bj(:)
 real(dp), allocatable, intent(out) :: Bx(:)
+logical, optional, intent(in) :: verbose
 integer, allocatable :: Bj_(:)
 real(dp), allocatable :: Bx_(:)
 integer :: nnz
+logical :: verbose_
+verbose_ = .false.
+if (present(verbose)) verbose_ = verbose
 ! TODO: debug this and try to reallocate
 allocate(Bp(maxval(Ai)+1), Bj_(size(Ai)), Bx_(size(Ai)))
-print *, "coo2csr"
+if (verbose_) print *, "coo2csr"
 call coo2csr(Ai, Aj, Ax, Bp, Bj_, Bx_)
-print *, "csr_sort_indices"
+if (verbose_) print *, "csr_sort_indices"
 call csr_sort_indices(Bp, Bj_, Bx_)
-print *, "csr_sum_duplicates"
+if (verbose_) print *, "csr_sum_duplicates"
 call csr_sum_duplicates(Bp, Bj_, Bx_)
-print *, "done"
+if (verbose_) print *, "done"
 nnz = Bp(size(Bp))-1
 allocate(Bj(nnz), Bx(nnz))
 Bj = Bj_(:nnz)

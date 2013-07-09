@@ -54,7 +54,7 @@ end do
 end function
 
 subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, &
-        rhsq, matBp, matBj, matBx, rhs)
+        rhsq, matBp, matBj, matBx, rhs, verbose)
 ! Assemble Poisson equation on a 3D hexahedral uniform mesh
 ! It solves:
 !   \nabla^2 V(x, y, z) = -f(x, y, z)
@@ -66,6 +66,7 @@ integer, intent(in):: elems(:, :), ib(:, :, :, :)
 real(dp), intent(out):: rhs(:)
 integer, allocatable, intent(out) :: matBp(:), matBj(:)
 real(dp), allocatable, intent(out) :: matBx(:)
+logical, intent(in), optional :: verbose
 integer, allocatable :: matAi(:), matAj(:)
 real(dp), allocatable :: matAx(:)
 integer :: Ne, p, e, i, j, iqx, iqy, iqz
@@ -78,6 +79,9 @@ real(dp) :: jacx, jacy, jacz, jac_det
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xiq), size(xiq), size(xiq)) :: Am_loc
 integer :: idx, maxidx
+logical :: verbose_
+verbose_ = .false.
+if (present(verbose)) verbose_ = verbose
 
 Ne = size(elems, 2)
 p = size(xin) - 1
@@ -115,7 +119,9 @@ phi_dx = phi_dx / jacx
 phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
 ! Precalculate element matrices:
-print *, "Precalculating local element matrix..."
+if (verbose_) then
+    print *, "Precalculating local element matrix..."
+end if
 do bz = 1, p+1
 do by = 1, p+1
 do bx = 1, p+1
@@ -133,10 +139,14 @@ do bx = 1, p+1
 end do
 end do
 end do
-print *, "Assembly..."
+if (verbose_) then
+    print *, "Assembly..."
+end if
 idx = 0
 maxidx = Ne*(p+1)**6
-print *, "Number of COO matrix entries:", maxidx
+if (verbose_) then
+    print *, "Number of COO matrix entries:", maxidx
+end if
 allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
 do e = 1, Ne
     fq = rhsq(:, :, :, e)
@@ -171,14 +181,18 @@ do e = 1, Ne
     end do
     end do
 end do
-print *, "Converting COO -> CSR..."
+if (verbose_) then
+    print *, "Converting COO -> CSR..."
+end if
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
     matBp, matBj, matBx)
-print *, "CSR Matrix:"
-print *, "    dimension:", size(matBp)-1
-print *, "    number of nonzeros:", size(matBx)
-print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
-    (size(matBp)-1._dp)**2
+if (verbose_) then
+    print *, "CSR Matrix:"
+    print *, "    dimension:", size(matBp)-1
+    print *, "    number of nonzeros:", size(matBx)
+    print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
+        (size(matBp)-1._dp)**2
+end if
 end subroutine
 
 real(dp) function integral(nodes, elems, wtq, fq) result(r)

@@ -109,10 +109,10 @@ allocate(free_energies(max_iter))
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.true.)
+    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.false.)
     print *, "bracket:", theta_a, theta_b, theta_c
     call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
-        free_energy_, verbose=.true.)
+        free_energy_, verbose=.false.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
@@ -166,13 +166,14 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc, Etot)
+    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc, Etot, verbose)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
+logical, intent(in), optional :: verbose
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
     nq_neutral, Venq, Vhq, nenq_neutral
@@ -180,6 +181,9 @@ integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp
 integer :: i, j, k, m, Nn, Ne, Nq
+logical :: verbose_
+verbose_ = .false.
+if (present(verbose)) verbose_ = verbose
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = size(xiq)
@@ -191,28 +195,36 @@ allocate(nq_neutral(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
-print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
-print *, "Subtracting constant background (Q/V): ", background
+if (verbose_) then
+    print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
+    print *, "Subtracting constant background (Q/V): ", background
+end if
 nq_neutral = nq_pos - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nq_neutral, Ap, Aj, Ax, rhs)
-print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
-print *, "Solving..."
+if (verbose_) then
+    print *, "sum(rhs):    ", sum(rhs)
+    print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
+    print *, "Solving..."
+end if
 !sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
 background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
-print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-print *, "Subtracting constant background (Q/V): ", background
+if (verbose_) then
+    print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+    print *, "Subtracting constant background (Q/V): ", background
+end if
 nenq_neutral = nenq_pos - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
-print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
-print *, "Solving..."
+if (verbose_) then
+    print *, "sum(rhs):    ", sum(rhs)
+    print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
+    print *, "Solving..."
+end if
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
@@ -245,7 +257,7 @@ end subroutine
 
 subroutine free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
         xiq, wtq3, T_au, &
-        nenq_pos, nq_pos, phihq, dphihq, Hpsi)
+        nenq_pos, nq_pos, phihq, dphihq, Hpsi, verbose)
 ! Returns "delta F / delta n", the functional derivative with respect to the
 ! density "n". Use the relation
 !     d/dpsi = 2 psi d/dn
@@ -255,6 +267,7 @@ integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
+logical, intent(in), optional :: verbose
 real(dp), intent(out) :: Hpsi(:, :, :, :)
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, dF0dn, exc_density, &
@@ -263,6 +276,9 @@ integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp, dydn
 integer :: Nn, Ne, Nq, i, j, k, m
+logical :: verbose_
+verbose_ = .false.
+if (present(verbose)) verbose_ = verbose
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = size(xiq)
@@ -275,28 +291,36 @@ allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(Vxc(Nq, Nq, Nq, Ne))
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
-print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
-print *, "Subtracting constant background (Q/V): ", background
+if (verbose_) then
+    print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
+    print *, "Subtracting constant background (Q/V): ", background
+end if
 nq_neutral = nq_pos - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nq_neutral, Ap, Aj, Ax, rhs)
-print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
-print *, "Solving..."
+if (verbose_) then
+    print *, "sum(rhs):    ", sum(rhs)
+    print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
+    print *, "Solving..."
+end if
 !sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
 background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
-print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-print *, "Subtracting constant background (Q/V): ", background
+if (verbose_) then
+    print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+    print *, "Subtracting constant background (Q/V): ", background
+end if
 nenq_neutral = nenq_pos - background
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
-print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
-print *, "Solving..."
+if (verbose_) then
+    print *, "sum(rhs):    ", sum(rhs)
+    print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
+    print *, "Solving..."
+end if
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
