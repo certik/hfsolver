@@ -42,8 +42,8 @@ integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
 
-energy_eps = 1e-10_dp
-brent_eps = 1e-10_dp
+energy_eps = 3.6749308286427368e-5_dp
+brent_eps = 1e-3_dp
 max_iter = 30
 
 ibc = 3 ! Periodic boundary condition
