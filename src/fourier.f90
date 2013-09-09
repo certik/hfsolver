@@ -8,7 +8,7 @@ use constants, only: i_, pi
 use utils, only: stop_error
 implicit none
 private
-public dft, idft, fft
+public dft, idft, fft, fft_vectorized
 
 contains
 
@@ -54,6 +54,51 @@ else
     forall(i=0:N-1) factor(i+1) = exp(-2*pi*i_*i/N)
     p = [X_even + factor(:N / 2) * X_odd, X_even + factor(N / 2+1:) * X_odd]
 end if
+end function
+
+function dft_vec(x) result(p)
+! Compute the one-dimensional discrete Fourier transform on each column of 'x'
+! separately.
+real(dp), intent(in) :: x(:, :)
+complex(dp) :: p(size(x, 1), size(x, 2))
+complex(dp) :: F(size(x, 1), size(x, 1))
+integer :: N, i, j
+N = size(x, 1)
+forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(-2*pi*i_*i*j / N)
+forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
+p = matmul(F, x)
+end function
+
+function fft_step(x) result(p)
+complex(dp), intent(in) :: x(:, :) ! (Nmin, ...)
+complex(dp) :: p(size(x, 1) * 2, size(x, 2) / 2)
+complex(dp) :: factor(size(x, 1))
+complex(dp), dimension(size(x, 1), size(x, 2) / 2) :: X_even, X_odd
+integer :: Nmin, Ns, i
+Nmin = size(x, 1)
+Ns = size(x, 2)
+X_even = x(:, :Ns/2)
+X_odd = x(:, Ns/2+1:)
+forall(i=0:Nmin-1) factor(i+1) = exp(-pi*i_*i/Nmin)
+p(:Nmin,   :) = X_even + spread(factor, 2, Ns/2) * X_odd
+p(Nmin+1:, :) = X_even - spread(factor, 2, Ns/2) * X_odd
+end function
+
+function fft_vectorized(x) result(p)
+! A vectorized, non-recursive version of the Cooley-Tukey FFT
+real(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+integer :: N, Nmin, Ns
+N = size(x)
+if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
+Nmin = min(N, 32)
+Ns = N / Nmin
+p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
+do while (Nmin < N)
+    p = reshape(fft_step(reshape(p, [Nmin, Ns])), [N])
+    Nmin = Nmin * 2
+    Ns = N / Nmin
+end do
 end function
 
 end module
