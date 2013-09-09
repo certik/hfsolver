@@ -38,7 +38,7 @@ forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 x = matmul(F, p) / N
 end function
 
-function fft(x) result(p)
+recursive function fft(x) result(p)
 ! A recursive implementation of the 1D Cooley-Tukey FFT
 real(dp), intent(in) :: x(:)
 complex(dp) :: p(size(x)), X_even(size(x)/2), X_odd(size(x)/2)
