@@ -90,19 +90,30 @@ complex(dp), target :: p(size(x))
 complex(dp), target :: tmp(size(x))
 complex(dp), pointer :: p1(:, :), p2(:, :)
 integer :: N, Nmin, Ns
+logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
 Nmin = min(N, 32)
 Ns = N / Nmin
 p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
+p_is_result = .true.
 do while (Nmin < N)
-    p1(1:Nmin, 1:Ns) => p
+    if (p_is_result) then
+        p1(1:Nmin, 1:Ns) => p
+    else
+        p1(1:Nmin, 1:Ns) => tmp
+    end if
     Nmin = Nmin * 2
     Ns = Ns / 2
-    p2(1:Nmin, 1:Ns) => tmp
+    if (p_is_result) then
+        p2(1:Nmin, 1:Ns) => tmp
+    else
+        p2(1:Nmin, 1:Ns) => p
+    end if
     call fft_step(p1, p2)
-    p = tmp
+    p_is_result = .not. p_is_result
 end do
+if (.not. p_is_result) p = tmp
 end function
 
 end module
