@@ -69,13 +69,12 @@ forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 p = matmul(x, F)
 end subroutine
 
-subroutine fft_step(x, p)
-complex(dp), intent(in) :: x(:, :)
-complex(dp), intent(out) :: p(:, :)
+subroutine fft_step(Ns, Nmin, x, p)
+integer, intent(in) :: Ns, Nmin
+complex(dp), intent(in) :: x(Ns, Nmin)
+complex(dp), intent(out) :: p(Ns/2, Nmin*2)
 complex(dp) :: tmp
-integer :: Nmin, Ns, i
-Nmin = size(x, 2)
-Ns = size(x, 1)
+integer :: i
 do i = 1, Nmin
     tmp = exp(-pi*i_*(i-1)/Nmin)
     p(:,      i) = x(:Ns/2, i) + tmp * x(Ns/2+1:, i)
@@ -106,14 +105,14 @@ do while (Nmin < N)
     else
         p1(1:Ns, 1:Nmin) => tmp
     end if
+    if (p_is_result) then
+        p2(1:Ns/2, 1:Nmin*2) => tmp
+    else
+        p2(1:Ns/2, 1:Nmin*2) => p
+    end if
+    call fft_step(Ns, Nmin, p1, p2)
     Nmin = Nmin * 2
     Ns = Ns / 2
-    if (p_is_result) then
-        p2(1:Ns, 1:Nmin) => tmp
-    else
-        p2(1:Ns, 1:Nmin) => p
-    end if
-    call fft_step(p1, p2)
     p_is_result = .not. p_is_result
 end do
 if (.not. p_is_result) p = tmp
