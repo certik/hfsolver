@@ -97,7 +97,8 @@ if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
 Nmin = min(N, 4)
 Ns = N / Nmin
 x1(1:Ns, 1:Nmin) => x
-p = reshape(dft_vec(x1), [N])
+p1(1:Ns, 1:Nmin) => p
+p1 = dft_vec(x1)
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
