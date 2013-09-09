@@ -69,9 +69,9 @@ forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 p = matmul(F, x)
 end function
 
-function fft_step(x) result(p)
-complex(dp), intent(in) :: x(:, :) ! (Nmin, ...)
-complex(dp) :: p(size(x, 1) * 2, size(x, 2) / 2)
+subroutine fft_step(x, p)
+complex(dp), intent(in) :: x(:, :)
+complex(dp), intent(out) :: p(:, :)
 complex(dp) :: factor(size(x, 1))
 integer :: Nmin, Ns, i
 Nmin = size(x, 1)
@@ -79,12 +79,13 @@ Ns = size(x, 2)
 forall(i=0:Nmin-1) factor(i+1) = exp(-pi*i_*i/Nmin)
 p(:Nmin,   :) = x(:, :Ns/2) + spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
 p(Nmin+1:, :) = x(:, :Ns/2) - spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
-end function
+end subroutine
 
 function fft_vectorized(x) result(p)
 ! A vectorized, non-recursive version of the Cooley-Tukey FFT
 real(dp), intent(in) :: x(:)
 complex(dp), target :: p(size(x))
+complex(dp), target :: tmp(size(x))
 complex(dp), pointer :: p1(:, :), p2(:, :)
 integer :: N, Nmin, Ns
 N = size(x)
@@ -96,8 +97,9 @@ do while (Nmin < N)
     p1(1:Nmin, 1:Ns) => p
     Nmin = Nmin * 2
     Ns = Ns / 2
-    p2(1:Nmin, 1:Ns) => p
-    p2 = fft_step(p1)
+    p2(1:Nmin, 1:Ns) => tmp
+    call fft_step(p1, p2)
+    p = tmp
 end do
 end function
 
