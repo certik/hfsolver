@@ -84,7 +84,8 @@ end function
 function fft_vectorized(x) result(p)
 ! A vectorized, non-recursive version of the Cooley-Tukey FFT
 real(dp), intent(in) :: x(:)
-complex(dp) :: p(size(x))
+complex(dp), target :: p(size(x))
+complex(dp), pointer :: p1(:, :), p2(:, :)
 integer :: N, Nmin, Ns
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
@@ -92,9 +93,11 @@ Nmin = min(N, 32)
 Ns = N / Nmin
 p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
 do while (Nmin < N)
-    p = reshape(fft_step(reshape(p, [Nmin, Ns])), [N])
+    p1(1:Nmin, 1:Ns) => p
     Nmin = Nmin * 2
-    Ns = N / Nmin
+    Ns = Ns / 2
+    p2(1:Nmin, 1:Ns) => p
+    p2 = fft_step(p1)
 end do
 end function
 
