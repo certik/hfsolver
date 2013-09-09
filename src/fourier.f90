@@ -72,13 +72,15 @@ end function
 subroutine fft_step(x, p)
 complex(dp), intent(in) :: x(:, :)
 complex(dp), intent(out) :: p(:, :)
-complex(dp) :: factor(size(x, 1))
+complex(dp), target :: factor(size(x)/2)
+complex(dp), pointer :: fac(:, :)
 integer :: Nmin, Ns, i
 Nmin = size(x, 1)
 Ns = size(x, 2)
-forall(i=0:Nmin-1) factor(i+1) = exp(-pi*i_*i/Nmin)
-p(:Nmin,   :) = x(:, :Ns/2) + spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
-p(Nmin+1:, :) = x(:, :Ns/2) - spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
+fac(1:Nmin, 1:Ns/2) => factor
+forall(i=0:Nmin-1) fac(i+1, :) = exp(-pi*i_*i/Nmin)
+p(:Nmin,   :) = x(:, :Ns/2) + fac * x(:, Ns/2+1:)
+p(Nmin+1:, :) = x(:, :Ns/2) - fac * x(:, Ns/2+1:)
 end subroutine
 
 function fft_vectorized(x) result(p)
