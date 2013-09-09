@@ -78,8 +78,8 @@ Nmin = size(x, 2)
 Ns = size(x, 1)
 do i = 1, Nmin
     tmp = exp(-pi*i_*(i-1)/Nmin)
-    p(i,      :) = x(:Ns/2, i) + tmp * x(Ns/2+1:, i)
-    p(Nmin+i, :) = x(:Ns/2, i) - tmp * x(Ns/2+1:, i)
+    p(:,      i) = x(:Ns/2, i) + tmp * x(Ns/2+1:, i)
+    p(:, Nmin+i) = x(:Ns/2, i) - tmp * x(Ns/2+1:, i)
 end do
 end subroutine
 
@@ -95,22 +95,22 @@ N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
 Nmin = min(N, 4)
 Ns = N / Nmin
-p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
+p = reshape(transpose(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1]))), [N])
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
-        p1(1:Nmin, 1:Ns) => p
+        p1(1:Ns, 1:Nmin) => p
     else
-        p1(1:Nmin, 1:Ns) => tmp
+        p1(1:Ns, 1:Nmin) => tmp
     end if
     Nmin = Nmin * 2
     Ns = Ns / 2
     if (p_is_result) then
-        p2(1:Nmin, 1:Ns) => tmp
+        p2(1:Ns, 1:Nmin) => tmp
     else
-        p2(1:Nmin, 1:Ns) => p
+        p2(1:Ns, 1:Nmin) => p
     end if
-    call fft_step(transpose(p1), p2)
+    call fft_step(p1, p2)
     p_is_result = .not. p_is_result
 end do
 if (.not. p_is_result) p = tmp
