@@ -72,13 +72,16 @@ end function
 subroutine fft_step(x, p)
 complex(dp), intent(in) :: x(:, :)
 complex(dp), intent(out) :: p(:, :)
-complex(dp), target :: fac(size(x, 1))
+complex(dp), target :: fac(size(x, 2))
 integer :: Nmin, Ns, i
-Nmin = size(x, 1)
-Ns = size(x, 2)
+Nmin = size(x, 2)
+Ns = size(x, 1)
 forall(i=0:Nmin-1) fac(i+1) = exp(-pi*i_*i/Nmin)
-forall(i=1:Ns/2) p(:Nmin,   i) = x(:, i) + fac * x(:, Ns/2+i)
-forall(i=1:Ns/2) p(Nmin+1:, i) = x(:, i) - fac * x(:, Ns/2+i)
+!forall(i=1:Ns/2) p(:Nmin,   i) = x(i, :) + fac * x(Ns/2+i, :)
+!forall(i=1:Ns/2) p(Nmin+1:, i) = x(i, :) - fac * x(Ns/2+i, :)
+
+forall(i=1:Nmin) p(i,      :) = x(:Ns/2, i) + fac(i) * x(Ns/2+1:, i)
+forall(i=1:Nmin) p(Nmin+i, :) = x(:Ns/2, i) - fac(i) * x(Ns/2+1:, i)
 end subroutine
 
 function fft_vectorized(x) result(p)
@@ -108,7 +111,7 @@ do while (Nmin < N)
     else
         p2(1:Nmin, 1:Ns) => p
     end if
-    call fft_step(p1, p2)
+    call fft_step(transpose(p1), p2)
     p_is_result = .not. p_is_result
 end do
 if (.not. p_is_result) p = tmp
