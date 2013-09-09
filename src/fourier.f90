@@ -61,12 +61,12 @@ function dft_vec(x) result(p)
 ! separately.
 real(dp), intent(in) :: x(:, :)
 complex(dp) :: p(size(x, 1), size(x, 2))
-complex(dp) :: F(size(x, 1), size(x, 1))
+complex(dp) :: F(size(x, 2), size(x, 2))
 integer :: N, i, j
-N = size(x, 1)
+N = size(x, 2)
 forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(-2*pi*i_*i*j / N)
 forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
-p = matmul(F, x)
+p = matmul(x, F)
 end function
 
 subroutine fft_step(x, p)
@@ -95,7 +95,7 @@ N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
 Nmin = min(N, 4)
 Ns = N / Nmin
-p = reshape(transpose(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1]))), [N])
+p = reshape(dft_vec(reshape(x, [Ns, Nmin])), [N])
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
