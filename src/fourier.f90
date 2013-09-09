@@ -69,33 +69,49 @@ forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 p = matmul(F, x)
 end function
 
-function fft_step(x) result(p)
-complex(dp), intent(in) :: x(:, :) ! (Nmin, ...)
-complex(dp) :: p(size(x, 1) * 2, size(x, 2) / 2)
-complex(dp) :: factor(size(x, 1))
+subroutine fft_step(x, p)
+complex(dp), intent(in) :: x(:, :)
+complex(dp), intent(out) :: p(:, :)
+complex(dp), target :: fac(size(x, 1))
 integer :: Nmin, Ns, i
 Nmin = size(x, 1)
 Ns = size(x, 2)
-forall(i=0:Nmin-1) factor(i+1) = exp(-pi*i_*i/Nmin)
-p(:Nmin,   :) = x(:, :Ns/2) + spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
-p(Nmin+1:, :) = x(:, :Ns/2) - spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
-end function
+forall(i=0:Nmin-1) fac(i+1) = exp(-pi*i_*i/Nmin)
+forall(i=1:Ns/2) p(:Nmin,   i) = x(:, i) + fac * x(:, Ns/2+i)
+forall(i=1:Ns/2) p(Nmin+1:, i) = x(:, i) - fac * x(:, Ns/2+i)
+end subroutine
 
 function fft_vectorized(x) result(p)
 ! A vectorized, non-recursive version of the Cooley-Tukey FFT
 real(dp), intent(in) :: x(:)
-complex(dp) :: p(size(x))
+complex(dp), target :: p(size(x))
+complex(dp), target :: tmp(size(x))
+complex(dp), pointer :: p1(:, :), p2(:, :)
 integer :: N, Nmin, Ns
+logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
-Nmin = min(N, 32)
+Nmin = min(N, 4)
 Ns = N / Nmin
 p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
+p_is_result = .true.
 do while (Nmin < N)
-    p = reshape(fft_step(reshape(p, [Nmin, Ns])), [N])
+    if (p_is_result) then
+        p1(1:Nmin, 1:Ns) => p
+    else
+        p1(1:Nmin, 1:Ns) => tmp
+    end if
     Nmin = Nmin * 2
-    Ns = N / Nmin
+    Ns = Ns / 2
+    if (p_is_result) then
+        p2(1:Nmin, 1:Ns) => tmp
+    else
+        p2(1:Nmin, 1:Ns) => p
+    end if
+    call fft_step(p1, p2)
+    p_is_result = .not. p_is_result
 end do
+if (.not. p_is_result) p = tmp
 end function
 
 end module
