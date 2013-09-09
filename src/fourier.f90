@@ -87,7 +87,7 @@ function fft_vectorized(x) result(p)
 real(dp), intent(in), target :: x(:)
 complex(dp), target :: p(size(x))
 complex(dp), target :: tmp(size(x))
-complex(dp), pointer :: p1(:, :), p2(:, :)
+complex(dp), pointer :: p1(:, :)
 real(dp), pointer :: x1(:, :)
 integer :: N, Nmin, Ns
 logical :: p_is_result
@@ -101,16 +101,10 @@ call dft_vec(x1, p1)
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
-        p1(1:Ns, 1:Nmin) => p
+        call fft_step(Ns, Nmin, p, tmp)
     else
-        p1(1:Ns, 1:Nmin) => tmp
+        call fft_step(Ns, Nmin, tmp, p)
     end if
-    if (p_is_result) then
-        p2(1:Ns/2, 1:Nmin*2) => tmp
-    else
-        p2(1:Ns/2, 1:Nmin*2) => p
-    end if
-    call fft_step(Ns, Nmin, p1, p2)
     Nmin = Nmin * 2
     Ns = Ns / 2
     p_is_result = .not. p_is_result
