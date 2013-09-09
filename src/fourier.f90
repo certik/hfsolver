@@ -56,18 +56,18 @@ else
 end if
 end function
 
-function dft_vec(x) result(p)
-! Compute the one-dimensional discrete Fourier transform on each column of 'x'
+subroutine dft_vec(x, p)
+! Compute the one-dimensional discrete Fourier transform on each row of 'x'
 ! separately.
 real(dp), intent(in) :: x(:, :)
-complex(dp) :: p(size(x, 1), size(x, 2))
+complex(dp), intent(out) :: p(:, :)
 complex(dp) :: F(size(x, 2), size(x, 2))
 integer :: N, i, j
 N = size(x, 2)
 forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(-2*pi*i_*i*j / N)
 forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 p = matmul(x, F)
-end function
+end subroutine
 
 subroutine fft_step(x, p)
 complex(dp), intent(in) :: x(:, :)
@@ -98,7 +98,7 @@ Nmin = min(N, 4)
 Ns = N / Nmin
 x1(1:Ns, 1:Nmin) => x
 p1(1:Ns, 1:Nmin) => p
-p1 = dft_vec(x1)
+call dft_vec(x1, p1)
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
