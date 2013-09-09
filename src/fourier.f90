@@ -91,7 +91,7 @@ integer :: N, Nmin, Ns
 logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
-Nmin = min(N, 32)
+Nmin = min(N, 4)
 Ns = N / Nmin
 p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
 p_is_result = .true.
