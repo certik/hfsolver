@@ -56,57 +56,62 @@ else
 end if
 end function
 
-function dft_vec(x) result(p)
-! Compute the one-dimensional discrete Fourier transform on each column of 'x'
+subroutine dft_vec(x, p)
+! Compute the one-dimensional discrete Fourier transform on each row of 'x'
 ! separately.
 real(dp), intent(in) :: x(:, :)
-complex(dp) :: p(size(x, 1), size(x, 2))
-complex(dp) :: F(size(x, 1), size(x, 1))
+complex(dp), intent(out) :: p(:, :)
+complex(dp) :: F(size(x, 2), size(x, 2))
 integer :: N, i, j
-N = size(x, 1)
+N = size(x, 2)
 forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(-2*pi*i_*i*j / N)
 forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
-p = matmul(F, x)
-end function
+p = matmul(x, F)
+end subroutine
 
 subroutine fft_step(x, p)
 complex(dp), intent(in) :: x(:, :)
 complex(dp), intent(out) :: p(:, :)
-complex(dp), target :: fac(size(x, 1))
+complex(dp) :: tmp
 integer :: Nmin, Ns, i
-Nmin = size(x, 1)
-Ns = size(x, 2)
-forall(i=0:Nmin-1) fac(i+1) = exp(-pi*i_*i/Nmin)
-forall(i=1:Ns/2) p(:Nmin,   i) = x(:, i) + fac * x(:, Ns/2+i)
-forall(i=1:Ns/2) p(Nmin+1:, i) = x(:, i) - fac * x(:, Ns/2+i)
+Nmin = size(x, 2)
+Ns = size(x, 1)
+do i = 1, Nmin
+    tmp = exp(-pi*i_*(i-1)/Nmin)
+    p(:,      i) = x(:Ns/2, i) + tmp * x(Ns/2+1:, i)
+    p(:, Nmin+i) = x(:Ns/2, i) - tmp * x(Ns/2+1:, i)
+end do
 end subroutine
 
 function fft_vectorized(x) result(p)
 ! A vectorized, non-recursive version of the Cooley-Tukey FFT
-real(dp), intent(in) :: x(:)
+real(dp), intent(in), target :: x(:)
 complex(dp), target :: p(size(x))
 complex(dp), target :: tmp(size(x))
 complex(dp), pointer :: p1(:, :), p2(:, :)
+real(dp), pointer :: x1(:, :)
 integer :: N, Nmin, Ns
 logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
 Nmin = min(N, 4)
 Ns = N / Nmin
-p = reshape(dft_vec(reshape(x, [Nmin, Ns], order=[2, 1])), [N])
+x1(1:Ns, 1:Nmin) => x
+p1(1:Ns, 1:Nmin) => p
+call dft_vec(x1, p1)
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
-        p1(1:Nmin, 1:Ns) => p
+        p1(1:Ns, 1:Nmin) => p
     else
-        p1(1:Nmin, 1:Ns) => tmp
+        p1(1:Ns, 1:Nmin) => tmp
     end if
     Nmin = Nmin * 2
     Ns = Ns / 2
     if (p_is_result) then
-        p2(1:Nmin, 1:Ns) => tmp
+        p2(1:Ns, 1:Nmin) => tmp
     else
-        p2(1:Nmin, 1:Ns) => p
+        p2(1:Ns, 1:Nmin) => p
     end if
     call fft_step(p1, p2)
     p_is_result = .not. p_is_result
