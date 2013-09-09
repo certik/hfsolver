@@ -56,14 +56,14 @@ else
 end if
 end function
 
-subroutine dft_vec(x, p)
+subroutine dft_vec(Ns, N, x, p)
 ! Compute the one-dimensional discrete Fourier transform on each row of 'x'
 ! separately.
-real(dp), intent(in) :: x(:, :)
-complex(dp), intent(out) :: p(:, :)
-complex(dp) :: F(size(x, 2), size(x, 2))
-integer :: N, i, j
-N = size(x, 2)
+integer, intent(in) :: Ns, N
+real(dp), intent(in) :: x(Ns, N)
+complex(dp), intent(out) :: p(Ns, N)
+complex(dp) :: F(N, N)
+integer :: i, j
 forall(i=0:N-1, j=0:N-1, i >= j) F(i+1, j+1) = exp(-2*pi*i_*i*j / N)
 forall(i=1:N, j=1:N, i < j) F(i, j) = F(j, i)
 p = matmul(x, F)
@@ -87,17 +87,13 @@ function fft_vectorized(x) result(p)
 real(dp), intent(in), target :: x(:)
 complex(dp), target :: p(size(x))
 complex(dp), target :: tmp(size(x))
-complex(dp), pointer :: p1(:, :)
-real(dp), pointer :: x1(:, :)
 integer :: N, Nmin, Ns
 logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
 Nmin = min(N, 4)
 Ns = N / Nmin
-x1(1:Ns, 1:Nmin) => x
-p1(1:Ns, 1:Nmin) => p
-call dft_vec(x1, p1)
+call dft_vec(Ns, Nmin, x, p)
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
