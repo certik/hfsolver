@@ -73,15 +73,12 @@ function fft_step(x) result(p)
 complex(dp), intent(in) :: x(:, :) ! (Nmin, ...)
 complex(dp) :: p(size(x, 1) * 2, size(x, 2) / 2)
 complex(dp) :: factor(size(x, 1))
-complex(dp), dimension(size(x, 1), size(x, 2) / 2) :: X_even, X_odd
 integer :: Nmin, Ns, i
 Nmin = size(x, 1)
 Ns = size(x, 2)
-X_even = x(:, :Ns/2)
-X_odd = x(:, Ns/2+1:)
 forall(i=0:Nmin-1) factor(i+1) = exp(-pi*i_*i/Nmin)
-p(:Nmin,   :) = X_even + spread(factor, 2, Ns/2) * X_odd
-p(Nmin+1:, :) = X_even - spread(factor, 2, Ns/2) * X_odd
+p(:Nmin,   :) = x(:, :Ns/2) + spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
+p(Nmin+1:, :) = x(:, :Ns/2) - spread(factor, 2, Ns/2) * x(:, Ns/2+1:)
 end function
 
 function fft_vectorized(x) result(p)
