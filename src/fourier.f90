@@ -5,10 +5,11 @@ module fourier
 
 use types, only: dp
 use constants, only: i_, pi
-use utils, only: stop_error
+use utils, only: stop_error, assert
 implicit none
 private
-public dft, idft, fft, fft_vectorized
+public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
+    fft_vectorized_inplace
 
 contains
 
@@ -60,7 +61,7 @@ subroutine dft_vec(Ns, N, x, p)
 ! Compute the one-dimensional discrete Fourier transform on each row of 'x'
 ! separately.
 integer, intent(in) :: Ns, N
-real(dp), intent(in) :: x(Ns, N)
+complex(dp), intent(in) :: x(Ns, N)
 complex(dp), intent(out) :: p(Ns, N)
 complex(dp) :: F(N, N)
 integer :: i, j
@@ -76,36 +77,113 @@ complex(dp), intent(out) :: p(Ns/2, Nmin*2)
 complex(dp) :: tmp
 integer :: i
 do i = 1, Nmin
-    tmp = exp(-pi*i_*(i-1)/Nmin)
+    !tmp = exp(-pi*i_*(i-1)/Nmin)
+    ! The same as the previous line, just faster:
+    tmp = cos(pi*(i-1)/Nmin) - i_*sin(pi*(i-1)/Nmin)
     p(:,      i) = x(:Ns/2, i) + tmp * x(Ns/2+1:, i)
     p(:, Nmin+i) = x(:Ns/2, i) - tmp * x(Ns/2+1:, i)
 end do
 end subroutine
 
-function fft_vectorized(x) result(p)
+subroutine fft_vectorized_inplace(x)
 ! A vectorized, non-recursive version of the Cooley-Tukey FFT
-real(dp), intent(in), target :: x(:)
+complex(dp), intent(inout), target :: x(:)
 complex(dp), target :: p(size(x))
-complex(dp), target :: tmp(size(x))
 integer :: N, Nmin, Ns
 logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
-Nmin = min(N, 4)
-Ns = N / Nmin
-call dft_vec(Ns, Nmin, x, p)
+Nmin = 1
+Ns = N
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
-        call fft_step(Ns, Nmin, p, tmp)
+        call fft_step(Ns, Nmin, x, p)
     else
-        call fft_step(Ns, Nmin, tmp, p)
+        call fft_step(Ns, Nmin, p, x)
     end if
     Nmin = Nmin * 2
     Ns = Ns / 2
     p_is_result = .not. p_is_result
 end do
-if (.not. p_is_result) p = tmp
+if (.not. p_is_result) x = p
+end subroutine
+
+function fft_vectorized(x) result(p)
+real(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+p = x
+call fft_vectorized_inplace(p)
+end function
+
+subroutine precalculate_coeffs(wa)
+! Precalculates all cos/sin factors
+complex(dp), intent(out) :: wa(:)
+integer :: n, k, i, idx
+n = size(wa)
+k = n / 2
+idx = 1
+do while (k > 0)
+    wa(idx) = 1
+    do i = 1, k
+        idx = idx + 1
+        ! Equivalent to exp(-i_*i*pi/k) but faster:
+        wa(idx) = cos(i*pi/k) - i_ * sin(i*pi/k)
+    end do
+    k = k/2
+end do
+end subroutine
+
+subroutine passf2(IDO, L1, CC, CH, WA1)
+! FFT pass of factor 2
+integer, intent(in) :: IDO, L1
+complex(dp), intent(in) :: CC(IDO, 2, L1), WA1(:)
+complex(dp), intent(out) :: CH(IDO, L1, 2)
+integer :: I, K
+do K = 1, L1
+    do I = 1, IDO
+        CH(I,K,1) = CC(I,1,K)+CC(I,2,K)
+        CH(I,K,2) = WA1(I)*(CC(I,1,K)-CC(I,2,K))
+    end do
+end do
+end subroutine
+
+subroutine fft_pass_inplace(x)
+complex(dp), intent(inout) :: x(:)
+complex(dp), dimension(size(x)) :: angles, CH
+integer :: n, nf
+integer :: IDOT, IW, K1, L1
+logical :: CH_is_result
+n = size(x)
+if (iand(n, n-1) /= 0) call stop_error("size of x must be a power of 2")
+nf = int(log(real(n, dp)) / log(2._dp) + 0.5_dp)
+! The above is robust, but let's check it just in case:
+call assert(2**nf == n)
+call precalculate_coeffs(angles)
+CH_is_result = .true.
+L1 = 1
+IW = 1
+do K1 = 1, NF
+    IDOT = N/L1/2
+    if (CH_is_result) then
+        CALL passf2(IDOT,L1,x,CH,angles(IW:IW+IDOT))
+    else
+        CALL passf2(IDOT,L1,CH,x,angles(IW:IW+IDOT))
+    end if
+    CH_is_result = .not. CH_is_result
+    L1 = 2*L1
+    IW = IW+IDOT
+end do
+if (.not. CH_is_result) then
+    x = CH
+end if
+end subroutine
+
+function fft_pass(x) result(p)
+real(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+p = x
+call fft_pass_inplace(p)
 end function
 
 end module
