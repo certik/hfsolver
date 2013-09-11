@@ -76,7 +76,9 @@ complex(dp), intent(out) :: p(Ns/2, Nmin*2)
 complex(dp) :: tmp
 integer :: i
 do i = 1, Nmin
-    tmp = exp(-pi*i_*(i-1)/Nmin)
+    !tmp = exp(-pi*i_*(i-1)/Nmin)
+    ! The same as the previous line, just faster:
+    tmp = cos(pi*(i-1)/Nmin) - i_*sin(pi*(i-1)/Nmin)
     p(:,      i) = x(:Ns/2, i) + tmp * x(Ns/2+1:, i)
     p(:, Nmin+i) = x(:Ns/2, i) - tmp * x(Ns/2+1:, i)
 end do
