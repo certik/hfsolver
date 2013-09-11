@@ -8,7 +8,8 @@ use constants, only: i_, pi
 use utils, only: stop_error, assert
 implicit none
 private
-public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace
+public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
+    fft_vectorized_inplace
 
 contains
 
@@ -60,7 +61,7 @@ subroutine dft_vec(Ns, N, x, p)
 ! Compute the one-dimensional discrete Fourier transform on each row of 'x'
 ! separately.
 integer, intent(in) :: Ns, N
-real(dp), intent(in) :: x(Ns, N)
+complex(dp), intent(in) :: x(Ns, N)
 complex(dp), intent(out) :: p(Ns, N)
 complex(dp) :: F(N, N)
 integer :: i, j
@@ -84,11 +85,10 @@ do i = 1, Nmin
 end do
 end subroutine
 
-function fft_vectorized(x) result(p)
+subroutine fft_vectorized_inplace(x)
 ! A vectorized, non-recursive version of the Cooley-Tukey FFT
-real(dp), intent(in), target :: x(:)
+complex(dp), intent(inout), target :: x(:)
 complex(dp), target :: p(size(x))
-complex(dp), target :: tmp(size(x))
 integer :: N, Nmin, Ns
 logical :: p_is_result
 N = size(x)
@@ -99,15 +99,22 @@ call dft_vec(Ns, Nmin, x, p)
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
-        call fft_step(Ns, Nmin, p, tmp)
+        call fft_step(Ns, Nmin, p, x)
     else
-        call fft_step(Ns, Nmin, tmp, p)
+        call fft_step(Ns, Nmin, x, p)
     end if
     Nmin = Nmin * 2
     Ns = Ns / 2
     p_is_result = .not. p_is_result
 end do
-if (.not. p_is_result) p = tmp
+if (p_is_result) x = p
+end subroutine
+
+function fft_vectorized(x) result(p)
+real(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+p = x
+call fft_vectorized_inplace(p)
 end function
 
 subroutine precalculate_coeffs(wa)
