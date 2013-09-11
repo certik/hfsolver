@@ -93,21 +93,20 @@ integer :: N, Nmin, Ns
 logical :: p_is_result
 N = size(x)
 if (iand(N, N-1) /= 0) call stop_error("size of x must be a power of 2")
-Nmin = min(N, 4)
-Ns = N / Nmin
-call dft_vec(Ns, Nmin, x, p)
+Nmin = 1
+Ns = N
 p_is_result = .true.
 do while (Nmin < N)
     if (p_is_result) then
-        call fft_step(Ns, Nmin, p, x)
-    else
         call fft_step(Ns, Nmin, x, p)
+    else
+        call fft_step(Ns, Nmin, p, x)
     end if
     Nmin = Nmin * 2
     Ns = Ns / 2
     p_is_result = .not. p_is_result
 end do
-if (p_is_result) x = p
+if (.not. p_is_result) x = p
 end subroutine
 
 function fft_vectorized(x) result(p)
