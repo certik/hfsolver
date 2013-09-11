@@ -1,6 +1,7 @@
 program test_fourier
 use types, only: dp
-use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace
+use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
+        fft_vectorized_inplace
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
