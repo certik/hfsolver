@@ -206,6 +206,24 @@ end subroutine
       RETURN
       END
 
+subroutine passf4(IDO, L1, CC, CH, WA1, WA2, WA3)
+! FFT pass of factor 2
+use iso_c_binding, only: c_f_pointer, c_loc
+integer, intent(in) :: IDO, L1
+complex(dp), intent(in), target :: CC(IDO, 4, L1), WA1(:), WA2(:), WA3(:)
+complex(dp), intent(out), target :: CH(IDO, L1, 4)
+complex(dp), target :: WA1p(size(WA1)), WA2p(size(WA2)), WA3p(size(WA3))
+real(dp), pointer :: CC_r(:, :, :), CH_r(:, :, :), WA1_r(:), WA2_r(:), WA3_r(:)
+call c_f_pointer(c_loc(CC), CC_r, [size(CC)*2])
+call c_f_pointer(c_loc(CH), CH_r, [size(CH)*2])
+WA1p = WA1
+WA2p = WA2
+WA3p = WA3
+call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA1)*2])
+call c_f_pointer(c_loc(WA2p), WA2_r, [size(WA2)*2])
+call c_f_pointer(c_loc(WA3p), WA3_r, [size(WA3)*2])
+call PASSF4_f77(IDO, L1, CC_r, CH_r, WA1_r, WA2_r, WA3_r)
+end subroutine
 
 subroutine fft_pass_inplace(x)
 complex(dp), intent(inout) :: x(:)
