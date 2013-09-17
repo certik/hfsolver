@@ -9,7 +9,7 @@ use utils, only: stop_error, assert
 implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-    fft_vectorized_inplace
+    fft_vectorized_inplace, calculate_factors
 
 contains
 
@@ -223,6 +223,50 @@ call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA1)*2])
 call c_f_pointer(c_loc(WA2p), WA2_r, [size(WA2)*2])
 call c_f_pointer(c_loc(WA3p), WA3_r, [size(WA3)*2])
 call PASSF4_f77(IDO, L1, CC_r, CH_r, WA1_r, WA2_r, WA3_r)
+end subroutine
+
+subroutine calculate_factors(n, fac)
+integer, intent(in) :: n
+integer, intent(out), allocatable :: fac(:)
+! TODO: add checks that we don't go over MAX_LENGTH below:
+integer, parameter :: MAX_LENGTH = 1000
+integer :: fac_tmp(MAX_LENGTH)
+integer, parameter :: NTRYH(*) = [3, 4, 2, 5]
+integer :: NL, NF, I, J, NTRY, IB, NQ, NR
+if (n == 1) then
+    allocate(fac(1))
+    fac(1) = 1
+    return
+end if
+NL = N
+NF = 0
+J = 0
+do while (NL /= 1)
+    J = J+1
+    IF (J <= 4) then
+        NTRY = NTRYH(J)
+    else
+        NTRY = NTRY+2
+    end if
+    ! Divide by NTRY as many times as we can:
+    do while (NL /= 1)
+        NQ = NL/NTRY
+        NR = NL-NTRY*NQ
+        IF (NR /= 0) exit
+        NF = NF+1
+        fac_tmp(NF) = NTRY
+        NL = NQ
+        if (NTRY == 2 .and. NF > 1) then
+            do I = 2, NF
+                IB = NF-I+2
+                fac_tmp(IB) = fac_tmp(IB-1)
+            end do
+            fac_tmp(1) = 2
+        end if
+    end do
+end do
+allocate(fac(NF))
+fac = fac_tmp(:NF)
 end subroutine
 
 subroutine fft_pass_inplace(x)
