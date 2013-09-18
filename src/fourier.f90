@@ -422,14 +422,10 @@ complex(dp), intent(out) :: CH(IDO, L1, 4)
 integer :: I, K
 do K = 1, L1
     do I = 1, IDO
-        CH(I,K,1) = &
-            (CC(I,1,K) + CC(I,3,K) +    (CC(I,2,K) + CC(I,4,K)))
-        CH(I,K,2) = WA1(I) * &
-            (CC(I,1,K) - CC(I,3,K) - i_*(CC(I,2,K) - CC(I,4,K)))
-        CH(I,K,3) = WA2(I) * &
-            (CC(I,1,K) + CC(I,3,K) -    (CC(I,2,K) + CC(I,4,K)))
-        CH(I,K,4) = WA3(I) * &
-            (CC(I,1,K) - CC(I,3,K) + i_*(CC(I,2,K) - CC(I,4,K)))
+        CH(I,K,1) =          (CC(I,1,K) + CC(I,3,K) +   (CC(I,2,K) + CC(I,4,K)))
+        CH(I,K,2) = WA1(I) * (CC(I,1,K) - CC(I,3,K) -i_*(CC(I,2,K) - CC(I,4,K)))
+        CH(I,K,3) = WA2(I) * (CC(I,1,K) + CC(I,3,K) -   (CC(I,2,K) + CC(I,4,K)))
+        CH(I,K,4) = WA3(I) * (CC(I,1,K) - CC(I,3,K) +i_*(CC(I,2,K) - CC(I,4,K)))
     end do
 end do
 end subroutine
