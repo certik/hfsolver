@@ -266,7 +266,7 @@ do L=2,IPPH
     IDL = IDL+IDO
     do IK=1,IDL1
         C2(IK,L ) = CH2(IK,1) + real(WA(IDL),dp) * CH2(IK,2 )
-        C2(IK,LC) =          - aimag(WA(IDL))    * CH2(IK,IP)
+        C2(IK,LC) =          + aimag(WA(IDL))    * CH2(IK,IP)
     end do
     IDLJ = IDL
     INC = INC+IDO
@@ -276,7 +276,7 @@ do L=2,IPPH
         if (IDLJ > IDP) IDLJ = IDLJ-IDP
         do IK=1,IDL1
             C2(IK,L ) = C2(IK,L ) +  real(WA(IDLJ),dp) * CH2(IK,J )
-            C2(IK,LC) = C2(IK,LC) - aimag(WA(IDLJ))    * CH2(IK,JC)
+            C2(IK,LC) = C2(IK,LC) + aimag(WA(IDLJ))    * CH2(IK,JC)
         end do
     end do
 end do
@@ -302,7 +302,7 @@ do J=2,IP
         IDIJ = IDJ
         do I=2,IDO
             IDIJ = IDIJ+1
-            C1(I,K,J) = conjg(WA(IDIJ))*CH(I,K,J)
+            C1(I,K,J) = WA(IDIJ)*CH(I,K,J)
         end do
     end do
 end do
@@ -409,10 +409,10 @@ do K1 = 1, size(ifac)
         IDL1 = IDO*L1
         if (NA == 0) then
             call passf(NAC, IDO, IP, L1, IDL1, C, C, C, CH, CH, &
-                conjg(WA(IW:IW+(IP-1)*IDO-1)))
+                WA(IW:IW+(IP-1)*IDO-1))
         else
             call passf(NAC, IDO, IP, L1, IDL1, CH, CH, CH, C, C, &
-                conjg(WA(IW:IW+(IP-1)*IDO-1)))
+                WA(IW:IW+(IP-1)*IDO-1))
         end if
         IF (NAC == 0) NA = 1-NA
     end select
