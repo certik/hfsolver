@@ -185,56 +185,6 @@ do K = 1, L1
 end do
 end subroutine
 
-      SUBROUTINE PASSF3_F77(IDO,L1,CC,CH,WA1,WA2)
-      integer, intent(in) :: IDO, L1
-      real(dp), intent(in) :: CC(IDO,3,L1), WA1(:), WA2(:)
-      real(dp), intent(out) :: CH(IDO,L1,3)
-      real(dp) :: CR2, CR3
-      real(dp) :: CI2, CI3
-      real(dp) :: TR2
-      real(dp) :: TI2, taur, taui, di2, di3, dr2, dr3
-      integer :: I, K
-!     *** TAUI IS -SQRT(3)/2 ***
-      DATA TAUR,TAUI /-0.5D0,-0.86602540378443864676D0/
-      IF (IDO .NE. 2) GO TO 102
-      DO 101 K=1,L1
-         TR2 = CC(1,2,K)+CC(1,3,K)
-         CR2 = CC(1,1,K)+TAUR*TR2
-         CH(1,K,1) = CC(1,1,K)+TR2
-         TI2 = CC(2,2,K)+CC(2,3,K)
-         CI2 = CC(2,1,K)+TAUR*TI2
-         CH(2,K,1) = CC(2,1,K)+TI2
-         CR3 = TAUI*(CC(1,2,K)-CC(1,3,K))
-         CI3 = TAUI*(CC(2,2,K)-CC(2,3,K))
-         CH(1,K,2) = CR2-CI3
-         CH(1,K,3) = CR2+CI3
-         CH(2,K,2) = CI2+CR3
-         CH(2,K,3) = CI2-CR3
-  101 CONTINUE
-      RETURN
-  102 DO 104 K=1,L1
-         DO 103 I=2,IDO,2
-            TR2 = CC(I-1,2,K)+CC(I-1,3,K)
-            CR2 = CC(I-1,1,K)+TAUR*TR2
-            CH(I-1,K,1) = CC(I-1,1,K)+TR2
-            TI2 = CC(I,2,K)+CC(I,3,K)
-            CI2 = CC(I,1,K)+TAUR*TI2
-            CH(I,K,1) = CC(I,1,K)+TI2
-            CR3 = TAUI*(CC(I-1,2,K)-CC(I-1,3,K))
-            CI3 = TAUI*(CC(I,2,K)-CC(I,3,K))
-            DR2 = CR2-CI3
-            DR3 = CR2+CI3
-            DI2 = CI2+CR3
-            DI3 = CI2-CR3
-            CH(I,K,2) = WA1(I-1)*DI2-WA1(I)*DR2
-            CH(I-1,K,2) = WA1(I-1)*DR2+WA1(I)*DI2
-            CH(I,K,3) = WA2(I-1)*DI3-WA2(I)*DR3
-            CH(I-1,K,3) = WA2(I-1)*DR3+WA2(I)*DI3
-  103    CONTINUE
-  104 CONTINUE
-      RETURN
-      END
-
       SUBROUTINE PASSF4_f77(IDO,L1,CC,CH,WA1,WA2,WA3)
       integer, intent(in) :: IDO, L1
       real(dp), intent(in) :: CC(IDO,4,L1), WA1(:), WA2(:), WA3(:)
@@ -505,20 +455,23 @@ end subroutine
       END
 
 subroutine passf3(IDO, L1, CC, CH, WA1, WA2)
-! FFT pass of factor 2
-use iso_c_binding, only: c_f_pointer, c_loc
 integer, intent(in) :: IDO, L1
-complex(dp), intent(in), target :: CC(IDO, 3, L1), WA1(:), WA2(:)
-complex(dp), intent(out), target :: CH(IDO, L1, 3)
-complex(dp), target :: WA1p(size(WA1)), WA2p(size(WA2))
-real(dp), pointer :: CC_r(:, :, :), CH_r(:, :, :), WA1_r(:), WA2_r(:)
-call c_f_pointer(c_loc(CC), CC_r, [size(CC)*2])
-call c_f_pointer(c_loc(CH), CH_r, [size(CH)*2])
-WA1p = WA1
-WA2p = WA2
-call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA1)*2])
-call c_f_pointer(c_loc(WA2p), WA2_r, [size(WA2)*2])
-call PASSF3_f77(IDO*2, L1, CC_r, CH_r, WA1_r, WA2_r)
+complex(dp), intent(in) :: CC(IDO,3,L1), WA1(:), WA2(:)
+complex(dp), intent(out) :: CH(IDO,L1,3)
+complex(dp) :: C1, C2, C3
+integer :: I, K
+real(dp), parameter :: taur = -0.5_dp, taui = -sqrt(3._dp)/2
+do K=1,L1
+    do I=1,IDO
+        CH(I,K,1) = CC(I,1,K)+CC(I,2,K)+CC(I,3,K)
+        C1 = CC(I,1,K) + TAUR * (CC(I,2,K)+CC(I,3,K))
+        C3 = TAUI * (CC(I,2,K)-CC(I,3,K))
+        ! The same as C2 = C3 * exp(i_*pi/2) but faster:
+        C2 = - aimag(C3) + i_ * real(C3, dp)
+        CH(I,K,2) = WA1(I) * (C1 + C2)
+        CH(I,K,3) = WA2(I) * (C1 - C2)
+    end do
+end do
 end subroutine
 
 subroutine passf4(IDO, L1, CC, CH, WA1, WA2, WA3)
@@ -672,9 +625,9 @@ do K1 = 1, size(ifac)
         end if
     case (3)
         if (NA == 0) then
-            call passf3(IDO,L1,C,CH,w(:, 1),w(:, 2))
+            call passf3(IDO,L1,C,CH,conjg(w(:, 1)),conjg(w(:, 2)))
         else
-            call passf3(IDO,L1,CH,C,w(:, 1),w(:, 2))
+            call passf3(IDO,L1,CH,C,conjg(w(:, 1)),conjg(w(:, 2)))
         end if
     case (5)
         if (NA == 0) then
