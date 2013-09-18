@@ -259,7 +259,7 @@ WA3p = WA3
 call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA1)*2])
 call c_f_pointer(c_loc(WA2p), WA2_r, [size(WA2)*2])
 call c_f_pointer(c_loc(WA3p), WA3_r, [size(WA3)*2])
-call PASSF4_f77(IDO, L1, CC_r, CH_r, WA1_r, WA2_r, WA3_r)
+call PASSF4_f77(IDO*2, L1, CC_r, CH_r, WA1_r, WA2_r, WA3_r)
 end subroutine
 
 subroutine calculate_factors(n, fac)
@@ -340,16 +340,16 @@ end subroutine
          IX2 = IW+IDOT
          IX3 = IX2+IDOT
          IF (NA .NE. 0) GO TO 101
-         call passf4(IDOT,L1,C,CH,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
+         call passf4(IDOT/2,L1,C,CH,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
          GO TO 102
-  101    call passf4(IDOT,L1,CH,C,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
+  101    call passf4(IDOT/2,L1,CH,C,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
   102    NA = 1-NA
          GO TO 115
   103    IF (IP .NE. 2) GO TO 106
          IF (NA .NE. 0) GO TO 104
-         call passf2(IDOT,L1,C,CH,WA(IW/2+1:))
+         call passf2(IDOT/2,L1,C,CH,conjg(WA(IW/2+1:)))
          GO TO 105
-  104    call passf2(IDOT,L1,CH,C,WA(IW/2+1:))
+  104    call passf2(IDOT/2,L1,CH,C,conjg(WA(IW/2+1:)))
   105    NA = 1-NA
          GO TO 115
   106    IF (IP .NE. 3) GO TO 109
