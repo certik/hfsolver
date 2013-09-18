@@ -43,8 +43,14 @@ call test_factors(1024**2, [4, 4, 4, 4, 4, 4, 4, 4, 4, 4])
 ! Test various special values:
 call test_factors(24, [2, 3, 4])
 call test_factors(100, [4, 5, 5])
+call test_factors(121, [11, 11])
+call test_factors(169, [13, 13])
+call test_factors(289, [17, 17])
+call test_factors(343, [7, 7, 7])
 call test_factors(384, [2, 3, 4, 4, 4])
 call test_factors(1000, [2, 4, 5, 5, 5])
+call test_factors(1309, [7, 11, 17])
+call test_factors(2401, [7, 7, 7, 7])
 call test_factors(3030, [2, 3, 5, 101])
 call test_factors(3360, [2, 3, 4, 4, 5, 7])
 
@@ -129,9 +135,15 @@ forall(i = 1:n) x(i) = i
 call assert(all(abs(idft(dft(x)) - x) < 1e-10_dp))
 deallocate(x)
 
+! Test 1-100
 do i = 1, 100
     call test_fft_pass(i)
 end do
+! Test special cases
+call test_fft_pass(121)
+call test_fft_pass(169)
+call test_fft_pass(289, eps=1e-8_dp)
+call test_fft_pass(343, eps=1e-8_dp)
 
 n = 1024
 call init_random()
@@ -165,16 +177,23 @@ call calculate_factors(n, fac)
 call assert(all(fac == correct_fac))
 end subroutine
 
-subroutine test_fft_pass(n)
+subroutine test_fft_pass(n, eps)
 integer, intent(in) :: n
+real(dp), optional, intent(in) :: eps
 real(dp), allocatable :: x(:)
+real(dp) :: eps_
+if (present(eps)) then
+    eps_ = eps
+else
+    eps_ = 1e-9_dp
+end if
 allocate(x(n))
 forall(i = 1:n) x(i) = i
-call assert(all(abs(dft(x) - fft_pass(x)) < 1e-9_dp))
+call assert(all(abs(dft(x) - fft_pass(x)) < eps_))
 forall(i = 1:n) x(i) = 1._dp / i
-call assert(all(abs(dft(x) - fft_pass(x)) < 1e-9_dp))
+call assert(all(abs(dft(x) - fft_pass(x)) < eps_))
 call random_number(x)
-call assert(all(abs(dft(x) - fft_pass(x)) < 1e-9_dp))
+call assert(all(abs(dft(x) - fft_pass(x)) < eps_))
 end subroutine
 
 end program
