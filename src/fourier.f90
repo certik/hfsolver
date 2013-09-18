@@ -564,6 +564,26 @@ call c_f_pointer(c_loc(WA4p), WA4_r, [size(WA4)*2])
 call PASSF5_f77(IDO*2, L1, CC_r, CH_r, WA1_r, WA2_r, WA3_r, WA4_r)
 end subroutine
 
+subroutine passf(NAC, IDO, IP, L1, IDL1, CC, C1, C2, CH, CH2, WA)
+use iso_c_binding, only: c_f_pointer, c_loc
+integer, intent(out) :: NAC
+integer, intent(in) :: IDO, IP, L1, IDL1
+complex(dp), intent(in), target :: CC(IDO,IP,L1), WA(:)
+complex(dp), intent(out), target :: CH(IDO,L1,IP), C1(IDO,L1,IP), C2(IDL1,IP), &
+          CH2(IDL1,IP)
+complex(dp), target :: WA1p(size(WA))
+real(dp), pointer :: CC_r(:, :, :), CH_r(:, :, :), C1_r(:, :, :), C2_r(:, :), &
+    CH2_r(:, :), WA1_r(:)
+call c_f_pointer(c_loc(CC), CC_r, [size(CC)*2])
+call c_f_pointer(c_loc(CH), CH_r, [size(CH)*2])
+call c_f_pointer(c_loc(C1), C1_r, [size(C1)*2])
+call c_f_pointer(c_loc(C2), C2_r, [size(C2)*2])
+call c_f_pointer(c_loc(CH2), CH2_r, [size(CH2)*2])
+WA1p = WA
+call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA)*2])
+call PASSF_f77(NAC, IDO*2, IP, L1, IDL1, CC_r, C1_r, C2_r, CH_r, CH2_r, WA1_r)
+end subroutine
+
 subroutine calculate_factors(n, fac)
 integer, intent(in) :: n
 integer, intent(out), allocatable :: fac(:)
