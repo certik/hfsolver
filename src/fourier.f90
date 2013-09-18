@@ -360,11 +360,11 @@ integer :: n
 n = size(x)
 call calculate_factors(n, fac)
 call precalculate_angles(fac, angles)
-call cfftf1(n, x, CH, angles, fac)
+call calc_fft(n, x, CH, angles, fac)
 end subroutine
 
 
-subroutine cfftf1(N,C,CH,WA,IFAC)
+subroutine calc_fft(N,C,CH,WA,IFAC)
 integer, intent(in) :: N
 complex(dp), intent(inout) :: C(:)
 complex(dp), intent(out) :: CH(:)
