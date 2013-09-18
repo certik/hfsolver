@@ -255,12 +255,8 @@ IPPH = (IP+1)/2
 IDP = IP*IDO
 do J = 2, IPPH
     JC = IPP2-J
-    do K = 1, L1
-        do I = 1, IDO
-            CH(I,K,J) = CC(I,J,K)+CC(I,JC,K)
-            CH(I,K,JC) = CC(I,J,K)-CC(I,JC,K)
-        end do
-    end do
+    CH(:,:,J ) = CC(:,J,:)+CC(:,JC,:)
+    CH(:,:,JC) = CC(:,J,:)-CC(:,JC,:)
 end do
 CH(:,:,1) = CC(:,1,:)
 IDL = 1-IDO
