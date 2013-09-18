@@ -177,128 +177,6 @@ do K = 1, L1
 end do
 end subroutine
 
-      SUBROUTINE PASSF_f77(NAC,IDO,IP,L1,IDL1,CC,C1,C2,CH,CH2,WA)
-      integer, intent(out) :: NAC
-      integer, intent(in) :: IDO, IP, L1, IDL1
-      real(dp), intent(in) :: CC(IDO,IP,L1), WA(:)
-      real(dp), intent(out) :: CH(IDO,L1,IP), C1(IDO,L1,IP), C2(IDL1,IP), &
-          CH2(IDL1,IP)
-      real(dp) :: wai, war
-      integer :: I, K, idij, idj, idl, idlj, idot, idp, ik, inc, ipp2, &
-          ipph, j, jc, l, lc, nt
-      IDOT = IDO/2
-      NT = IP*IDL1
-      IPP2 = IP+2
-      IPPH = (IP+1)/2
-      IDP = IP*IDO
-
-      IF (IDO .LT. L1) GO TO 106
-      DO 103 J=2,IPPH
-         JC = IPP2-J
-         DO 102 K=1,L1
-            DO 101 I=1,IDO
-               CH(I,K,J) = CC(I,J,K)+CC(I,JC,K)
-               CH(I,K,JC) = CC(I,J,K)-CC(I,JC,K)
-  101       CONTINUE
-  102    CONTINUE
-  103 CONTINUE
-      DO 105 K=1,L1
-         DO 104 I=1,IDO
-            CH(I,K,1) = CC(I,1,K)
-  104    CONTINUE
-  105 CONTINUE
-      GO TO 112
-  106 DO 109 J=2,IPPH
-         JC = IPP2-J
-         DO 108 I=1,IDO
-            DO 107 K=1,L1
-               CH(I,K,J) = CC(I,J,K)+CC(I,JC,K)
-               CH(I,K,JC) = CC(I,J,K)-CC(I,JC,K)
-  107       CONTINUE
-  108    CONTINUE
-  109 CONTINUE
-      DO 111 I=1,IDO
-         DO 110 K=1,L1
-            CH(I,K,1) = CC(I,1,K)
-  110    CONTINUE
-  111 CONTINUE
-  112 IDL = 2-IDO
-      INC = 0
-      DO 116 L=2,IPPH
-         LC = IPP2-L
-         IDL = IDL+IDO
-         DO 113 IK=1,IDL1
-            C2(IK,L) = CH2(IK,1)+WA(IDL-1)*CH2(IK,2)
-            C2(IK,LC) = -WA(IDL)*CH2(IK,IP)
-  113    CONTINUE
-         IDLJ = IDL
-         INC = INC+IDO
-         DO 115 J=3,IPPH
-            JC = IPP2-J
-            IDLJ = IDLJ+INC
-            IF (IDLJ .GT. IDP) IDLJ = IDLJ-IDP
-            WAR = WA(IDLJ-1)
-            WAI = WA(IDLJ)
-            DO 114 IK=1,IDL1
-               C2(IK,L) = C2(IK,L)+WAR*CH2(IK,J)
-               C2(IK,LC) = C2(IK,LC)-WAI*CH2(IK,JC)
-  114       CONTINUE
-  115    CONTINUE
-  116 CONTINUE
-      DO 118 J=2,IPPH
-         DO 117 IK=1,IDL1
-            CH2(IK,1) = CH2(IK,1)+CH2(IK,J)
-  117    CONTINUE
-  118 CONTINUE
-      DO 120 J=2,IPPH
-         JC = IPP2-J
-         DO 119 IK=2,IDL1,2
-            CH2(IK-1,J) = C2(IK-1,J)-C2(IK,JC)
-            CH2(IK-1,JC) = C2(IK-1,J)+C2(IK,JC)
-            CH2(IK,J) = C2(IK,J)+C2(IK-1,JC)
-            CH2(IK,JC) = C2(IK,J)-C2(IK-1,JC)
-  119    CONTINUE
-  120 CONTINUE
-      NAC = 1
-      IF (IDO .EQ. 2) RETURN
-      NAC = 0
-      DO 121 IK=1,IDL1
-         C2(IK,1) = CH2(IK,1)
-  121 CONTINUE
-      DO 123 J=2,IP
-         DO 122 K=1,L1
-            C1(1,K,J) = CH(1,K,J)
-            C1(2,K,J) = CH(2,K,J)
-  122    CONTINUE
-  123 CONTINUE
-      IF (IDOT .GT. L1) GO TO 127
-      IDIJ = 0
-      DO 126 J=2,IP
-         IDIJ = IDIJ+2
-         DO 125 I=4,IDO,2
-            IDIJ = IDIJ+2
-            DO 124 K=1,L1
-               C1(I-1,K,J) = WA(IDIJ-1)*CH(I-1,K,J)+WA(IDIJ)*CH(I,K,J)
-               C1(I,K,J) = WA(IDIJ-1)*CH(I,K,J)-WA(IDIJ)*CH(I-1,K,J)
-  124       CONTINUE
-  125    CONTINUE
-  126 CONTINUE
-      RETURN
-  127 IDJ = 2-IDO
-      DO 130 J=2,IP
-         IDJ = IDJ+IDO
-         DO 129 K=1,L1
-            IDIJ = IDJ
-            DO 128 I=4,IDO,2
-               IDIJ = IDIJ+2
-               C1(I-1,K,J) = WA(IDIJ-1)*CH(I-1,K,J)+WA(IDIJ)*CH(I,K,J)
-               C1(I,K,J) = WA(IDIJ-1)*CH(I,K,J)-WA(IDIJ)*CH(I-1,K,J)
-  128       CONTINUE
-  129    CONTINUE
-  130 CONTINUE
-      RETURN
-      END
-
 subroutine passf3(IDO, L1, CC, CH, WA1, WA2)
 integer, intent(in) :: IDO, L1
 complex(dp), intent(in) :: CC(IDO,3,L1), WA1(:), WA2(:)
@@ -362,24 +240,78 @@ end do
 end subroutine
 
 subroutine passf(NAC, IDO, IP, L1, IDL1, CC, C1, C2, CH, CH2, WA)
-use iso_c_binding, only: c_f_pointer, c_loc
+! Works for any odd IP
 integer, intent(out) :: NAC
 integer, intent(in) :: IDO, IP, L1, IDL1
-complex(dp), intent(inout), target :: CC(IDO,IP,L1)
-complex(dp), intent(in), target ::  WA(:)
-complex(dp), intent(out), target :: CH(IDO,L1,IP), C1(IDO,L1,IP), C2(IDL1,IP), &
+complex(dp), intent(inout) :: CC(IDO,IP,L1)
+complex(dp), intent(in) ::  WA(:)
+complex(dp), intent(out) :: CH(IDO,L1,IP), C1(IDO,L1,IP), C2(IDL1,IP), &
           CH2(IDL1,IP)
-complex(dp), target :: WA1p(size(WA))
-real(dp), pointer :: CC_r(:, :, :), CH_r(:, :, :), C1_r(:, :, :), C2_r(:, :), &
-    CH2_r(:, :), WA1_r(:)
-call c_f_pointer(c_loc(CC), CC_r, [size(CC)*2])
-call c_f_pointer(c_loc(CH), CH_r, [size(CH)*2])
-call c_f_pointer(c_loc(C1), C1_r, [size(C1)*2])
-call c_f_pointer(c_loc(C2), C2_r, [size(C2)*2])
-call c_f_pointer(c_loc(CH2), CH2_r, [size(CH2)*2])
-WA1p = WA
-call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA)*2])
-call PASSF_f77(NAC, IDO*2, IP, L1, IDL1, CC_r, C1_r, C2_r, CH_r, CH2_r, WA1_r)
+integer :: I, K, idij, idj, idl, idlj, idp, ik, inc, ipp2, &
+    ipph, j, jc, l, lc, nt
+NT = IP*IDL1
+IPP2 = IP+2
+IPPH = (IP+1)/2
+IDP = IP*IDO
+do J = 2, IPPH
+    JC = IPP2-J
+    do K = 1, L1
+        do I = 1, IDO
+            CH(I,K,J) = CC(I,J,K)+CC(I,JC,K)
+            CH(I,K,JC) = CC(I,J,K)-CC(I,JC,K)
+        end do
+    end do
+end do
+do K=1,L1
+    CH(:,K,1) = CC(:,1,K)
+end do
+IDL = 1-IDO
+INC = 0
+do L=2,IPPH
+    LC = IPP2-L
+    IDL = IDL+IDO
+    do IK=1,IDL1
+        C2(IK,L ) = CH2(IK,1) +  real(WA(IDL),dp) * CH2(IK,2 )
+        C2(IK,LC) =           - aimag(WA(IDL))    * CH2(IK,IP)
+    end do
+    IDLJ = IDL
+    INC = INC+IDO
+    do J=3,IPPH
+        JC = IPP2-J
+        IDLJ = IDLJ+INC
+        if (IDLJ > IDP) IDLJ = IDLJ-IDP
+        do IK=1,IDL1
+            C2(IK,L ) = C2(IK,L ) +  real(WA(IDLJ),dp) * CH2(IK,J )
+            C2(IK,LC) = C2(IK,LC) - aimag(WA(IDLJ))    * CH2(IK,JC)
+        end do
+    end do
+end do
+do J = 2, IPPH
+    CH2(:,1) = CH2(:,1)+CH2(:,J)
+end do
+do J=2,IPPH
+    JC = IPP2-J
+    do IK=1,IDL1
+        CH2(IK,J ) = C2(IK,J) - aimag(C2(IK,JC)) + i_ * real(C2(IK,JC))
+        CH2(IK,JC) = C2(IK,J) + aimag(C2(IK,JC)) - i_ * real(C2(IK,JC))
+    end do
+end do
+NAC = 1
+if (IDO == 1) return
+NAC = 0
+C2(:,1) = CH2(:,1)
+C1(1,:,:) = CH(1,:,:)
+IDJ = 1-IDO
+do J=2,IP
+    IDJ = IDJ+IDO
+    do K=1,L1
+        IDIJ = IDJ
+        do I=2,IDO
+            IDIJ = IDIJ+1
+            C1(I,K,J) = conjg(WA(IDIJ))*CH(I,K,J)
+        end do
+    end do
+end do
 end subroutine
 
 subroutine calculate_factors(n, fac)
@@ -480,7 +412,7 @@ do K1 = 1, size(ifac)
             call passf5(IDO,L1,CH,C,w(:, 1),w(:, 2),w(:, 3),w(:, 4))
         end if
     case default
-        IDL1 = 2*IDO*L1
+        IDL1 = IDO*L1
         if (NA == 0) then
             call passf(NAC, IDO, IP, L1, IDL1, C, C, C, CH, CH, &
                 conjg(WA(IW:IW+(IP-1)*IDO-1)))
