@@ -255,8 +255,8 @@ IPPH = (IP+1)/2
 IDP = IP*IDO
 do J = 2, IPPH
     JC = IPP2-J
-    CH(:,:,J ) = CC(:,J,:)+CC(:,JC,:)
-    CH(:,:,JC) = CC(:,J,:)-CC(:,JC,:)
+    CH(:,:,J ) = CC(:,J,:) + CC(:,JC,:)
+    CH(:,:,JC) = CC(:,J,:) - CC(:,JC,:)
 end do
 CH(:,:,1) = CC(:,1,:)
 IDL = 1-IDO
@@ -265,8 +265,8 @@ do L=2,IPPH
     LC = IPP2-L
     IDL = IDL+IDO
     do IK=1,IDL1
-        C2(IK,L ) = CH2(IK,1) +  real(WA(IDL),dp) * CH2(IK,2 )
-        C2(IK,LC) =           - aimag(WA(IDL))    * CH2(IK,IP)
+        C2(IK,L ) = CH2(IK,1) + real(WA(IDL),dp) * CH2(IK,2 )
+        C2(IK,LC) =          - aimag(WA(IDL))    * CH2(IK,IP)
     end do
     IDLJ = IDL
     INC = INC+IDO
