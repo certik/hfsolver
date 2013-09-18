@@ -177,94 +177,6 @@ do K = 1, L1
 end do
 end subroutine
 
-      SUBROUTINE PASSF5_f77(IDO,L1,CC,CH,WA1,WA2,WA3,WA4)
-      integer, intent(in) :: IDO, L1
-      real(dp), intent(in) :: CC(IDO,5,L1), WA1(:), WA2(:), WA3(:), WA4(:)
-      real(dp), intent(out) :: CH(IDO,L1,5)
-      real(dp) :: CR2, CR3, CR4, CR5
-      real(dp) :: CI2, CI3, CI4, CI5
-      real(dp) :: TR2, TR3, TR4, TR5
-      real(dp) :: TI2, TI3, TI4, TI5
-      real(dp) :: TR11, TI11, TR12, TI12
-      real(dp) :: DR2, DR3, DR4, DR5
-      real(dp) :: DI2, DI3, DI4, DI5
-      integer :: I, K
-!     *** TR11=COS(2*PI/5), TI11=-SIN(2*PI/5)
-!     *** TR12=-COS(4*PI/5), TI12=-SIN(4*PI/5)
-      DATA TR11,TI11,TR12,TI12 /0.3090169943749474241D0, &
-           -0.95105651629515357212D0, &
-           -0.8090169943749474241D0, -0.58778525229247312917D0/
-      IF (IDO .NE. 2) GO TO 102
-      DO 101 K=1,L1
-         TI5 = CC(2,2,K)-CC(2,5,K)
-         TI2 = CC(2,2,K)+CC(2,5,K)
-         TI4 = CC(2,3,K)-CC(2,4,K)
-         TI3 = CC(2,3,K)+CC(2,4,K)
-         TR5 = CC(1,2,K)-CC(1,5,K)
-         TR2 = CC(1,2,K)+CC(1,5,K)
-         TR4 = CC(1,3,K)-CC(1,4,K)
-         TR3 = CC(1,3,K)+CC(1,4,K)
-         CH(1,K,1) = CC(1,1,K)+TR2+TR3
-         CH(2,K,1) = CC(2,1,K)+TI2+TI3
-         CR2 = CC(1,1,K)+TR11*TR2+TR12*TR3
-         CI2 = CC(2,1,K)+TR11*TI2+TR12*TI3
-         CR3 = CC(1,1,K)+TR12*TR2+TR11*TR3
-         CI3 = CC(2,1,K)+TR12*TI2+TR11*TI3
-         CR5 = TI11*TR5+TI12*TR4
-         CI5 = TI11*TI5+TI12*TI4
-         CR4 = TI12*TR5-TI11*TR4
-         CI4 = TI12*TI5-TI11*TI4
-         CH(1,K,2) = CR2-CI5
-         CH(1,K,5) = CR2+CI5
-         CH(2,K,2) = CI2+CR5
-         CH(2,K,3) = CI3+CR4
-         CH(1,K,3) = CR3-CI4
-         CH(1,K,4) = CR3+CI4
-         CH(2,K,4) = CI3-CR4
-         CH(2,K,5) = CI2-CR5
-  101 CONTINUE
-      RETURN
-  102 DO 104 K=1,L1
-         DO 103 I=2,IDO,2
-            TI5 = CC(I,2,K)-CC(I,5,K)
-            TI2 = CC(I,2,K)+CC(I,5,K)
-            TI4 = CC(I,3,K)-CC(I,4,K)
-            TI3 = CC(I,3,K)+CC(I,4,K)
-            TR5 = CC(I-1,2,K)-CC(I-1,5,K)
-            TR2 = CC(I-1,2,K)+CC(I-1,5,K)
-            TR4 = CC(I-1,3,K)-CC(I-1,4,K)
-            TR3 = CC(I-1,3,K)+CC(I-1,4,K)
-            CH(I-1,K,1) = CC(I-1,1,K)+TR2+TR3
-            CH(I,K,1) = CC(I,1,K)+TI2+TI3
-            CR2 = CC(I-1,1,K)+TR11*TR2+TR12*TR3
-            CI2 = CC(I,1,K)+TR11*TI2+TR12*TI3
-            CR3 = CC(I-1,1,K)+TR12*TR2+TR11*TR3
-            CI3 = CC(I,1,K)+TR12*TI2+TR11*TI3
-            CR5 = TI11*TR5+TI12*TR4
-            CI5 = TI11*TI5+TI12*TI4
-            CR4 = TI12*TR5-TI11*TR4
-            CI4 = TI12*TI5-TI11*TI4
-            DR3 = CR3-CI4
-            DR4 = CR3+CI4
-            DI3 = CI3+CR4
-            DI4 = CI3-CR4
-            DR5 = CR2+CI5
-            DR2 = CR2-CI5
-            DI5 = CI2-CR5
-            DI2 = CI2+CR5
-            CH(I-1,K,2) = WA1(I-1)*DR2-WA1(I)*DI2
-            CH(I,K,2) = WA1(I-1)*DI2+WA1(I)*DR2
-            CH(I-1,K,3) = WA2(I-1)*DR3-WA2(I)*DI3
-            CH(I,K,3) = WA2(I-1)*DI3+WA2(I)*DR3
-            CH(I-1,K,4) = WA3(I-1)*DR4-WA3(I)*DI4
-            CH(I,K,4) = WA3(I-1)*DI4+WA3(I)*DR4
-            CH(I-1,K,5) = WA4(I-1)*DR5-WA4(I)*DI5
-            CH(I,K,5) = WA4(I-1)*DI5+WA4(I)*DR5
-  103    CONTINUE
-  104 CONTINUE
-      RETURN
-      END
-
       SUBROUTINE PASSF_f77(NAC,IDO,IP,L1,IDL1,CC,C1,C2,CH,CH2,WA)
       integer, intent(out) :: NAC
       integer, intent(in) :: IDO, IP, L1, IDL1
@@ -423,27 +335,30 @@ end do
 end subroutine
 
 subroutine passf5(IDO, L1, CC, CH, WA1, WA2, WA3, WA4)
-! FFT pass of factor 2
-use iso_c_binding, only: c_f_pointer, c_loc
 integer, intent(in) :: IDO, L1
-complex(dp), intent(in), target :: CC(IDO, 5, L1), WA1(:), WA2(:), WA3(:), &
-    WA4(:)
-complex(dp), intent(out), target :: CH(IDO, L1, 5)
-complex(dp), target :: WA1p(size(WA1)), WA2p(size(WA2)), WA3p(size(WA3)), &
-    WA4p(size(WA4))
-real(dp), pointer :: CC_r(:, :, :), CH_r(:, :, :), WA1_r(:), WA2_r(:), &
-    WA3_r(:), WA4_r(:)
-call c_f_pointer(c_loc(CC), CC_r, [size(CC)*2])
-call c_f_pointer(c_loc(CH), CH_r, [size(CH)*2])
-WA1p = WA1
-WA2p = WA2
-WA3p = WA3
-WA4p = WA4
-call c_f_pointer(c_loc(WA1p), WA1_r, [size(WA1)*2])
-call c_f_pointer(c_loc(WA2p), WA2_r, [size(WA2)*2])
-call c_f_pointer(c_loc(WA3p), WA3_r, [size(WA3)*2])
-call c_f_pointer(c_loc(WA4p), WA4_r, [size(WA4)*2])
-call PASSF5_f77(IDO*2, L1, CC_r, CH_r, WA1_r, WA2_r, WA3_r, WA4_r)
+complex(dp), intent(in) :: CC(IDO, 5, L1), WA1(:), WA2(:), WA3(:), WA4(:)
+complex(dp), intent(out) :: CH(IDO, L1, 5)
+complex(dp) :: C2, C3, C4, C5, C4b, C5b
+integer :: I, K
+real(dp), parameter :: tr11 =  cos(2*pi/5)
+real(dp), parameter :: ti11 = -sin(2*pi/5)
+real(dp), parameter :: tr12 =  cos(4*pi/5)
+real(dp), parameter :: ti12 = -sin(4*pi/5)
+do K = 1, L1
+    do I = 1, IDO
+        CH(I,K,1) = CC(I,1,K) + CC(I,2,K) + CC(I,3,K) + CC(I,4,K) + CC(I,5,K)
+        C2 = CC(I,1,K) + TR11*(CC(I,2,K)+CC(I,5,K)) + TR12*(CC(I,3,K)+CC(I,4,K))
+        C3 = CC(I,1,K) + TR12*(CC(I,2,K)+CC(I,5,K)) + TR11*(CC(I,3,K)+CC(I,4,K))
+        C4 = TI12*(CC(I,2,K)-CC(I,5,K)) - TI11*(CC(I,3,K)-CC(I,4,K))
+        C5 = TI11*(CC(I,2,K)-CC(I,5,K)) + TI12*(CC(I,3,K)-CC(I,4,K))
+        C4b = aimag(C4) - i_*real(C4, dp)
+        C5b = aimag(C5) - i_*real(C5, dp)
+        CH(I,K,2) = WA1(I) * (C2 - C5b)
+        CH(I,K,3) = WA2(I) * (C3 - C4b)
+        CH(I,K,4) = WA3(I) * (C3 + C4b)
+        CH(I,K,5) = WA4(I) * (C2 + C5b)
+    end do
+end do
 end subroutine
 
 subroutine passf(NAC, IDO, IP, L1, IDL1, CC, C1, C2, CH, CH2, WA)
