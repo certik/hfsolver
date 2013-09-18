@@ -260,14 +260,14 @@ end subroutine
             DR2 = CR2-CI5
             DI5 = CI2-CR5
             DI2 = CI2+CR5
-            CH(I-1,K,2) = WA1(I-1)*DR2+WA1(I)*DI2
-            CH(I,K,2) = WA1(I-1)*DI2-WA1(I)*DR2
-            CH(I-1,K,3) = WA2(I-1)*DR3+WA2(I)*DI3
-            CH(I,K,3) = WA2(I-1)*DI3-WA2(I)*DR3
-            CH(I-1,K,4) = WA3(I-1)*DR4+WA3(I)*DI4
-            CH(I,K,4) = WA3(I-1)*DI4-WA3(I)*DR4
-            CH(I-1,K,5) = WA4(I-1)*DR5+WA4(I)*DI5
-            CH(I,K,5) = WA4(I-1)*DI5-WA4(I)*DR5
+            CH(I-1,K,2) = WA1(I-1)*DR2-WA1(I)*DI2
+            CH(I,K,2) = WA1(I-1)*DI2+WA1(I)*DR2
+            CH(I-1,K,3) = WA2(I-1)*DR3-WA2(I)*DI3
+            CH(I,K,3) = WA2(I-1)*DI3+WA2(I)*DR3
+            CH(I-1,K,4) = WA3(I-1)*DR4-WA3(I)*DI4
+            CH(I,K,4) = WA3(I-1)*DI4+WA3(I)*DR4
+            CH(I-1,K,5) = WA4(I-1)*DR5-WA4(I)*DI5
+            CH(I,K,5) = WA4(I-1)*DI5+WA4(I)*DR5
   103    CONTINUE
   104 CONTINUE
       RETURN
@@ -424,11 +424,11 @@ do K = 1, L1
     do I = 1, IDO
         CH(I,K,1) = &
             (CC(I,1,K) + CC(I,3,K) +    (CC(I,2,K) + CC(I,4,K)))
-        CH(I,K,2) = conjg(WA1(I)) * &
+        CH(I,K,2) = WA1(I) * &
             (CC(I,1,K) - CC(I,3,K) - i_*(CC(I,2,K) - CC(I,4,K)))
-        CH(I,K,3) = conjg(WA2(I)) * &
+        CH(I,K,3) = WA2(I) * &
             (CC(I,1,K) + CC(I,3,K) -    (CC(I,2,K) + CC(I,4,K)))
-        CH(I,K,4) = conjg(WA3(I)) * &
+        CH(I,K,4) = WA3(I) * &
             (CC(I,1,K) - CC(I,3,K) + i_*(CC(I,2,K) - CC(I,4,K)))
     end do
 end do
@@ -531,11 +531,11 @@ integer :: n
 n = size(x)
 call calculate_factors(n, fac)
 call precalculate_angles(fac, angles)
-call cfftf1(n, x, CH, angles, fac)
+call cfftf1(n, x, CH, conjg(angles), fac)
 end subroutine
 
 
-SUBROUTINE CFFTF1(N,C,CH,WA,IFAC)
+subroutine cfftf1(N,C,CH,WA,IFAC)
 integer, intent(in) :: N
 complex(dp), intent(inout) :: C(:)
 complex(dp), intent(out) :: CH(:)
@@ -560,15 +560,15 @@ do K1 = 1, size(ifac)
         end if
     case (2)
         if (NA == 0) then
-            call passf2(IDO,L1,C,CH,conjg(w(:, 1)))
+            call passf2(IDO,L1,C,CH,w(:, 1))
         else
-            call passf2(IDO,L1,CH,C,conjg(w(:, 1)))
+            call passf2(IDO,L1,CH,C,w(:, 1))
         end if
     case (3)
         if (NA == 0) then
-            call passf3(IDO,L1,C,CH,conjg(w(:, 1)),conjg(w(:, 2)))
+            call passf3(IDO,L1,C,CH,w(:, 1),w(:, 2))
         else
-            call passf3(IDO,L1,CH,C,conjg(w(:, 1)),conjg(w(:, 2)))
+            call passf3(IDO,L1,CH,C,w(:, 1),w(:, 2))
         end if
     case (5)
         if (NA == 0) then
@@ -580,10 +580,10 @@ do K1 = 1, size(ifac)
         IDL1 = 2*IDO*L1
         if (NA == 0) then
             call passf(NAC, IDO, IP, L1, IDL1, C, C, C, CH, CH, &
-                WA(IW:IW+(IP-1)*IDO-1))
+                conjg(WA(IW:IW+(IP-1)*IDO-1)))
         else
             call passf(NAC, IDO, IP, L1, IDL1, CH, CH, CH, C, C, &
-                WA(IW:IW+(IP-1)*IDO-1))
+                conjg(WA(IW:IW+(IP-1)*IDO-1)))
         end if
         IF (NAC == 0) NA = 1-NA
     end select
