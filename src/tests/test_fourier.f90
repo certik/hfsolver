@@ -129,20 +129,9 @@ forall(i = 1:n) x(i) = i
 call assert(all(abs(idft(dft(x)) - x) < 1e-10_dp))
 deallocate(x)
 
-call test_fft_pass(2)
-call test_fft_pass(3)
-call test_fft_pass(4)
-call test_fft_pass(5)
-call test_fft_pass(6)
-call test_fft_pass(7)
-call test_fft_pass(8)
-call test_fft_pass(9)
-call test_fft_pass(10)
-call test_fft_pass(11)
-call test_fft_pass(12)
-call test_fft_pass(13)
-call test_fft_pass(14)
-call test_fft_pass(15)
+do i = 1, 20
+    call test_fft_pass(i)
+end do
 
 n = 1024
 call init_random()
