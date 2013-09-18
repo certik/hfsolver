@@ -568,7 +568,8 @@ subroutine passf(NAC, IDO, IP, L1, IDL1, CC, C1, C2, CH, CH2, WA)
 use iso_c_binding, only: c_f_pointer, c_loc
 integer, intent(out) :: NAC
 integer, intent(in) :: IDO, IP, L1, IDL1
-complex(dp), intent(in), target :: CC(IDO,IP,L1), WA(:)
+complex(dp), intent(inout), target :: CC(IDO,IP,L1)
+complex(dp), intent(in), target ::  WA(:)
 complex(dp), intent(out), target :: CH(IDO,L1,IP), C1(IDO,L1,IP), C2(IDL1,IP), &
           CH2(IDL1,IP)
 complex(dp), target :: WA1p(size(WA))
@@ -640,7 +641,7 @@ call cfftf1(n, x, CH, angles, fac)
 end subroutine
 
 
-      SUBROUTINE CFFTF1 (N,C,CH,WA,IFAC)
+      SUBROUTINE CFFTF1(N,C,CH,WA,IFAC)
       ! NOTE: PASSF3, PASSF5 and PASSF are commented out for now
       integer, intent(in) :: N
       complex(dp), intent(inout) :: C(:)
@@ -648,7 +649,7 @@ end subroutine
       complex(dp), intent(in) :: WA(:)
       integer, intent(in) :: IFAC(:)
       integer :: k1, l1, na, iw, ip, l2, ido, idot, idl1, ix2, ix3, ix4, &
-          n2
+          n2, nac
       NA = 0
       L1 = 1
       IW = 1
@@ -693,12 +694,10 @@ end subroutine
   111    NA = 1-NA
          GO TO 115
   112    IF (NA .NE. 0) GO TO 113
-         !CALL PASSF (NAC,IDOT,IP,L1,IDL1,C,C,C,CH,CH,WA(IW))
-         call stop_error("passf not implemented")
+         call passf(NAC, IDOT/2, IP, L1, IDL1, C, C, C, CH, CH, WA(IW/2+1:))
          GO TO 114
-  113    continue !CALL PASSF (NAC,IDOT,IP,L1,IDL1,CH,CH,CH,C,C,WA(IW))
-         call stop_error("passf not implemented")
-  114    continue !IF (NAC .NE. 0) NA = 1-NA
+  113    call passf(NAC, IDOT/2, IP, L1, IDL1, CH, CH, CH, C, C, WA(IW/2+1:))
+  114    IF (NAC .NE. 0) NA = 1-NA
   115    L1 = L2
          IW = IW+(IP-1)*IDOT
   116 CONTINUE
