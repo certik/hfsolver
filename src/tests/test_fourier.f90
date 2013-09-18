@@ -129,7 +129,7 @@ forall(i = 1:n) x(i) = i
 call assert(all(abs(idft(dft(x)) - x) < 1e-10_dp))
 deallocate(x)
 
-do i = 1, 20
+do i = 1, 100
     call test_fft_pass(i)
 end do
 
@@ -170,11 +170,11 @@ integer, intent(in) :: n
 real(dp), allocatable :: x(:)
 allocate(x(n))
 forall(i = 1:n) x(i) = i
-call assert(all(abs(dft(x) - fft_pass(x)) < 1e-12_dp))
+call assert(all(abs(dft(x) - fft_pass(x)) < 1e-9_dp))
 forall(i = 1:n) x(i) = 1._dp / i
-call assert(all(abs(dft(x) - fft_pass(x)) < 1e-12_dp))
+call assert(all(abs(dft(x) - fft_pass(x)) < 1e-9_dp))
 call random_number(x)
-call assert(all(abs(dft(x) - fft_pass(x)) < 1e-12_dp))
+call assert(all(abs(dft(x) - fft_pass(x)) < 1e-9_dp))
 end subroutine
 
 end program
