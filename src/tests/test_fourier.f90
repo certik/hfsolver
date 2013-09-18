@@ -132,10 +132,13 @@ deallocate(x)
 call test_fft_pass(2)
 call test_fft_pass(3)
 call test_fft_pass(4)
+call test_fft_pass(5)
 call test_fft_pass(6)
 call test_fft_pass(8)
 call test_fft_pass(9)
+call test_fft_pass(10)
 call test_fft_pass(12)
+call test_fft_pass(15)
 
 n = 1024
 call init_random()
