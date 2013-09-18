@@ -134,6 +134,43 @@ do while (k > 0)
 end do
 end subroutine
 
+subroutine precalculate_angles(fac, wa)
+! Precalculates all cos/sin factors
+integer, intent(in) :: fac(:)
+complex(dp), intent(out) :: wa(:)
+integer :: n, i, j, k1, ii, i1, ido, idot, ipm, ip, l1, l2, ld
+real(dp) :: argh, arg, argld, fi
+n = size(wa)
+
+      ARGH = 2*pi/n
+      I = 2
+      L1 = 1
+      do K1 = 1, size(fac)
+         IP = fac(K1)
+         LD = 0
+         L2 = L1*IP
+         IDO = N/L2
+         IDOT = IDO+IDO+2
+         IPM = IP-1
+         DO 109 J=1,IPM
+            I1 = I
+            wa(i/2) = 1
+            LD = LD+L1
+            FI = 0
+            ARGLD = LD*ARGH
+            DO II=4,IDOT,2
+               I = I+2
+               FI = FI+1
+               ARG = FI*ARGLD
+               wa(i/2) = cos(arg) + i_ * sin(arg)
+            end do
+            IF (IP .LE. 5) GO TO 109
+            wa(i1/2) = wa(i/2)
+  109    CONTINUE
+         L1 = L2
+      end do
+end subroutine
+
 subroutine passf2(IDO, L1, CC, CH, WA1)
 ! FFT pass of factor 2
 integer, intent(in) :: IDO, L1
