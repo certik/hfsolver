@@ -345,7 +345,7 @@ end subroutine
       complex(dp), intent(out) :: CH(:)
       complex(dp), intent(in) :: WA(:)
       integer, intent(in) :: IFAC(:)
-      integer :: k1, l1, na, iw, ip, l2, ido, idot, idl1, ix2, ix3, i, ix4, &
+      integer :: k1, l1, na, iw, ip, l2, ido, idot, idl1, ix2, ix3, ix4, &
           n2
       NA = 0
       L1 = 1
@@ -360,16 +360,16 @@ end subroutine
          IX2 = IW+IDOT
          IX3 = IX2+IDOT
          IF (NA .NE. 0) GO TO 101
-         call passf4(IDOT,L1,C,CH,WA(IW/2:),WA(IX2/2:),WA(IX3/2:))
+         call passf4(IDOT,L1,C,CH,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
          GO TO 102
-  101    call passf4(IDOT,L1,CH,C,WA(IW/2:),WA(IX2/2:),WA(IX3/2:))
+  101    call passf4(IDOT,L1,CH,C,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
   102    NA = 1-NA
          GO TO 115
   103    IF (IP .NE. 2) GO TO 106
          IF (NA .NE. 0) GO TO 104
-         call passf2(IDOT,L1,C,CH,WA(IW/2:))
+         call passf2(IDOT,L1,C,CH,WA(IW/2+1:))
          GO TO 105
-  104    call passf2(IDOT,L1,CH,C,WA(IW/2:))
+  104    call passf2(IDOT,L1,CH,C,WA(IW/2+1:))
   105    NA = 1-NA
          GO TO 115
   106    IF (IP .NE. 3) GO TO 109
@@ -400,10 +400,7 @@ end subroutine
   116 CONTINUE
       IF (NA .EQ. 0) RETURN
       N2 = N+N
-      DO 117 I=1,N2
-         C(I) = CH(I)
-  117 CONTINUE
-      RETURN
+      C = CH
       END
 
 function fft_pass(x) result(p)
