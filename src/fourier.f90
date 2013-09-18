@@ -262,9 +262,7 @@ do J = 2, IPPH
         end do
     end do
 end do
-do K=1,L1
-    CH(:,K,1) = CC(:,1,K)
-end do
+CH(:,:,1) = CC(:,1,:)
 IDL = 1-IDO
 INC = 0
 do L=2,IPPH
