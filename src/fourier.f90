@@ -162,7 +162,7 @@ n = size(wa)
                I = I+2
                FI = FI+1
                ARG = FI*ARGLD
-               wa(i/2) = cos(arg) + i_ * sin(arg)
+               wa(i/2) = cos(arg) - i_ * sin(arg)
             end do
             IF (IP .LE. 5) GO TO 109
             wa(i1/2) = wa(i/2)
@@ -527,7 +527,7 @@ integer :: n
 n = size(x)
 call calculate_factors(n, fac)
 call precalculate_angles(fac, angles)
-call cfftf1(n, x, CH, conjg(angles), fac)
+call cfftf1(n, x, CH, angles, fac)
 end subroutine
 
 
