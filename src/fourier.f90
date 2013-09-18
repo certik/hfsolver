@@ -641,70 +641,64 @@ call cfftf1(n, x, CH, angles, fac)
 end subroutine
 
 
-      SUBROUTINE CFFTF1(N,C,CH,WA,IFAC)
-      ! NOTE: PASSF3, PASSF5 and PASSF are commented out for now
-      integer, intent(in) :: N
-      complex(dp), intent(inout) :: C(:)
-      complex(dp), intent(out) :: CH(:)
-      complex(dp), intent(in) :: WA(:)
-      integer, intent(in) :: IFAC(:)
-      integer :: k1, l1, na, iw, ip, l2, ido, idot, idl1, ix2, ix3, ix4, &
-          n2, nac
-      NA = 0
-      L1 = 1
-      IW = 1
-      DO 116 K1=1,size(ifac)
-         IP = IFAC(K1)
-         L2 = IP*L1
-         IDO = N/L2
-         IDOT = IDO+IDO
-         IDL1 = IDOT*L1
-         IF (IP .NE. 4) GO TO 103
-         IX2 = IW+IDOT
-         IX3 = IX2+IDOT
-         IF (NA .NE. 0) GO TO 101
-         call passf4(IDOT/2,L1,C,CH,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
-         GO TO 102
-  101    call passf4(IDOT/2,L1,CH,C,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:))
-  102    NA = 1-NA
-         GO TO 115
-  103    IF (IP .NE. 2) GO TO 106
-         IF (NA .NE. 0) GO TO 104
-         call passf2(IDOT/2,L1,C,CH,conjg(WA(IW/2+1:)))
-         GO TO 105
-  104    call passf2(IDOT/2,L1,CH,C,conjg(WA(IW/2+1:)))
-  105    NA = 1-NA
-         GO TO 115
-  106    IF (IP .NE. 3) GO TO 109
-         IX2 = IW+IDOT
-         IF (NA .NE. 0) GO TO 107
-         call passf3(IDOT/2,L1,C,CH,WA(IW/2+1:),WA(IX2/2+1:))
-         GO TO 108
-  107    call passf3(IDOT/2,L1,CH,C,WA(IW/2+1:),WA(IX2/2+1:))
-  108    NA = 1-NA
-         GO TO 115
-  109    IF (IP .NE. 5) GO TO 112
-         IX2 = IW+IDOT
-         IX3 = IX2+IDOT
-         IX4 = IX3+IDOT
-         IF (NA .NE. 0) GO TO 110
-         call passf5(IDOT/2,L1,C,CH,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:),WA(IX4/2+1:))
-         GO TO 111
-  110    call passf5(IDOT/2,L1,CH,C,WA(IW/2+1:),WA(IX2/2+1:),WA(IX3/2+1:),WA(IX4/2+1:))
-  111    NA = 1-NA
-         GO TO 115
-  112    IF (NA .NE. 0) GO TO 113
-         call passf(NAC, IDOT/2, IP, L1, IDL1, C, C, C, CH, CH, WA(IW/2+1:))
-         GO TO 114
-  113    call passf(NAC, IDOT/2, IP, L1, IDL1, CH, CH, CH, C, C, WA(IW/2+1:))
-  114    IF (NAC .NE. 0) NA = 1-NA
-  115    L1 = L2
-         IW = IW+(IP-1)*IDOT
-  116 CONTINUE
-      IF (NA .EQ. 0) RETURN
-      N2 = N+N
-      C = CH
-      END
+SUBROUTINE CFFTF1(N,C,CH,WA,IFAC)
+integer, intent(in) :: N
+complex(dp), intent(inout) :: C(:)
+complex(dp), intent(out) :: CH(:)
+complex(dp), intent(in), target :: WA(:)
+integer, intent(in) :: IFAC(:)
+integer :: k1, l1, na, iw, ip, l2, ido, idl1, nac
+complex(dp), pointer :: w(:, :)
+NA = 0
+L1 = 1
+IW = 1
+do K1 = 1, size(ifac)
+    IP = IFAC(K1)
+    L2 = IP*L1
+    IDO = N/L2
+    w(1:IDO,1:IP-1) => WA(IW:IW+(IP-1)*IDO-1)
+    select case(IP)
+    case (4)
+        if (NA == 0) then
+            call passf4(IDO,L1,C,CH,w(:, 1),w(:, 2),w(:, 3))
+        else
+            call passf4(IDO,L1,CH,C,w(:, 1),w(:, 2),w(:, 3))
+        end if
+    case (2)
+        if (NA == 0) then
+            call passf2(IDO,L1,C,CH,conjg(w(:, 1)))
+        else
+            call passf2(IDO,L1,CH,C,conjg(w(:, 1)))
+        end if
+    case (3)
+        if (NA == 0) then
+            call passf3(IDO,L1,C,CH,w(:, 1),w(:, 2))
+        else
+            call passf3(IDO,L1,CH,C,w(:, 1),w(:, 2))
+        end if
+    case (5)
+        if (NA == 0) then
+            call passf5(IDO,L1,C,CH,w(:, 1),w(:, 2),w(:, 3),w(:, 4))
+        else
+            call passf5(IDO,L1,CH,C,w(:, 1),w(:, 2),w(:, 3),w(:, 4))
+        end if
+    case default
+        IDL1 = 2*IDO*L1
+        if (NA == 0) then
+            call passf(NAC, IDO, IP, L1, IDL1, C, C, C, CH, CH, &
+                WA(IW:IW+(IP-1)*IDO-1))
+        else
+            call passf(NAC, IDO, IP, L1, IDL1, CH, CH, CH, C, C, &
+                WA(IW:IW+(IP-1)*IDO-1))
+        end if
+        IF (NAC == 0) NA = 1-NA
+    end select
+    NA = 1-NA
+    L1 = L2
+    IW = IW+(IP-1)*IDO
+end do
+if (NA /= 0) C = CH
+end subroutine
 
 function fft_pass(x) result(p)
 real(dp), intent(in) :: x(:)
