@@ -309,32 +309,12 @@ end subroutine
 subroutine fft_pass_inplace(x)
 complex(dp), intent(inout) :: x(:)
 complex(dp), dimension(size(x)) :: angles, CH
-integer :: n, nf
-integer :: IDOT, IW, K1, L1
-logical :: CH_is_result
+integer, allocatable :: fac(:)
+integer :: n
 n = size(x)
-if (iand(n, n-1) /= 0) call stop_error("size of x must be a power of 2")
-nf = int(log(real(n, dp)) / log(2._dp) + 0.5_dp)
-! The above is robust, but let's check it just in case:
-call assert(2**nf == n)
-call precalculate_coeffs(angles)
-CH_is_result = .true.
-L1 = 1
-IW = 1
-do K1 = 1, NF
-    IDOT = N/L1/2
-    if (CH_is_result) then
-        CALL passf2(IDOT,L1,x,CH,angles(IW:IW+IDOT))
-    else
-        CALL passf2(IDOT,L1,CH,x,angles(IW:IW+IDOT))
-    end if
-    CH_is_result = .not. CH_is_result
-    L1 = 2*L1
-    IW = IW+IDOT
-end do
-if (.not. CH_is_result) then
-    x = CH
-end if
+call calculate_factors(n, fac)
+call precalculate_angles(fac, angles)
+call cfftf1(n, x, CH, angles, fac)
 end subroutine
 
 
