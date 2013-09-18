@@ -129,6 +129,11 @@ forall(i = 1:n) x(i) = i
 call assert(all(abs(idft(dft(x)) - x) < 1e-10_dp))
 deallocate(x)
 
+call test_fft_pass(2)
+!call test_fft_pass(3)
+call test_fft_pass(4)
+call test_fft_pass(8)
+
 n = 1024
 call init_random()
 allocate(x(n), xdft(n))
@@ -159,6 +164,18 @@ integer, intent(in) :: n, correct_fac(:)
 integer, allocatable :: fac(:)
 call calculate_factors(n, fac)
 call assert(all(fac == correct_fac))
+end subroutine
+
+subroutine test_fft_pass(n)
+integer, intent(in) :: n
+real(dp), allocatable :: x(:)
+allocate(x(n))
+forall(i = 1:n) x(i) = i
+call assert(all(abs(dft(x) - fft_pass(x)) < 1e-12_dp))
+forall(i = 1:n) x(i) = 1._dp / i
+call assert(all(abs(dft(x) - fft_pass(x)) < 1e-12_dp))
+call random_number(x)
+call assert(all(abs(dft(x) - fft_pass(x)) < 1e-12_dp))
 end subroutine
 
 end program
