@@ -1,7 +1,7 @@
 program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-        fft_vectorized_inplace, calculate_factors
+        fft_vectorized_inplace, calculate_factors, ifft_pass
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
@@ -165,6 +165,12 @@ call cpu_time(t1)
 xdft = fft_pass(x)
 call cpu_time(t2)
 print *, "fft_pass"
+print *, "time:", (t2-t1)*1000, "ms"
+
+call cpu_time(t1)
+xdft = ifft_pass(xdft)
+call cpu_time(t2)
+print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 deallocate(x, xdft)
 
