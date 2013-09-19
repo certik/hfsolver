@@ -314,7 +314,7 @@ integer, intent(out), allocatable :: fac(:)
 ! TODO: add checks that we don't go over MAX_LENGTH below:
 integer, parameter :: MAX_LENGTH = 1000
 integer :: fac_tmp(MAX_LENGTH)
-integer, parameter :: NTRYH(*) = [3, 4, 2, 5]
+integer, parameter :: NTRYH(4) = [3, 4, 2, 5]
 integer :: NL, NF, I, J, NTRY, IB, NQ, NR
 if (n == 1) then
     allocate(fac(1))
