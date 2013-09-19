@@ -15,7 +15,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3 -march=native -ffast-math -funroll-loops")
 elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     # ifort
-    set(common "-std2008 -warn all")
+    set(common "-std08 -warn all")
     set(CMAKE_Fortran_FLAGS_RELEASE_INIT "${common} -xHOST -O3 -no-prec-div -static")
     set(CMAKE_Fortran_FLAGS_DEBUG_INIT   "${common} -check all")
 endif ()
