@@ -70,6 +70,7 @@ else
     b = xa
 end if
 deltax = 0
+rat = 0
 do iter = 1, maxiter
     if (verbose_) then
         print "(i2, ':  x = ', f23.12, '     tol = ', es10.2)", iter, x, &

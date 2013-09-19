@@ -9,7 +9,7 @@ use utils, only: stop_error, assert
 implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-    fft_vectorized_inplace, calculate_factors
+    fft_vectorized_inplace, calculate_factors, ifft_pass
 
 contains
 
@@ -324,6 +324,7 @@ end if
 NL = N
 NF = 0
 J = 0
+NTRY = 0
 do while (NL /= 1)
     J = J+1
     IF (J <= 4) then
@@ -428,6 +429,35 @@ real(dp), intent(in) :: x(:)
 complex(dp) :: p(size(x))
 p = x
 call fft_pass_inplace(p)
+end function
+
+function ifft_pass(x) result(p)
+! Inverse FFT, defined as: ifft(fft(x))/n = x, i.e. don't forget to divide by n
+complex(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+p = conjg(x)
+call fft_pass_inplace(p)
+p = conjg(p)
+end function
+
+function ifft_pass2(x) result(p)
+! Inverse FFT, alternative implementation
+! Seems to be about as fast as ifft_pass()
+complex(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+p = aimag(x) + i_ * real(x, dp)
+call fft_pass_inplace(p)
+p = aimag(p) + i_ * real(p, dp)
+end function
+
+function ifft_pass3(x) result(p)
+! Inverse FFT, alternative implementation
+! Seems to be slower than ifft_pass()
+complex(dp), intent(in) :: x(:)
+complex(dp) :: p(size(x))
+p = x
+call fft_pass_inplace(p)
+p = [p(1), p(size(x):2:-1)]
 end function
 
 end module
