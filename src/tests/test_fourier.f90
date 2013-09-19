@@ -196,6 +196,7 @@ end if
 allocate(x(n))
 forall(i = 1:n) x(i) = i
 call assert(all(abs(dft(x) - fft_pass(x)) < eps_))
+call assert(all(abs(x - ifft_pass(fft_pass(x))/n) < eps_))
 forall(i = 1:n) x(i) = 1._dp / i
 call assert(all(abs(dft(x) - fft_pass(x)) < eps_))
 call random_number(x)
