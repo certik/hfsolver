@@ -324,6 +324,7 @@ end if
 NL = N
 NF = 0
 J = 0
+NTRY = 0
 do while (NL /= 1)
     J = J+1
     IF (J <= 4) then
