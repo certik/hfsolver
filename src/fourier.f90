@@ -432,7 +432,7 @@ call fft_pass_inplace(p)
 end function
 
 function ifft_pass(x) result(p)
-! Inverse FFT
+! Inverse FFT, defined as: ifft(fft(x))/n = x, i.e. don't forget to divide by n
 complex(dp), intent(in) :: x(:)
 complex(dp) :: p(size(x))
 p = conjg(x)
