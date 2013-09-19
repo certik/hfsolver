@@ -152,14 +152,14 @@ print *, "Done."
 end function
 
 real(dp) function mbpt2(moint2, lam, Noccupied) result(E2)
-use mbpt2, only: term1
+use mbpt2_mod, only: term1
 real(dp), intent(in) :: moint2(:), lam(:)
 integer, intent(in) :: Noccupied
 E2 = term1(moint2, lam, Noccupied)
 end function
 
 real(dp) function mbpt3(moint2, lam, Noccupied) result(E3)
-use mbpt3, only: term1, term2, term3
+use mbpt3_mod, only: term1, term2, term3
 real(dp), intent(in) :: moint2(:), lam(:)
 integer, intent(in) :: Noccupied
 E3 = &
@@ -169,7 +169,7 @@ E3 = &
 end function
 
 real(dp) function mbpt4(moint2, lam, Noccupied) result(E3)
-use mbpt4
+use mbpt4_mod
 real(dp), intent(in) :: moint2(:), lam(:)
 integer, intent(in) :: Noccupied
 E3 =      term1(moint2, lam, Noccupied)

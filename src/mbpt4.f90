@@ -1,4 +1,4 @@
-module mbpt4
+module mbpt4_mod
 use types, only: dp
 use scf, only: ijkl2intindex
 implicit none

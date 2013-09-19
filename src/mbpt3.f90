@@ -1,4 +1,4 @@
-module mbpt3
+module mbpt3_mod
 use types, only: dp
 use scf, only: ijkl2intindex
 implicit none
