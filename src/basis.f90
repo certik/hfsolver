@@ -79,7 +79,7 @@ module basis
 
 use types, only: dp
 use constants, only: pi
-use utils, only: stop_error, lowcase, str, assert
+use utils, only: stop_error, lowcase, str, assert, newunit
 use qc, only: getS, getT, getV, coulomb_repulsion
 use gaussians, only: getints2
 use scf, only: ijkl2intindex
@@ -207,7 +207,7 @@ real(dp), allocatable, intent(out) :: c(:), zeta(:)
 ! general there will be no "1.0"s).
 
 integer :: u, ZZ, ios
-open(newunit=u, file="p631ss.txt", status="old") ! 6-31G**
+open(newunit(u), file="p631ss.txt", status="old") ! 6-31G**
 do
     read(u, *, iostat=ios) ZZ
     if (ios /= 0) then
