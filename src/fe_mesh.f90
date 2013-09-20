@@ -21,7 +21,7 @@ module fe_mesh
 !
 
 use types
-use utils, only: stop_error
+use utils, only: stop_error, newunit
 use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 use feutils, only: phih
@@ -416,7 +416,7 @@ integer :: u
 
 Nq = size(xiq)
 
-open(newunit=u, file=filename, status="replace")
+open(newunit(u), file=filename, status="replace")
 write(u, "(a)") "# vtk DataFile Version 2.0"
 write(u, "(a)") "Function at quadrature points"
 write(u, "(a)") "ASCII"
@@ -488,7 +488,7 @@ real(dp), intent(in):: xin(:), nodes(:, :), fullu(:), x1(:), x2(:)
 integer, intent(in):: elems(:, :), in(:, :, :, :), n
 integer :: i, u
 real(dp) :: x(3), val
-open(newunit=u, file=filename, status="replace")
+open(newunit(u), file=filename, status="replace")
 do i = 1, n
     x = x1 + (i-1) * (x2-x1) / (n-1)
     val = fe_eval_xyz(xin, nodes, elems, in, fullu, x)
