@@ -208,8 +208,8 @@ do al = 1, p+1
 end do
 call get_quad_pts(xe, xiq, xq)
 
-print *, "SIZE Ykq : ", str(size(Ykq ) * 8 * 1e-6_dp, 2), " MB"
-print *, "SIZE mat2: ", str(size(mat2) * 8 * 1e-6_dp, 2), " MB"
+!print *, "SIZE Ykq : ", str(size(Ykq ) * 8 * 1e-6_dp, 2), " MB"
+!print *, "SIZE mat2: ", str(size(mat2) * 8 * 1e-6_dp, 2), " MB"
 print *, "Calculating Hartree screening functions..."
 do e = 1, Ne
     print *, "    element =", e
