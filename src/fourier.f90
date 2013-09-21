@@ -9,7 +9,8 @@ use utils, only: stop_error, assert
 implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-    fft_vectorized_inplace, calculate_factors, ifft_pass
+    fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
+    fft3_inplace
 
 contains
 
@@ -459,5 +460,50 @@ p = x
 call fft_pass_inplace(p)
 p = [p(1), p(size(x):2:-1)]
 end function
+
+subroutine fft2_inplace(x)
+complex(dp), intent(inout) :: x(:, :)
+integer :: i
+do i = 1, size(x, 2)
+    call fft_pass_inplace(x(:, i))
+end do
+do i = 1, size(x, 1)
+    call fft_pass_inplace(x(i, :))
+end do
+end subroutine
+
+subroutine fft3_inplace(x)
+complex(dp), intent(inout) :: x(:, :, :)
+complex(dp), dimension(size(x, 1)) :: angles1, CH1
+complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
+complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
+integer, allocatable :: fac1(:), fac2(:), fac3(:)
+integer :: i, j
+call calculate_factors(size(x, 1), fac1)
+call precalculate_angles(fac1, angles1)
+call calculate_factors(size(x, 2), fac2)
+call precalculate_angles(fac2, angles2)
+call calculate_factors(size(x, 3), fac3)
+call precalculate_angles(fac3, angles3)
+do j = 1, size(x, 3)
+    do i = 1, size(x, 2)
+        call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
+    end do
+end do
+do j = 1, size(x, 3)
+    do i = 1, size(x, 1)
+        x2 = x(i, :, j)
+        call calc_fft(size(x, 2), x2, CH2, angles2, fac2)
+        x(i, :, j) = x2
+    end do
+end do
+do j = 1, size(x, 2)
+    do i = 1, size(x, 1)
+        x3 = x(i, j, :)
+        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
+        x(i, j, :) = x3
+    end do
+end do
+end subroutine
 
 end module
