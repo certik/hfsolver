@@ -9,7 +9,7 @@ use utils, only: stop_error, assert
 implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-    fft_vectorized_inplace, calculate_factors, ifft_pass
+    fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace
 
 contains
 

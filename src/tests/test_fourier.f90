@@ -1,15 +1,15 @@
 program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-        fft_vectorized_inplace, calculate_factors, ifft_pass
+        fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
 
 real(dp), allocatable :: x(:)
-complex(dp), allocatable :: xdft(:)
+complex(dp), allocatable :: xdft(:), x2(:, :)
 real(dp) :: t1, t2
-integer :: n, i
+integer :: n, i, j
 
 ! Test 1-16
 call test_factors(1, [1])
@@ -144,6 +144,11 @@ call test_fft_pass(121)
 call test_fft_pass(169)
 call test_fft_pass(289, eps=1e-8_dp)
 call test_fft_pass(343, eps=1e-8_dp)
+
+allocate(x2(3, 5))
+forall(i=1:size(x2, 1), j=1:size(x2, 2)) x2(i, j) = i*j+3*i**2
+call fft2_inplace(x2)
+call assert(abs(sum(x2)-60) < 1e-9_dp)
 
 n = 1024
 call init_random()
