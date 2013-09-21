@@ -475,8 +475,10 @@ end subroutine
 subroutine fft3_inplace(x)
 complex(dp), intent(inout) :: x(:, :, :)
 complex(dp), dimension(size(x, 1)) :: angles1, CH1
-complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
-complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
+complex(dp), dimension(size(x, 2)) :: angles2, CH2
+complex(dp), dimension(size(x, 3)) :: angles3, CH3
+complex(dp) :: yzx(size(x, 2), size(x, 3), size(x, 1))
+complex(dp) :: zyx(size(x, 3), size(x, 2), size(x, 1))
 integer, allocatable :: fac1(:), fac2(:), fac3(:)
 integer :: i, j
 call calculate_factors(size(x, 1), fac1)
@@ -490,19 +492,29 @@ do j = 1, size(x, 3)
         call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
     end do
 end do
+! Transpose (x, y, z) -> (y, z, x)
 do j = 1, size(x, 3)
-    do i = 1, size(x, 1)
-        x2 = x(i, :, j)
-        call calc_fft(size(x, 2), x2, CH2, angles2, fac2)
-        x(i, :, j) = x2
+    do i = 1, size(x, 2)
+        yzx(i, j, :) = x(:, i, j)
     end do
 end do
-do j = 1, size(x, 2)
-    do i = 1, size(x, 1)
-        x3 = x(i, j, :)
-        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
-        x(i, j, :) = x3
+do i = 1, size(x, 1)
+    do j = 1, size(x, 3)
+        call calc_fft(size(x, 2), yzx(:, j, i), CH2, angles2, fac2)
     end do
+end do
+! Transpose (y, z, x) -> (z, y, x)
+do i = 1, size(x, 1)
+    zyx(:, :, i) = transpose(yzx(:, :, i))
+end do
+do i = 1, size(x, 1)
+    do j = 1, size(x, 2)
+        call calc_fft(size(x, 3), zyx(:, j, i), CH3, angles3, fac3)
+    end do
+end do
+! Transpose (z, y, x) -> (x, y, z) optional
+do i = 1, size(x, 2)
+    x(:, i, :) = transpose(zyx(:, i, :))
 end do
 end subroutine
 
