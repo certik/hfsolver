@@ -9,7 +9,8 @@ use utils, only: stop_error, assert
 implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-    fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace
+    fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
+    fft3_inplace
 
 contains
 
@@ -468,6 +469,26 @@ do i = 1, size(x, 2)
 end do
 do i = 1, size(x, 1)
     call fft_pass_inplace(x(i, :))
+end do
+end subroutine
+
+subroutine fft3_inplace(x)
+complex(dp), intent(inout) :: x(:, :, :)
+integer :: i, j
+do j = 1, size(x, 2)
+    do i = 1, size(x, 1)
+        call fft_pass_inplace(x(i, j, :))
+    end do
+end do
+do j = 1, size(x, 3)
+    do i = 1, size(x, 1)
+        call fft_pass_inplace(x(i, :, j))
+    end do
+end do
+do j = 1, size(x, 3)
+    do i = 1, size(x, 2)
+        call fft_pass_inplace(x(:, i, j))
+    end do
 end do
 end subroutine
 
