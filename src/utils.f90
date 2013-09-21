@@ -204,7 +204,7 @@ integer :: s, ncol, nrow, ios, i
 logical :: lastwhite
 real(dp) :: r
 
-open(newunit=s, file=filename, status="old")
+open(newunit(s), file=filename, status="old")
 
 ! determine number of columns
 ncol = 0
@@ -251,7 +251,7 @@ real(dp), intent(in) :: d(:, :)           ! The 2D array to save
 ! call savetxt("log.txt", data)
 
 integer :: s, i
-open(newunit=s, file=filename, status="replace")
+open(newunit(s), file=filename, status="replace")
 do i = 1, size(d, 1)
     write(s, *) d(i, :)
 end do
