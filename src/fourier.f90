@@ -505,7 +505,9 @@ do i = 1, size(x, 1)
 end do
 ! Transpose (y, z, x) -> (z, y, x)
 do i = 1, size(x, 1)
-    zyx(:, :, i) = transpose(yzx(:, :, i))
+    do j = 1, size(x, 2)
+        zyx(j, :, i) = yzx(:, j, i)
+    end do
 end do
 do i = 1, size(x, 1)
     do j = 1, size(x, 2)
