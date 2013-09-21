@@ -460,4 +460,15 @@ call fft_pass_inplace(p)
 p = [p(1), p(size(x):2:-1)]
 end function
 
+subroutine fft2_inplace(x)
+complex(dp), intent(inout) :: x(:, :)
+integer :: i
+do i = 1, size(x, 2)
+    call fft_pass_inplace(x(:, i))
+end do
+do i = 1, size(x, 1)
+    call fft_pass_inplace(x(i, :))
+end do
+end subroutine
+
 end module
