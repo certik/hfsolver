@@ -9,6 +9,7 @@ implicit none
 
 real(dp), allocatable :: x(:)
 complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :)
+real(dp) :: tmp
 real(dp) :: t1, t2
 integer :: n, i, j, k
 
@@ -157,6 +158,7 @@ forall(i=1:size(x3, 1), j=1:size(x3, 2), k=1:size(x3, 3))
 end forall
 call fft3_inplace(x3)
 call assert(abs(sum(x3)-630) < 1e-9_dp)
+deallocate(x3)
 
 n = 1024
 call init_random()
@@ -186,6 +188,23 @@ call cpu_time(t2)
 print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 deallocate(x, xdft)
+
+print *, "fft3:"
+n = 16
+allocate(x3(n, n, n))
+do i = 1, size(x3, 1)
+do j = 1, size(x3, 2)
+do k = 1, size(x3, 3)
+    call random_number(tmp)
+    x3(i, j, k) = tmp
+end do
+end do
+end do
+call cpu_time(t1)
+call fft3_inplace(x3)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+deallocate(x3)
 
 contains
 
