@@ -485,11 +485,9 @@ call calculate_factors(size(x, 2), fac2)
 call precalculate_angles(fac2, angles2)
 call calculate_factors(size(x, 3), fac3)
 call precalculate_angles(fac3, angles3)
-do j = 1, size(x, 2)
-    do i = 1, size(x, 1)
-        x3 = x(i, j, :)
-        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
-        x(i, j, :) = x3
+do j = 1, size(x, 3)
+    do i = 1, size(x, 2)
+        call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
     end do
 end do
 do j = 1, size(x, 3)
@@ -499,9 +497,11 @@ do j = 1, size(x, 3)
         x(i, :, j) = x2
     end do
 end do
-do j = 1, size(x, 3)
-    do i = 1, size(x, 2)
-        call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
+do j = 1, size(x, 2)
+    do i = 1, size(x, 1)
+        x3 = x(i, j, :)
+        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
+        x(i, j, :) = x3
     end do
 end do
 end subroutine
