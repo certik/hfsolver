@@ -516,7 +516,9 @@ do i = 1, size(x, 1)
 end do
 ! Transpose (z, y, x) -> (x, y, z) optional
 do i = 1, size(x, 2)
-    x(:, i, :) = transpose(zyx(:, i, :))
+    do j = 1, size(x, 3)
+        x(:, i, j) = zyx(j, i, :)
+    end do
 end do
 end subroutine
 
