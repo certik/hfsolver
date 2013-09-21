@@ -475,7 +475,7 @@ end subroutine
 subroutine fft3_inplace(x)
 complex(dp), intent(inout) :: x(:, :, :)
 complex(dp), dimension(size(x, 1)) :: angles1, CH1
-complex(dp), dimension(size(x, 2)) :: angles2, CH2
+complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
 complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
 integer, allocatable :: fac1(:), fac2(:), fac3(:)
 integer :: i, j
@@ -494,7 +494,9 @@ do j = 1, size(x, 2)
 end do
 do j = 1, size(x, 3)
     do i = 1, size(x, 1)
-        call calc_fft(size(x, 2), x(i, :, j), CH2, angles2, fac2)
+        x2 = x(i, :, j)
+        call calc_fft(size(x, 2), x2, CH2, angles2, fac2)
+        x(i, :, j) = x2
     end do
 end do
 do j = 1, size(x, 3)
