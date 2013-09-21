@@ -1,15 +1,17 @@
 program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
-        fft_vectorized_inplace, calculate_factors, ifft_pass
+        fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
+        fft3_inplace
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
 
 real(dp), allocatable :: x(:)
-complex(dp), allocatable :: xdft(:)
+complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :)
+real(dp) :: tmp
 real(dp) :: t1, t2
-integer :: n, i
+integer :: n, i, j, k
 
 ! Test 1-16
 call test_factors(1, [1])
@@ -145,6 +147,19 @@ call test_fft_pass(169)
 call test_fft_pass(289, eps=1e-8_dp)
 call test_fft_pass(343, eps=1e-8_dp)
 
+allocate(x2(3, 5))
+forall(i=1:size(x2, 1), j=1:size(x2, 2)) x2(i, j) = i*j+3*i**2
+call fft2_inplace(x2)
+call assert(abs(sum(x2)-60) < 1e-9_dp)
+
+allocate(x3(3, 5, 7))
+forall(i=1:size(x3, 1), j=1:size(x3, 2), k=1:size(x3, 3))
+    x3(i, j, k) = i*j+3*i**2+k*j+k
+end forall
+call fft3_inplace(x3)
+call assert(abs(sum(x3)-630) < 1e-9_dp)
+deallocate(x3)
+
 n = 1024
 call init_random()
 allocate(x(n), xdft(n))
@@ -173,6 +188,23 @@ call cpu_time(t2)
 print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 deallocate(x, xdft)
+
+print *, "fft3:"
+n = 16
+allocate(x3(n, n, n))
+do i = 1, size(x3, 1)
+do j = 1, size(x3, 2)
+do k = 1, size(x3, 3)
+    call random_number(tmp)
+    x3(i, j, k) = tmp
+end do
+end do
+end do
+call cpu_time(t1)
+call fft3_inplace(x3)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+deallocate(x3)
 
 contains
 
