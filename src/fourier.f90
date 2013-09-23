@@ -473,37 +473,48 @@ end do
 end subroutine
 
 subroutine fft3_inplace(x)
+use fftw, only: c_ptr, alloc1d, fftw_plan_dft_1d, FFTW_FORWARD, FFTW_MEASURE, &
+    fftw_plan_dft_1d, fftw_execute_dft, fftw_destroy_plan, free
 complex(dp), intent(inout) :: x(:, :, :)
-complex(dp), dimension(size(x, 1)) :: angles1, CH1
-complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
-complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
-integer, allocatable :: fac1(:), fac2(:), fac3(:)
 integer :: i, j
-call calculate_factors(size(x, 1), fac1)
-call precalculate_angles(fac1, angles1)
-call calculate_factors(size(x, 2), fac2)
-call precalculate_angles(fac2, angles2)
-call calculate_factors(size(x, 3), fac3)
-call precalculate_angles(fac3, angles3)
+complex(dp), pointer :: px1(:), px2(:), px3(:)
+type(c_ptr) :: plan1, plan2, plan3
+
+px1 => alloc1d(size(x, 1))
+px2 => alloc1d(size(x, 2))
+px3 => alloc1d(size(x, 3))
+plan1 = fftw_plan_dft_1d(size(px1), px1, px1, FFTW_FORWARD, FFTW_MEASURE)
+plan2 = fftw_plan_dft_1d(size(px2), px2, px2, FFTW_FORWARD, FFTW_MEASURE)
+plan3 = fftw_plan_dft_1d(size(px3), px3, px3, FFTW_FORWARD, FFTW_MEASURE)
+
 do j = 1, size(x, 3)
     do i = 1, size(x, 2)
-        call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
+        px1 = x(:, i, j)
+        call fftw_execute_dft(plan1, px1, px1)
+        x(:, i, j) = px1
     end do
 end do
 do j = 1, size(x, 3)
     do i = 1, size(x, 1)
-        x2 = x(i, :, j)
-        call calc_fft(size(x, 2), x2, CH2, angles2, fac2)
-        x(i, :, j) = x2
+        px2 = x(i, :, j)
+        call fftw_execute_dft(plan2, px2, px2)
+        x(i, :, j) = px2
     end do
 end do
 do j = 1, size(x, 2)
     do i = 1, size(x, 1)
-        x3 = x(i, j, :)
-        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
-        x(i, j, :) = x3
+        px3 = x(i, j, :)
+        call fftw_execute_dft(plan3, px3, px3)
+        x(i, j, :) = px3
     end do
 end do
+
+call fftw_destroy_plan(plan1)
+call free(px1)
+call fftw_destroy_plan(plan2)
+call free(px2)
+call fftw_destroy_plan(plan3)
+call free(px3)
 end subroutine
 
 end module
