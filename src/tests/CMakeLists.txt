@@ -62,6 +62,9 @@ endif()
 
 if(WITH_FFTW)
     ADDTEST(test_fftw)
+    add_executable(test_fftw_c test_fftw_c.c)
+    target_link_libraries(test_fftw_c ${LIBS})
+    add_test(test_fftw_c ${PROJECT_BINARY_DIR}/test_fftw_c)
 endif()
 
 add_subdirectory(thesis)
