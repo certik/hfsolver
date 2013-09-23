@@ -4,7 +4,7 @@ use types, only: dp
 use constants, only: i_
 use fftw, only: fftw_plan_dft_1d, fftw_plan_dft_3d, FFTW_FORWARD, &
     FFTW_ESTIMATE, fftw_execute_dft, fftw_destroy_plan, fftw_alloc_complex, &
-    fftw_free, FFTW_MEASURE
+    fftw_free, FFTW_MEASURE, alloc1d, alloc3d, free
 implicit none
 
 type(c_ptr) :: plan
@@ -55,28 +55,4 @@ print *, "calc:      ", (t3-t2)*1000, "ms"
 call fftw_destroy_plan(plan)
 call free(px3)
 call free(pxdft3)
-
-contains
-
-    function alloc1d(n1) result(x)
-    integer, intent(in) :: n1
-    complex(dp), pointer :: x(:)
-    type(c_ptr) :: p
-    p = fftw_alloc_complex(int(n1, c_size_t))
-    call c_f_pointer(p, x, [n1])
-    end function
-
-    function alloc3d(n1, n2, n3) result(x)
-    integer, intent(in) :: n1, n2, n3
-    complex(dp), pointer :: x(:, :, :)
-    type(c_ptr) :: p
-    p = fftw_alloc_complex(int(n1*n2*n3, c_size_t))
-    call c_f_pointer(p, x, [n1, n2, n3])
-    end function
-
-    subroutine free(x)
-    complex(dp), intent(in), target :: x(*)
-    call fftw_free(c_loc(x))
-    end subroutine
-
 end program
