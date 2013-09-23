@@ -190,7 +190,7 @@ print *, "time:", (t2-t1)*1000, "ms"
 deallocate(x, xdft)
 
 print *, "fft3:"
-n = 16
+n = 256
 allocate(x3(n, n, n))
 do i = 1, size(x3, 1)
 do j = 1, size(x3, 2)
