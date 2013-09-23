@@ -73,6 +73,13 @@ else()
     )
 endif()
 
+# FFTW
+if(WITH_FFTW)
+    set(SRC ${SRC}
+        fftw.f90
+    )
+endif()
+
 add_library(hfsolver ${SRC})
 
 add_subdirectory(feast)
