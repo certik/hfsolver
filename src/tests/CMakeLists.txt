@@ -60,6 +60,10 @@ if(WITH_PETSC)
     ADDTEST(test_petsc)
 endif()
 
+if(WITH_FFTW)
+    ADDTEST(test_fftw)
+endif()
+
 add_subdirectory(thesis)
 add_subdirectory(fem)
 add_subdirectory(feast)
