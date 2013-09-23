@@ -479,7 +479,9 @@ complex(dp), intent(inout) :: x(:, :, :)
 integer :: i, j
 complex(dp), pointer :: px1(:), px2(:), px3(:)
 type(c_ptr) :: plan1, plan2, plan3
+real(dp) :: t1, t2, t3
 
+call cpu_time(t1)
 px1 => alloc1d(size(x, 1))
 px2 => alloc1d(size(x, 2))
 px3 => alloc1d(size(x, 3))
@@ -487,6 +489,7 @@ plan1 = fftw_plan_dft_1d(size(px1), px1, px1, FFTW_FORWARD, FFTW_MEASURE)
 plan2 = fftw_plan_dft_1d(size(px2), px2, px2, FFTW_FORWARD, FFTW_MEASURE)
 plan3 = fftw_plan_dft_1d(size(px3), px3, px3, FFTW_FORWARD, FFTW_MEASURE)
 
+call cpu_time(t2)
 do j = 1, size(x, 3)
     do i = 1, size(x, 2)
         px1 = x(:, i, j)
@@ -508,6 +511,10 @@ do j = 1, size(x, 2)
         x(i, j, :) = px3
     end do
 end do
+call cpu_time(t3)
+print *, "Total time:", (t3-t1)*1000, "ms"
+print *, "init:      ", (t2-t1)*1000, "ms"
+print *, "calc:      ", (t3-t2)*1000, "ms"
 
 call fftw_destroy_plan(plan1)
 call free(px1)
