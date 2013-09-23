@@ -479,12 +479,15 @@ complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
 complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
 integer, allocatable :: fac1(:), fac2(:), fac3(:)
 integer :: i, j
+real(dp) :: t1, t2, t3
+call cpu_time(t1)
 call calculate_factors(size(x, 1), fac1)
 call precalculate_angles(fac1, angles1)
 call calculate_factors(size(x, 2), fac2)
 call precalculate_angles(fac2, angles2)
 call calculate_factors(size(x, 3), fac3)
 call precalculate_angles(fac3, angles3)
+call cpu_time(t2)
 do j = 1, size(x, 3)
     do i = 1, size(x, 2)
         call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
@@ -504,6 +507,10 @@ do j = 1, size(x, 2)
         x(i, j, :) = x3
     end do
 end do
+call cpu_time(t3)
+print *, "Total time:", (t3-t1)*1000, "ms"
+print *, "init:      ", (t2-t1)*1000, "ms"
+print *, "calc:      ", (t3-t2)*1000, "ms"
 end subroutine
 
 end module
