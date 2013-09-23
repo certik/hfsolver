@@ -1,10 +1,10 @@
 program test_fftw
-use iso_c_binding, only: c_ptr, c_f_pointer, c_size_t, c_loc
+use iso_c_binding, only: c_ptr
 use types, only: dp
 use constants, only: i_
 use fftw, only: fftw_plan_dft_1d, fftw_plan_dft_3d, FFTW_FORWARD, &
-    FFTW_ESTIMATE, fftw_execute_dft, fftw_destroy_plan, fftw_alloc_complex, &
-    fftw_free, FFTW_MEASURE, alloc1d, alloc3d, free
+    FFTW_ESTIMATE, fftw_execute_dft, fftw_destroy_plan, &
+    FFTW_MEASURE, alloc1d, alloc3d, free
 implicit none
 
 type(c_ptr) :: plan
