@@ -10,7 +10,7 @@ implicit none
 type(c_ptr) :: plan
 complex(dp), dimension(4, 8, 16) :: y3, ydft3
 integer :: n
-complex(dp), pointer :: px(:), pxdft(:), px3(:, :, :), pxdft3(:, :, :)
+complex(dp), pointer :: x(:), xdft(:), x3(:, :, :), xdft3(:, :, :)
 real(dp) :: t1, t2, t3
 
 ! This works, but is slow due to y,ydft not being aligned to exploit SIMD
@@ -23,36 +23,36 @@ n = 1024**2
 
 ! This is fast
 print *, "1D FFT of size n=", n, "with FFTW allocation"
-px => alloc1d(n)
-pxdft => alloc1d(n)
+x => alloc1d(n)
+xdft => alloc1d(n)
 call cpu_time(t1)
-!plan = fftw_plan_dft_1d(n, px, pxdft, FFTW_FORWARD, FFTW_ESTIMATE)
-plan = fftw_plan_dft_1d(n, px, pxdft, FFTW_FORWARD, FFTW_MEASURE)
+!plan = fftw_plan_dft_1d(n, x, xdft, FFTW_FORWARD, FFTW_ESTIMATE)
+plan = fftw_plan_dft_1d(n, x, xdft, FFTW_FORWARD, FFTW_MEASURE)
 call cpu_time(t2)
-call fftw_execute_dft(plan, px, pxdft)
+call fftw_execute_dft(plan, x, xdft)
 call cpu_time(t3)
 print *, "Total time:", (t3-t1)*1000, "ms"
 print *, "init:      ", (t2-t1)*1000, "ms"
 print *, "calc:      ", (t3-t2)*1000, "ms"
 call fftw_destroy_plan(plan)
-call free(px)
-call free(pxdft)
+call free(x)
+call free(xdft)
 
 n = 256
 
 ! This is fast
 print *, "1D FFT of size n=", n, "^3  with FFTW allocation"
-px3 => alloc3d(n, n, n)
-pxdft3 => alloc3d(n, n, n)
+x3 => alloc3d(n, n, n)
+xdft3 => alloc3d(n, n, n)
 call cpu_time(t1)
-plan = fftw_plan_dft_3d(n, n, n, px3, pxdft3, FFTW_FORWARD, FFTW_MEASURE)
+plan = fftw_plan_dft_3d(n, n, n, x3, xdft3, FFTW_FORWARD, FFTW_MEASURE)
 call cpu_time(t2)
-call fftw_execute_dft(plan, px3, pxdft3)
+call fftw_execute_dft(plan, x3, xdft3)
 call cpu_time(t3)
 print *, "Total time:", (t3-t1)*1000, "ms"
 print *, "init:      ", (t2-t1)*1000, "ms"
 print *, "calc:      ", (t3-t2)*1000, "ms"
 call fftw_destroy_plan(plan)
-call free(px3)
-call free(pxdft3)
+call free(x3)
+call free(xdft3)
 end program
