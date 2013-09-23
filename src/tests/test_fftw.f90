@@ -21,7 +21,7 @@ plan = fftw_plan_dft_3d(16, 8, 4, y3, ydft3, FFTW_FORWARD, FFTW_ESTIMATE)
 call fftw_execute_dft(plan, y3, ydft3)
 call fftw_destroy_plan(plan)
 
-n = 1024
+n = 1024**2
 ! This works, but is slow due to x,xdft not being aligned to exploit SIMD
 print *, "1D FFT of size n=", n, "with Fortran allocation"
 allocate(x(n), xdft(n))
@@ -56,7 +56,7 @@ call fftw_destroy_plan(plan)
 call fftw_free(p1)
 call fftw_free(p2)
 
-n = 16
+n = 256
 ! This works, but is slow due to x,xdft not being aligned to exploit SIMD
 print *, "3D FFT of size n=", n, "^3  with Fortran allocation"
 allocate(x3(n, n, n), xdft3(n, n, n))
