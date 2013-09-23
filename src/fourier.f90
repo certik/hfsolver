@@ -474,7 +474,8 @@ end subroutine
 
 subroutine fft3_inplace(x)
 use fftw, only: c_ptr, alloc1d, fftw_plan_dft_1d, FFTW_FORWARD, FFTW_MEASURE, &
-    fftw_plan_dft_1d, fftw_execute_dft, fftw_destroy_plan, free
+    fftw_plan_dft_1d, fftw_execute_dft, fftw_destroy_plan, free, &
+    FFTW_UNALIGNED
 complex(dp), intent(inout) :: x(:, :, :)
 integer :: i, j
 complex(dp), pointer :: px1(:), px2(:), px3(:)
@@ -485,6 +486,9 @@ call cpu_time(t1)
 px1 => alloc1d(size(x, 1))
 px2 => alloc1d(size(x, 2))
 px3 => alloc1d(size(x, 3))
+! Use this for unaligned arrays:
+!plan1 = fftw_plan_dft_1d(size(px1), px1, px1, FFTW_FORWARD, &
+!    FFTW_MEASURE+FFTW_UNALIGNED)
 plan1 = fftw_plan_dft_1d(size(px1), px1, px1, FFTW_FORWARD, FFTW_MEASURE)
 plan2 = fftw_plan_dft_1d(size(px2), px2, px2, FFTW_FORWARD, FFTW_MEASURE)
 plan3 = fftw_plan_dft_1d(size(px3), px3, px3, FFTW_FORWARD, FFTW_MEASURE)
