@@ -491,21 +491,33 @@ call precalculate_angles(fac2, angles2)
 call calculate_factors(size(x, 3), fac3)
 call precalculate_angles(fac3, angles3)
 call cpu_time(t2)
+!$omp parallel default(none) shared(x, CH1, angles1, fac1) private(i, j)
+!$omp do schedule(dynamic)
 do j = 1, size(x, 3)
     do i = 1, size(x, 2)
         call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
     end do
 end do
+!$omp end do
+!$omp end parallel
+!$omp parallel default(none) shared(x, CH2, angles2, fac2) private(i, j)
+!$omp do schedule(dynamic)
 do j = 1, size(x, 3)
     do i = 1, size(x, 1)
         call calc_fft(size(x, 2), x(i, :, j), CH2, angles2, fac2)
     end do
 end do
+!$omp end do
+!$omp end parallel
+!$omp parallel default(none) shared(x, CH3, angles3, fac3) private(i, j)
+!$omp do schedule(dynamic)
 do j = 1, size(x, 2)
     do i = 1, size(x, 1)
         call calc_fft(size(x, 3), x(i, j, :), CH3, angles3, fac3)
     end do
 end do
+!$omp end do
+!$omp end parallel
 call cpu_time(t3)
 print *, "Total time:", (t3-t1)*1000, "ms"
 print *, "init:      ", (t2-t1)*1000, "ms"
