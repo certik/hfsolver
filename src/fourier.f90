@@ -200,8 +200,8 @@ end subroutine
 
 subroutine passf4(IDO, L1, CC, CH, WA1, WA2, WA3)
 integer, intent(in) :: IDO, L1
-complex(dp), intent(in) :: CC(IDO, 4, L1), WA1(:), WA2(:), WA3(:)
-complex(dp), intent(out) :: CH(IDO, L1, 4)
+complex(dp), intent(in) :: CC(:, :, :), WA1(:), WA2(:), WA3(:)
+complex(dp), intent(out) :: CH(:, :, :)
 integer :: I, K
 do K = 1, L1
     do I = 1, IDO
@@ -368,12 +368,12 @@ end subroutine
 
 subroutine calc_fft(N,C,CH,WA,IFAC)
 integer, intent(in) :: N
-complex(dp), intent(inout) :: C(:)
-complex(dp), intent(out) :: CH(:)
+complex(dp), intent(inout), target :: C(:)
+complex(dp), intent(out), target :: CH(:)
 complex(dp), intent(in), target :: WA(:)
 integer, intent(in) :: IFAC(:)
 integer :: k1, l1, na, iw, ip, l2, ido, idl1, nac
-complex(dp), pointer :: w(:, :)
+complex(dp), pointer :: w(:, :), pC(:, :, :), pCH(:, :, :)
 NA = 0
 L1 = 1
 IW = 1
@@ -385,10 +385,13 @@ do K1 = 1, size(ifac)
     select case(IP)
     case (4)
         if (NA == 0) then
-            call passf4(IDO,L1,C,CH,w(:, 1),w(:, 2),w(:, 3))
+            pC(1:IDO, 1:4, 1:L1)=>C
+            pCH(1:IDO, 1:L1, 1:4)=>CH
         else
-            call passf4(IDO,L1,CH,C,w(:, 1),w(:, 2),w(:, 3))
+            pC(1:IDO, 1:4, 1:L1)=>CH
+            pCH(1:IDO, 1:L1, 1:4)=>C
         end if
+        call passf4(IDO,L1,pC,pCH,w(:, 1),w(:, 2),w(:, 3))
     case (2)
         if (NA == 0) then
             call passf2(IDO,L1,C,CH,w(:, 1))
@@ -475,8 +478,8 @@ end subroutine
 subroutine fft3_inplace(x)
 complex(dp), intent(inout) :: x(:, :, :)
 complex(dp), dimension(size(x, 1)) :: angles1, CH1
-complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
-complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
+complex(dp), dimension(size(x, 2)) :: angles2, CH2
+complex(dp), dimension(size(x, 3)) :: angles3, CH3
 integer, allocatable :: fac1(:), fac2(:), fac3(:)
 integer :: i, j
 real(dp) :: t1, t2, t3
@@ -495,16 +498,12 @@ do j = 1, size(x, 3)
 end do
 do j = 1, size(x, 3)
     do i = 1, size(x, 1)
-        x2 = x(i, :, j)
-        call calc_fft(size(x, 2), x2, CH2, angles2, fac2)
-        x(i, :, j) = x2
+        call calc_fft(size(x, 2), x(i, :, j), CH2, angles2, fac2)
     end do
 end do
 do j = 1, size(x, 2)
     do i = 1, size(x, 1)
-        x3 = x(i, j, :)
-        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
-        x(i, j, :) = x3
+        call calc_fft(size(x, 3), x(i, j, :), CH3, angles3, fac3)
     end do
 end do
 call cpu_time(t3)
