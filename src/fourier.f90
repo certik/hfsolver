@@ -472,38 +472,42 @@ do i = 1, size(x, 1)
 end do
 end subroutine
 
-subroutine fft3_inplace(x)
-complex(dp), intent(inout) :: x(:, :, :)
-complex(dp), dimension(size(x, 1)) :: angles1, CH1
-complex(dp), dimension(size(x, 2)) :: angles2, CH2, x2
-complex(dp), dimension(size(x, 3)) :: angles3, CH3, x3
+subroutine global_transpose(w, h, x, y)
+integer, intent(in) :: w, h
+complex(dp), intent(in) :: x(w, h)
+complex(dp), intent(out) :: y(h, w)
+y = transpose(x)
+end subroutine
+
+subroutine fft3_inplace(xyz)
+complex(dp), intent(inout) :: xyz(:, :, :)
+complex(dp), dimension(size(xyz, 1)) :: angles1, CH1
+complex(dp), dimension(size(xyz, 2)) :: angles2, CH2
+complex(dp), dimension(size(xyz, 3)) :: angles3, CH3
+complex(dp) :: yzx(size(xyz, 2), size(xyz, 3) * size(xyz, 1))
+complex(dp) :: zxy(size(xyz, 3), size(xyz, 1) * size(xyz, 2))
 integer, allocatable :: fac1(:), fac2(:), fac3(:)
 integer :: i, j
-call calculate_factors(size(x, 1), fac1)
+call calculate_factors(size(xyz, 1), fac1)
 call precalculate_angles(fac1, angles1)
-call calculate_factors(size(x, 2), fac2)
+call calculate_factors(size(xyz, 2), fac2)
 call precalculate_angles(fac2, angles2)
-call calculate_factors(size(x, 3), fac3)
+call calculate_factors(size(xyz, 3), fac3)
 call precalculate_angles(fac3, angles3)
-do j = 1, size(x, 3)
-    do i = 1, size(x, 2)
-        call calc_fft(size(x, 1), x(:, i, j), CH1, angles1, fac1)
+do j = 1, size(xyz, 3)
+    do i = 1, size(xyz, 2)
+        call calc_fft(size(xyz, 1), xyz(:, i, j), CH1, angles1, fac1)
     end do
 end do
-do j = 1, size(x, 3)
-    do i = 1, size(x, 1)
-        x2 = x(i, :, j)
-        call calc_fft(size(x, 2), x2, CH2, angles2, fac2)
-        x(i, :, j) = x2
-    end do
+call global_transpose(size(xyz, 1), size(xyz)/size(xyz, 1), xyz, yzx)
+do i = 1, size(yzx, 2)
+    call calc_fft(size(yzx, 1), yzx(:, i), CH2, angles2, fac2)
 end do
-do j = 1, size(x, 2)
-    do i = 1, size(x, 1)
-        x3 = x(i, j, :)
-        call calc_fft(size(x, 3), x3, CH3, angles3, fac3)
-        x(i, j, :) = x3
-    end do
+call global_transpose(size(yzx, 1), size(yzx, 2), yzx, zxy)
+do i = 1, size(zxy, 2)
+    call calc_fft(size(zxy, 1), zxy(:, i), CH3, angles3, fac3)
 end do
+call global_transpose(size(zxy, 1), size(zxy, 2), zxy, xyz)
 end subroutine
 
 end module
