@@ -1,7 +1,6 @@
 program test_fftw
 use iso_c_binding, only: c_ptr
 use types, only: dp
-use constants, only: i_
 use fftw, only: fftw_plan_dft_1d, fftw_plan_dft_3d, FFTW_FORWARD, &
     FFTW_ESTIMATE, fftw_execute_dft, fftw_destroy_plan, &
     FFTW_MEASURE, alloc1d, alloc3d, free
