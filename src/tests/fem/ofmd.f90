@@ -93,10 +93,13 @@ nenq_pos = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 
 psi = sqrt(nq_pos)
+! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
+! save space:
 call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
     xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, dphihq, Hpsi) ! Hpsi = <x|H|psi> = H psi(x, y, z)
-Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
+    nenq_pos, psi**2, phihq, dphihq, Hpsi)
+! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
+Hpsi = Hpsi * 2*psi
 mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
 ksi = 2*mu*psi - Hpsi
 phi = ksi
