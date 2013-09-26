@@ -41,10 +41,13 @@ integer :: i, j, k, iter, max_iter
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
+real(dp) :: Nelec
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
 max_iter = 200
+
+Nelec = 1 ! One electron
 
 ibc = 3 ! Periodic boundary condition
 
@@ -100,11 +103,11 @@ call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
     nenq_pos, psi**2, phihq, dphihq, Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
-mu = 1._dp / Ne * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
+mu = 1._dp / Nelec * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
 ksi = 2*mu*psi - Hpsi
 phi = ksi
-phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
-eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
+eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
     nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
@@ -148,8 +151,8 @@ do iter = 1, max_iter
     gamma_n = integral(nodes, elems, wtq3, ksi**2)
     gamma_d = integral(nodes, elems, wtq3, ksi_prev**2)
     phi = ksi + gamma_n / gamma_d * phi
-    phi_prime = phi - 1._dp / Ne *  integral(nodes, elems, wtq3, phi * psi) * psi
-    eta = sqrt(Ne / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+    phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
+    eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 
