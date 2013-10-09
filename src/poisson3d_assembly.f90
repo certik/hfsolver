@@ -69,12 +69,11 @@ real(dp), allocatable, intent(out) :: matBx(:)
 logical, intent(in), optional :: verbose
 integer, allocatable :: matAi(:), matAj(:)
 real(dp), allocatable :: matAx(:)
-integer :: Ne, p, iqx, iqy, iqz
+integer :: Ne, p
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
-    size(xin), size(xin), size(xin)) :: phi_v, phi_dx, phi_dy, phi_dz
+    size(xin), size(xin), size(xin)) :: phi_v
 real(dp) :: lx, ly, lz
-integer :: ax, ay, az, bx, by, bz
-real(dp) :: jacx, jacy, jacz, jac_det
+real(dp) :: jac_det
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xiq), size(xiq), size(xiq)) :: Am_loc
 integer :: idx, maxidx
@@ -84,60 +83,12 @@ if (present(verbose)) verbose_ = verbose
 
 Ne = size(elems, 2)
 p = size(xin) - 1
-! 3D shape functions
-do az = 1, p+1
-do ay = 1, p+1
-do ax = 1, p+1
-    do iqz = 1, size(xiq)
-    do iqy = 1, size(xiq)
-    do iqx = 1, size(xiq)
-        phi_v (iqx, iqy, iqz, ax, ay, az) = &
-             phihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
-        phi_dx(iqx, iqy, iqz, ax, ay, az) = &
-            dphihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
-        phi_dy(iqx, iqy, iqz, ax, ay, az) = &
-             phihq(iqx, ax) * dphihq(iqy, ay) *  phihq(iqz, az)
-        phi_dz(iqx, iqy, iqz, ax, ay, az) = &
-             phihq(iqx, ax) *  phihq(iqy, ay) * dphihq(iqz, az)
-    end do
-    end do
-    end do
-end do
-end do
-end do
-rhs=0
-! Precalculate as much as possible:
-lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+! Element sizes
+lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1))
 ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
 lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
-jacx = lx/2
-jacy = ly/2
-jacz = lz/2
-jac_det = abs(jacx*jacy*jacz)
-phi_dx = phi_dx / jacx
-phi_dy = phi_dy / jacy
-phi_dz = phi_dz / jacz
-! Precalculate element matrices:
-if (verbose_) then
-    print *, "Precalculating local element matrix..."
-end if
-do bz = 1, p+1
-do by = 1, p+1
-do bx = 1, p+1
-    do az = 1, p+1
-    do ay = 1, p+1
-    do ax = 1, p+1
-        Am_loc(ax, ay, az, bx, by, bz) = sum(( &
-            phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
-            phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
-            phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
-            * jac_det * wtq)
-    end do
-    end do
-    end do
-end do
-end do
-end do
+call assemble_3d_precalc(p, lx, ly, lz, xin, xiq, wtq, phihq, &
+        dphihq, jac_det, Am_loc, phi_v)
 if (verbose_) then
     print *, "Assembly..."
 end if
@@ -162,6 +113,67 @@ if (verbose_) then
 end if
 end subroutine
 
+subroutine assemble_3d_precalc(p, lx, ly, lz, xin, xiq, wtq, phihq, &
+        dphihq, jac_det, Am_loc, phi_v)
+integer, intent(in) :: p
+real(dp), intent(in) :: lx, ly, lz
+real(dp), intent(in):: xin(:), xiq(:), wtq(:, :, :), &
+    phihq(:, :), dphihq(:, :)
+integer :: iqx, iqy, iqz
+real(dp), dimension(size(xiq), size(xiq), size(xiq), &
+    size(xin), size(xin), size(xin)) :: phi_dx, phi_dy, phi_dz
+integer :: ax, ay, az, bx, by, bz
+real(dp) :: jacx, jacy, jacz
+real(dp), intent(out) :: jac_det
+real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc, phi_v
+! Precalculate basis functions:
+do az = 1, p+1
+do ay = 1, p+1
+do ax = 1, p+1
+    do iqz = 1, size(xiq)
+    do iqy = 1, size(xiq)
+    do iqx = 1, size(xiq)
+        phi_v (iqx, iqy, iqz, ax, ay, az) = &
+             phihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
+        phi_dx(iqx, iqy, iqz, ax, ay, az) = &
+            dphihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
+        phi_dy(iqx, iqy, iqz, ax, ay, az) = &
+             phihq(iqx, ax) * dphihq(iqy, ay) *  phihq(iqz, az)
+        phi_dz(iqx, iqy, iqz, ax, ay, az) = &
+             phihq(iqx, ax) *  phihq(iqy, ay) * dphihq(iqz, az)
+    end do
+    end do
+    end do
+end do
+end do
+end do
+jacx = lx/2
+jacy = ly/2
+jacz = lz/2
+jac_det = abs(jacx*jacy*jacz)
+phi_dx = phi_dx / jacx
+phi_dy = phi_dy / jacy
+phi_dz = phi_dz / jacz
+! Precalculate element matrix:
+do bz = 1, p+1
+do by = 1, p+1
+do bx = 1, p+1
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        Am_loc(ax, ay, az, bx, by, bz) = sum(( &
+            phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
+            phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
+            phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
+            * jac_det * wtq)
+    end do
+    end do
+    end do
+end do
+end do
+end do
+end subroutine
+
 subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
         matAi, matAj, matAx, rhs, idx)
 ! The actual, low level assembly
@@ -178,6 +190,7 @@ integer, intent(out) :: idx
 real(dp), dimension(size(wtq, 1), size(wtq, 2), size(wtq, 3)) :: fq
 integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
+rhs = 0
 idx = 0
 do e = 1, Ne
     fq = rhsq(:, :, :, e) * jac_det * wtq
