@@ -69,7 +69,7 @@ real(dp), allocatable, intent(out) :: matBx(:)
 logical, intent(in), optional :: verbose
 integer, allocatable :: matAi(:), matAj(:)
 real(dp), allocatable :: matAx(:)
-integer :: Ne, p
+integer :: Ne, p, Nq
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xin), size(xin), size(xin)) :: phi_v
 real(dp) :: lx, ly, lz
@@ -83,11 +83,12 @@ if (present(verbose)) verbose_ = verbose
 
 Ne = size(elems, 2)
 p = size(xin) - 1
+Nq = size(xiq)
 ! Element sizes
 lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1))
 ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
 lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
-call assemble_3d_precalc(p, lx, ly, lz, xin, xiq, wtq, phihq, &
+call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
 if (verbose_) then
     print *, "Assembly..."
@@ -113,15 +114,13 @@ if (verbose_) then
 end if
 end subroutine
 
-subroutine assemble_3d_precalc(p, lx, ly, lz, xin, xiq, wtq, phihq, &
+subroutine assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
-integer, intent(in) :: p
+integer, intent(in) :: p, Nq
 real(dp), intent(in) :: lx, ly, lz
-real(dp), intent(in):: xin(:), xiq(:), wtq(:, :, :), &
-    phihq(:, :), dphihq(:, :)
+real(dp), intent(in):: wtq(:, :, :), phihq(:, :), dphihq(:, :)
 integer :: iqx, iqy, iqz
-real(dp), dimension(size(xiq), size(xiq), size(xiq), &
-    size(xin), size(xin), size(xin)) :: phi_dx, phi_dy, phi_dz
+real(dp), dimension(Nq, Nq, Nq, p+1, p+1, p+1) :: phi_dx, phi_dy, phi_dz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz
 real(dp), intent(out) :: jac_det
@@ -130,9 +129,9 @@ real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 do az = 1, p+1
 do ay = 1, p+1
 do ax = 1, p+1
-    do iqz = 1, size(xiq)
-    do iqy = 1, size(xiq)
-    do iqx = 1, size(xiq)
+    do iqz = 1, Nq
+    do iqy = 1, Nq
+    do iqx = 1, Nq
         phi_v (iqx, iqy, iqz, ax, ay, az) = &
              phihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
         phi_dx(iqx, iqy, iqz, ax, ay, az) = &
