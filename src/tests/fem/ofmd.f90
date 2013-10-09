@@ -258,8 +258,10 @@ nenq_neutral = nenq_pos - background
 if (verbose_) then
     print *, "Assembling..."
 end if
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
+call assemble_3d_csr(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, Am_loc, &
+    phi_v, Ap, Aj, Ax, rhs)
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
