@@ -224,11 +224,11 @@ real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
 integer, intent(out), allocatable :: matBp(:), matBj(:)
 real(dp), intent(out), allocatable :: matBx(:)
 real(dp), intent(out):: rhs(:)
-integer, allocatable :: matAi(:), matAj(:)
-real(dp), allocatable :: matAx(:)
-integer :: idx, maxidx
-maxidx = Ne*(p+1)**6
-allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
+! Maximum possible size:
+integer, dimension(Ne*(p+1)**6) :: matAi, matAj
+real(dp),  dimension(Ne*(p+1)**6) :: matAx
+! Actual size:
+integer :: idx
 call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
         matAi, matAj, matAx, rhs, idx)
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
