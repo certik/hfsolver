@@ -122,7 +122,7 @@ phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
 eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, dphihq, Am_loc, phi_v, jac_det, &
+    nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_)
 allocate(free_energies(max_iter))
 do iter = 1, max_iter
@@ -136,7 +136,7 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, dphihq, Am_loc, phi_v, jac_det, &
+        nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
@@ -183,7 +183,7 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, dphihq, Am_loc, phi_v, jac_det, &
+        nenq_pos, psi_**2, phihq, Am_loc, phi_v, jac_det, &
         Eh, Een, Ts, Exc, energy)
     end function
 
@@ -192,13 +192,13 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, dphihq, Am_loc, phi_v, jac_det, &
+    T_au, nenq_pos, nq_pos, phihq, Am_loc, phi_v, jac_det, &
     Eh, Een, Ts, Exc, Etot, verbose)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
-    dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :), Am_loc(:, :, :, :, :, :), &
+    xin(:), xiq(:), wtq3(:, :, :), Am_loc(:, :, :, :, :, :), &
     phi_v(:, :, :, :, :, :), jac_det
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 logical, intent(in), optional :: verbose
