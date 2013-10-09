@@ -217,6 +217,9 @@ if (verbose_) then
     print *, "Subtracting constant background (Q/V): ", background
 end if
 nq_neutral = nq_pos - background
+if (verbose_) then
+    print *, "Assembling..."
+end if
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nq_neutral, Ap, Aj, Ax, rhs)
 if (verbose_) then
@@ -226,6 +229,9 @@ if (verbose_) then
 end if
 !sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+if (verbose_) then
+    print *, "Converting..."
+end if
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
@@ -235,6 +241,9 @@ if (verbose_) then
     print *, "Subtracting constant background (Q/V): ", background
 end if
 nenq_neutral = nenq_pos - background
+if (verbose_) then
+    print *, "Assembling..."
+end if
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
 if (verbose_) then
@@ -243,6 +252,9 @@ if (verbose_) then
     print *, "Solving..."
 end if
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+if (verbose_) then
+    print *, "Converting..."
+end if
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 
