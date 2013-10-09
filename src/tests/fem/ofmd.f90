@@ -146,6 +146,7 @@ do iter = 1, max_iter
         xiq, wtq3, T_au, &
         nenq_pos, psi**2, phihq, dphihq, Hpsi)
     Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
+    mu = 1._dp / Nelec * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
     ksi_prev = ksi
     ksi = 2*mu*psi - Hpsi
     gamma_n = integral(nodes, elems, wtq3, ksi**2)
