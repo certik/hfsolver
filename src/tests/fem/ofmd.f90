@@ -129,7 +129,7 @@ do iter = 1, max_iter
     theta_b = mod(theta, 2*pi)
     call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.false.)
     call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
-        free_energy_, verbose=.false.)
+        free_energy_, verbose=.true.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
@@ -494,7 +494,7 @@ allocate(R(1), V(1)); Z=1; Ediff=0
 !call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
-p = 5
+p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
@@ -545,10 +545,11 @@ end function
 
 real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 5, Z_ = 1
+real(dp), parameter :: alpha = 1, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
+!n = 1
 end function
 
 end program
