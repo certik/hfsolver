@@ -80,8 +80,11 @@ forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
 allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
-call assemble_3d_precalc(p, Nq, Lx, Ly, Lz, wtq3, phihq, &
-        dphihq, jac_det, Am_loc, phi_v)
+call assemble_3d_precalc(p, Nq, &
+    nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)), &
+    nodes(2, elems(7, 1)) - nodes(2, elems(1, 1)), &
+    nodes(3, elems(7, 1)) - nodes(3, elems(1, 1)), &
+    wtq3, phihq, dphihq, jac_det, Am_loc, phi_v)
 
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
