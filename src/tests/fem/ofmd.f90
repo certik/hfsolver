@@ -128,6 +128,7 @@ call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
     nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_)
 allocate(free_energies(max_iter))
+gamma_n = 0
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
