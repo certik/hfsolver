@@ -226,6 +226,28 @@ do e = 1, Ne
 end do
 end subroutine
 
+subroutine assemble_3d_csr(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matBp, matBj, matBx, rhs)
+real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+integer, intent(out), allocatable :: matBp(:), matBj(:)
+real(dp), intent(out), allocatable :: matBx(:)
+real(dp), intent(out):: rhs(:)
+integer, allocatable :: matAi(:), matAj(:)
+real(dp), allocatable :: matAx(:)
+integer :: idx, maxidx
+maxidx = Ne*(p+1)**6
+allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
+call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matAi, matAj, matAx, rhs, idx)
+call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
+    matBp, matBj, matBx)
+end subroutine
+
 real(dp) function integral(nodes, elems, wtq, fq) result(r)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :)
