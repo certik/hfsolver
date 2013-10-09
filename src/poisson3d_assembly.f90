@@ -69,10 +69,9 @@ real(dp), allocatable, intent(out) :: matBx(:)
 logical, intent(in), optional :: verbose
 integer, allocatable :: matAi(:), matAj(:)
 real(dp), allocatable :: matAx(:)
-integer :: Ne, p, e, i, j, iqx, iqy, iqz
+integer :: Ne, p, iqx, iqy, iqz
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xin), size(xin), size(xin)) :: phi_v, phi_dx, phi_dy, phi_dz
-real(dp), dimension(size(xiq), size(xiq), size(xiq)) :: fq
 real(dp) :: lx, ly, lz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz, jac_det
@@ -142,12 +141,44 @@ end do
 if (verbose_) then
     print *, "Assembly..."
 end if
-idx = 0
 maxidx = Ne*(p+1)**6
 if (verbose_) then
     print *, "Number of COO matrix entries:", maxidx
 end if
 allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
+call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matAi, matAj, matAx, rhs, idx)
+if (verbose_) then
+    print *, "Converting COO -> CSR..."
+end if
+call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
+    matBp, matBj, matBx)
+if (verbose_) then
+    print *, "CSR Matrix:"
+    print *, "    dimension:", size(matBp)-1
+    print *, "    number of nonzeros:", size(matBx)
+    print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
+        (size(matBp)-1._dp)**2
+end if
+end subroutine
+
+subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matAi, matAj, matAx, rhs, idx)
+! The actual, low level assembly
+real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+integer, intent(out) :: matAi(:), matAj(:)
+real(dp), intent(out) :: matAx(:)
+real(dp), intent(out):: rhs(:)
+integer, intent(out) :: idx
+real(dp), dimension(size(wtq, 1), size(wtq, 2), size(wtq, 3)) :: fq
+integer :: e, i, j
+integer :: ax, ay, az, bx, by, bz
+idx = 0
 do e = 1, Ne
     fq = rhsq(:, :, :, e)
     fq = fq * jac_det * wtq
@@ -181,18 +212,6 @@ do e = 1, Ne
     end do
     end do
 end do
-if (verbose_) then
-    print *, "Converting COO -> CSR..."
-end if
-call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
-    matBp, matBj, matBx)
-if (verbose_) then
-    print *, "CSR Matrix:"
-    print *, "    dimension:", size(matBp)-1
-    print *, "    number of nonzeros:", size(matBx)
-    print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
-        (size(matBp)-1._dp)**2
-end if
 end subroutine
 
 real(dp) function integral(nodes, elems, wtq, fq) result(r)
