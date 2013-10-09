@@ -42,6 +42,7 @@ integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
 real(dp) :: Nelec
+real(dp) :: psi_norm
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -96,6 +97,11 @@ nenq_pos = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 
 psi = sqrt(nq_pos)
+psi_norm = integral(nodes, elems, wtq3, psi**2)
+print *, "Initial norm of psi:", psi_norm
+psi = sqrt(Nelec / psi_norm) * psi
+psi_norm = integral(nodes, elems, wtq3, psi**2)
+print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
@@ -124,6 +130,11 @@ do iter = 1, max_iter
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
         nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+    print *, "Iteration:", iter
+    psi_norm = integral(nodes, elems, wtq3, psi**2)
+    print *, "Norm of psi:", psi_norm
+    print *, "mu =", mu
+    print *, "|ksi| =", sqrt(gamma_n)
     print *, "Summary of energies [a.u.]:"
     print "('    Ts   = ', f14.8)", Ts
     print "('    Een  = ', f14.8)", Een
