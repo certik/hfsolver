@@ -5,7 +5,7 @@ use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc
+    assemble_3d_precalc, assemble_3d_csr
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -122,7 +122,8 @@ phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
 eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+    nenq_pos, psi**2, phihq, dphihq, Am_loc, phi_v, jac_det, &
+    Eh, Een, Ts, Exc, free_energy_)
 allocate(free_energies(max_iter))
 do iter = 1, max_iter
     theta_a = 0
@@ -135,7 +136,8 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+        nenq_pos, psi**2, phihq, dphihq, Am_loc, phi_v, jac_det, &
+        Eh, Een, Ts, Exc, free_energy_)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
     print *, "Norm of psi:", psi_norm
@@ -181,7 +183,8 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, dphihq, Eh, Een, Ts, Exc, energy)
+        nenq_pos, psi_**2, phihq, dphihq, Am_loc, phi_v, jac_det, &
+        Eh, Een, Ts, Exc, energy)
     end function
 
 end subroutine
@@ -189,12 +192,14 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc, Etot, verbose)
+    T_au, nenq_pos, nq_pos, phihq, dphihq, Am_loc, phi_v, jac_det, &
+    Eh, Een, Ts, Exc, Etot, verbose)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
-    dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
+    dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :), Am_loc(:, :, :, :, :, :), &
+    phi_v(:, :, :, :, :, :), jac_det
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 logical, intent(in), optional :: verbose
 
@@ -203,13 +208,14 @@ real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
 integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp
-integer :: i, j, k, m, Nn, Ne, Nq
+integer :: p, i, j, k, m, Nn, Ne, Nq
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = size(xiq)
+p = size(xin) - 1
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
@@ -226,8 +232,10 @@ nq_neutral = nq_pos - background
 if (verbose_) then
     print *, "Assembling..."
 end if
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+call assemble_3d_csr(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
+        Ap, Aj, Ax, rhs)
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
