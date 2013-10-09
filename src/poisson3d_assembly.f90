@@ -7,7 +7,7 @@ use sparse, only: coo2csr_canonical
 implicit none
 private
 public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
-    assemble_3d_coo
+    assemble_3d_coo, assemble_3d_csr
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -68,8 +68,6 @@ real(dp), intent(out):: rhs(:)
 integer, allocatable, intent(out) :: matBp(:), matBj(:)
 real(dp), allocatable, intent(out) :: matBx(:)
 logical, intent(in), optional :: verbose
-integer, allocatable :: matAi(:), matAj(:)
-real(dp), allocatable :: matAx(:)
 integer :: Ne, p, Nq
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xin), size(xin), size(xin)) :: phi_v
@@ -77,7 +75,6 @@ real(dp) :: lx, ly, lz
 real(dp) :: jac_det
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xiq), size(xiq), size(xiq)) :: Am_loc
-integer :: idx, maxidx
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
@@ -94,18 +91,8 @@ call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
 if (verbose_) then
     print *, "Assembly..."
 end if
-maxidx = Ne*(p+1)**6
-if (verbose_) then
-    print *, "Number of COO matrix entries:", maxidx
-end if
-allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
-call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
-        matAi, matAj, matAx, rhs, idx)
-if (verbose_) then
-    print *, "Converting COO -> CSR..."
-end if
-call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
-    matBp, matBj, matBx)
+call assemble_3d_csr(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matBp, matBj, matBx, rhs)
 if (verbose_) then
     print *, "CSR Matrix:"
     print *, "    dimension:", size(matBp)-1
