@@ -180,8 +180,7 @@ integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
 idx = 0
 do e = 1, Ne
-    fq = rhsq(:, :, :, e)
-    fq = fq * jac_det * wtq
+    fq = rhsq(:, :, :, e) * jac_det * wtq
     do bz = 1, p+1
     do by = 1, p+1
     do bx = 1, p+1
