@@ -4,7 +4,8 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
-use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
+use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
+    assemble_3d_precalc
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -36,12 +37,13 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
         wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
     psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
+real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k, iter, max_iter
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
-real(dp) :: Nelec
+real(dp) :: Nelec, jac_det
 real(dp) :: psi_norm
 
 energy_eps = 3.6749308286427368e-5_dp
@@ -76,6 +78,10 @@ allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
 forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
+allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
+allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+call assemble_3d_precalc(p, Nq, Lx, Ly, Lz, wtq3, phihq, &
+        dphihq, jac_det, Am_loc, phi_v)
 
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)

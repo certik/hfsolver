@@ -6,7 +6,8 @@ use constants, only: pi
 use sparse, only: coo2csr_canonical
 implicit none
 private
-public assemble_3d, integral, func2quad, func_xyz
+public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
+    assemble_3d_coo
 
 interface
     real(dp) function func_xyz(x, y, z)
