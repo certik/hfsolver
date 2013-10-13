@@ -4,7 +4,8 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
-use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
+use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
+    assemble_3d_precalc, assemble_3d_csr
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -36,12 +37,13 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
         wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
     psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
+real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k, iter, max_iter
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
-real(dp) :: Nelec
+real(dp) :: Nelec, jac_det
 real(dp) :: psi_norm
 
 energy_eps = 3.6749308286427368e-5_dp
@@ -76,6 +78,13 @@ allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
 forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
+allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
+allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+call assemble_3d_precalc(p, Nq, &
+    nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)), &
+    nodes(2, elems(7, 1)) - nodes(2, elems(1, 1)), &
+    nodes(3, elems(7, 1)) - nodes(3, elems(1, 1)), &
+    wtq3, phihq, dphihq, jac_det, Am_loc, phi_v)
 
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
@@ -116,20 +125,23 @@ phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
 eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+    nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
+    Eh, Een, Ts, Exc, free_energy_)
 allocate(free_energies(max_iter))
+gamma_n = 0
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
     call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.false.)
     call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
-        free_energy_, verbose=.false.)
+        free_energy_, verbose=.true.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, dphihq, Eh, Een, Ts, Exc, free_energy_)
+        nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
+        Eh, Een, Ts, Exc, free_energy_)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
     print *, "Norm of psi:", psi_norm
@@ -175,7 +187,8 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, dphihq, Eh, Een, Ts, Exc, energy)
+        nenq_pos, psi_**2, phihq, Am_loc, phi_v, jac_det, &
+        Eh, Een, Ts, Exc, energy)
     end function
 
 end subroutine
@@ -183,12 +196,14 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, dphihq, Eh, Een, Ts, Exc, Etot, verbose)
+    T_au, nenq_pos, nq_pos, phihq, Am_loc, phi_v, jac_det, &
+    Eh, Een, Ts, Exc, Etot, verbose)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
-    dphihq(:, :), xin(:), xiq(:), wtq3(:, :, :)
+    xin(:), xiq(:), wtq3(:, :, :), Am_loc(:, :, :, :, :, :), &
+    phi_v(:, :, :, :, :, :), jac_det
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 logical, intent(in), optional :: verbose
 
@@ -197,13 +212,14 @@ real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
 integer, allocatable :: Ap(:), Aj(:)
 real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp
-integer :: i, j, k, m, Nn, Ne, Nq
+integer :: p, i, j, k, m, Nn, Ne, Nq
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = size(xiq)
+p = size(xin) - 1
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
 allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
@@ -220,8 +236,10 @@ nq_neutral = nq_pos - background
 if (verbose_) then
     print *, "Assembling..."
 end if
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+call assemble_3d_csr(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
+        Ap, Aj, Ax, rhs)
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
@@ -244,8 +262,10 @@ nenq_neutral = nenq_pos - background
 if (verbose_) then
     print *, "Assembling..."
 end if
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
+call assemble_3d_csr(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, Am_loc, &
+    phi_v, Ap, Aj, Ax, rhs)
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
@@ -488,7 +508,7 @@ allocate(R(1), V(1)); Z=1; Ediff=0
 !call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
 Rcut = 0.3_dp
-p = 5
+p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
@@ -539,10 +559,11 @@ end function
 
 real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 5, Z_ = 1
+real(dp), parameter :: alpha = 1, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
+n = 1
 end function
 
 end program
