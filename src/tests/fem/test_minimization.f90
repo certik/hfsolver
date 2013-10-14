@@ -525,6 +525,8 @@ print "('    Eee  = ', f14.8)", Eh
 print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+! These values are specific to the given Nq, p, Nx, Ny, Nz above:
 call assert(abs(Ts-1.5301_dp) < 1e-4_dp)
 call assert(abs(Een-(-1.4601_dp)) < 1e-4_dp)
 call assert(abs(Eh-0.0987_dp) < 1e-4_dp)
