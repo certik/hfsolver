@@ -14,3 +14,4 @@ addprog(ofmd)
 
 addtest(test_poisson3d)
 addtest(test_free_energy)
+addtest(test_minimization)
