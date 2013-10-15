@@ -509,10 +509,10 @@ allocate(R(1), V(1)); Z=1; Ediff=0
 Rcut = R(size(R))
 Rcut = 0.3_dp
 p = 4
-L = 2
+L = 2.997672536_dp
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy_min(L, 5, 5, 5, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy_min(L, 3, 3, 3, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
