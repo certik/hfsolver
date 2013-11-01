@@ -489,12 +489,11 @@ use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF !, Nx, Ny, Nz, u
+integer :: p, DOF, u
 real(dp) :: Z, Ediff
-real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :), values(:, :, :)
+real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
 real(dp) :: Rcut, L, T_eV, T_au
-integer :: u
 
 call read_pseudo("H.pseudo", R, V, Z, Ediff)
 allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
@@ -514,7 +513,7 @@ p = 3
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy_min(L, 3, 3, 3, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy_min(L, 3, 3, 3, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
@@ -541,22 +540,18 @@ n = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 !V = -Z*erf(alpha*R)/R
 end function
 
-real(dp) function Ven_splines(x_, y_, z_) result(V)
+real(dp) function nen_splines(x_, y_, z_) result(n)
 real(dp), intent(in) :: x_, y_, z_
-real(dp) :: r
+real(dp) :: r_
 integer :: ip
 ! One atom in the center:
-r = sqrt(x_**2+y_**2+z_**2)
-if (r >= 1) r = 1
+r_ = sqrt(x_**2+y_**2+z_**2)
+if (r_ >= Rcut) r_ = Rcut
 ip = 0
-ip = iixmin(r, D(:, 1), ip)
-V = poly3(r, c(:, ip))
-end function
-
-real(dp) function Ven_interp3d(x, y, z) result(V)
-real(dp), intent(in) :: x, y, z
-V = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], &
-        values)
+ip = iixmin(r_, R, ip)
+n = poly3(r_, c(:, ip))
+! FIXME: We need to be using "rho", and flip the sign here:
+n = -n
 end function
 
 real(dp) function ne(x, y, z) result(n)
