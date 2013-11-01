@@ -417,8 +417,6 @@ end do
 close(u)
 ! The file contains a grid from [0, 1], so we need to rescale it:
 R = R*Rcut
-! We need to add the minus sign to the potential ourselves:
-V = -V
 end subroutine
 
 real(dp) elemental function f(y, deriv)
@@ -487,29 +485,33 @@ use types, only: dp
 use ofmd_utils, only: free_energy_min, read_pseudo
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt
-use splines, only: spline3pars, iixmin, poly3
+use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF !, Nx, Ny, Nz, u
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :), values(:, :, :)
+real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
 real(dp) :: Rcut, L, T_eV, T_au
+integer :: u
 
-!open(newunit=u, file="plots/Ven_reg128.txt", status="old")
-!read(u, *) Nx, Ny, Nz
-!allocate(values(Nx, Ny, Nz))
-!read(u, *) values
-!close(u)
-!call read_pseudo("H.pseudo", R, V, Z, Ediff)
-allocate(R(1), V(1)); Z=1; Ediff=0
-!call loadtxt("Venr.txt", D)
-!allocate(c(0:4, size(D, 1)-1))
-!call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
+call read_pseudo("H.pseudo", R, V, Z, Ediff)
+allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
+call spline3ders(R, V, R, tmp, Vd, Vdd)
+density_en = -(Vdd+2*Vd/R)/(4*pi)
+open(newunit=u, file="H.pseudo.density", status="replace")
+write(u, *) R
+write(u, *) V
+write(u, *) Vd
+write(u, *) Vdd
+write(u, *) density_en
+close(u)
+allocate(c(0:4, size(R, 1)-1))
+call spline3pars(R, density_en, [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
-Rcut = 0.3_dp
-p = 4
-L = 2.997672536_dp
+p = 3
+L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 call free_energy_min(L, 3, 3, 3, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
