@@ -530,17 +530,6 @@ print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 contains
 
-real(dp) function nen(x, y, z_) result(n)
-real(dp), intent(in) :: x, y, z_
-real(dp), parameter :: alpha = 12
-real(dp) :: r
-r = sqrt(x**2+y**2+z_**2)
-! This density:
-n = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
-! Corresponds to the potential:
-!V = -Z*erf(alpha*R)/R
-end function
-
 real(dp) function nen_splines(x_, y_, z_) result(n)
 real(dp), intent(in) :: x_, y_, z_
 real(dp) :: r_
