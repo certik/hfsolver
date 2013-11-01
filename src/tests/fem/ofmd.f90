@@ -500,6 +500,7 @@ allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
 call spline3ders(R, V, R, tmp, Vd, Vdd)
 density_en = -(Vdd+2*Vd/R)/(4*pi)
 open(newunit=u, file="H.pseudo.density", status="replace")
+write(u, "(a)") "# Pseudopotential. The lines are: r, V(r), V'(r), V''(r), n(r)"
 write(u, *) R
 write(u, *) V
 write(u, *) Vd
