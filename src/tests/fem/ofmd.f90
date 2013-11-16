@@ -490,7 +490,7 @@ program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy_min, read_pseudo
 use constants, only: Ha2eV, pi
-use utils, only: loadtxt
+use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
@@ -516,7 +516,7 @@ close(u)
 allocate(c(0:4, size(R, 1)-1))
 call spline3pars(R, density_en, [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
-p = 8
+p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
@@ -542,7 +542,10 @@ real(dp) :: r_
 integer :: ip
 ! One atom in the center:
 r_ = sqrt((x_+L/64)**2+y_**2+z_**2)
-if (r_ >= Rcut) r_ = Rcut
+if (r_ >= Rcut) then
+    n = 0
+    return
+end if
 if (r_ <= 1e-4_dp) r_ = 1e-4_dp
 ip = 0
 ip = iixmin(r_, R, ip)
