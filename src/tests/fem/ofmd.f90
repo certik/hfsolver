@@ -127,6 +127,14 @@ theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
     nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_)
+print *, "Summary of energies [a.u.]:"
+print "('    Ts   = ', f14.8)", Ts
+print "('    Een  = ', f14.8)", Een
+print "('    Eee  = ', f14.8)", Eh
+print "('    Exc  = ', f14.8)", Exc
+print *, "   ---------------------"
+print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+stop "OK"
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
@@ -415,8 +423,6 @@ do i = 1, N-1
     read(u, *) R(i), V(i)
 end do
 close(u)
-! The file contains a grid from [0, 1], so we need to rescale it:
-R = R*Rcut
 end subroutine
 
 real(dp) elemental function f(y, deriv)
@@ -495,7 +501,7 @@ real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
-call read_pseudo("H.pseudo", R, V, Z, Ediff)
+call read_pseudo("H.pseudo.orig", R, V, Z, Ediff)
 allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
 call spline3ders(R, V, R, tmp, Vd, Vdd)
 density_en = -(Vdd+2*Vd/R)/(4*pi)
@@ -510,7 +516,7 @@ close(u)
 allocate(c(0:4, size(R, 1)-1))
 call spline3pars(R, density_en, [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
-p = 3
+p = 8
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
@@ -535,8 +541,9 @@ real(dp), intent(in) :: x_, y_, z_
 real(dp) :: r_
 integer :: ip
 ! One atom in the center:
-r_ = sqrt(x_**2+y_**2+z_**2)
+r_ = sqrt((x_+L/64)**2+y_**2+z_**2)
 if (r_ >= Rcut) r_ = Rcut
+if (r_ <= 1e-4_dp) r_ = 1e-4_dp
 ip = 0
 ip = iixmin(r_, R, ip)
 n = poly3(r_, c(:, ip))
@@ -546,11 +553,11 @@ end function
 
 real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 1, Z_ = 1
+real(dp), parameter :: alpha = 5, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
-n = 1
+!n = 1
 end function
 
 end program
