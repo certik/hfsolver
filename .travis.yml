@@ -34,15 +34,6 @@ before_script:
   - make
   - make install
 script:
-  - if [ "${TEST_PYTHON}" == "yes" ]; then
-        cd src/tests/bessel;
-        python test_modified_bessel.py;
-    else
-        if [ "${TEST_SLOW}" == "yes" ]; then
-          ctest -V --output-on-failure -L slow;
-        else
-          ctest --output-on-failure -LE slow;
-        fi
-    fi
+  - bin/test_travis.sh
 notifications:
   email: false
