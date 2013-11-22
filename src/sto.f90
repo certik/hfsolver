@@ -691,17 +691,25 @@ contains
 
 end function
 
-subroutine slater_sto_screen(nbfl, nlist, zetalist, slater_, D)
+subroutine slater_sto_screen(nbfl, nlist, zetalist, slater_, D, &
+        verbose)
 ! Just like stoints2, but only the slater integral and uses the Gaussian
 ! integration to do it. Uses Debye screening.
 integer, intent(in) :: nbfl(0:), nlist(:, 0:)
 real(dp), intent(in) :: zetalist(:, 0:)
 real(dp), allocatable, intent(out) :: slater_(:, :)
 real(dp), intent(in) :: D ! Debye screening length
+logical, intent(in), optional :: verbose ! show progress if .true.
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: n, i, j, k, l, k_, ijkl, Lmax, ndof, m
 integer, allocatable :: intindex(:, :, :, :)
+logical :: verbose_
+if (present(verbose)) then
+    verbose_ = verbose_
+else
+    verbose_ = .false.
+end if
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
 print *, "Calculating Slater integrals with screening..."
@@ -731,7 +739,7 @@ end if
 n = size(nl)
 allocate(intindex(n, n, n, n))
 call create_index(intindex)
-!$omp parallel default(none) shared(n, nbfl, nl, zl, slater_, D, intindex) private(i, j, k, l, k_, ijkl)
+!$omp parallel default(none) shared(n, nbfl, nl, zl, slater_, D, intindex, verbose_) private(i, j, k, l, k_, ijkl)
 !$omp do schedule(dynamic)
 do i = 1, n  ! Only this outer loop is parallelized
     do j = i, n
@@ -751,10 +759,14 @@ do i = 1, n  ! Only this outer loop is parallelized
             end do
         end do
     end do
-!    if (omp_get_thread_num() == 0) then
-!        ! char(13) is carriage return, so we keep overwriting the percentage
-!        write (*, "(a1, f5.1,'%')", advance="no") char(13), 100._dp * i / n
-!    end if
+    if (verbose_) then
+        if (omp_get_thread_num() == 0) then
+            ! char(13) is carriage return, so we keep overwriting the
+            ! percentage
+            write (*, "(a1, f5.1,'%')", advance="no") char(13), &
+                100._dp * i / n
+        end if
+    end if
 end do
 !$omp end do
 !$omp end parallel
