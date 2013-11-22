@@ -506,7 +506,7 @@ real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
-call read_pseudo("H.pseudo.orig", R, V, Z, Ediff)
+call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
 allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
 call spline3ders(R, V, R, tmp, Vd, Vdd)
 density_en = -(Vdd+2*Vd/R)/(4*pi)
@@ -525,7 +525,7 @@ p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy_min(L, 3, 3, 3, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy_min(L, 4, 4, 4, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
