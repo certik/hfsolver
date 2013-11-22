@@ -706,7 +706,7 @@ integer :: n, i, j, k, l, k_, ijkl, Lmax, ndof, m
 integer, allocatable :: intindex(:, :, :, :)
 logical :: verbose_
 if (present(verbose)) then
-    verbose_ = verbose_
+    verbose_ = verbose
 else
     verbose_ = .false.
 end if
