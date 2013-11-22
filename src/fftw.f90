@@ -1,7 +1,10 @@
 module fftw
+! Needed for fftw.f03:
 use iso_c_binding, only: c_int, c_intptr_t, c_ptr, c_int32_t, &
     c_double_complex, c_double, c_funptr, c_size_t, c_float_complex, c_float, &
     c_char, c_loc, c_f_pointer
+! Needed for fftw3l.f03:
+use iso_c_binding, only: c_long_double_complex, c_long_double
 use types, only: dp
 implicit none
 
