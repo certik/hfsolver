@@ -6,7 +6,8 @@ use constants, only: pi
 use sparse, only: coo2csr_canonical
 implicit none
 private
-public assemble_3d, integral, func2quad, func_xyz
+public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
+    assemble_3d_coo, assemble_3d_csr
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -67,31 +68,58 @@ real(dp), intent(out):: rhs(:)
 integer, allocatable, intent(out) :: matBp(:), matBj(:)
 real(dp), allocatable, intent(out) :: matBx(:)
 logical, intent(in), optional :: verbose
-integer, allocatable :: matAi(:), matAj(:)
-real(dp), allocatable :: matAx(:)
-integer :: Ne, p, e, i, j, iqx, iqy, iqz
+integer :: Ne, p, Nq
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
-    size(xin), size(xin), size(xin)) :: phi_v, phi_dx, phi_dy, phi_dz
-real(dp), dimension(size(xiq), size(xiq), size(xiq)) :: fq
+    size(xin), size(xin), size(xin)) :: phi_v
 real(dp) :: lx, ly, lz
-integer :: ax, ay, az, bx, by, bz
-real(dp) :: jacx, jacy, jacz, jac_det
+real(dp) :: jac_det
 real(dp), dimension(size(xiq), size(xiq), size(xiq), &
     size(xiq), size(xiq), size(xiq)) :: Am_loc
-integer :: idx, maxidx
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
 
 Ne = size(elems, 2)
 p = size(xin) - 1
-! 3D shape functions
+Nq = size(xiq)
+! Element sizes
+lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1))
+ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
+lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
+call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
+        dphihq, jac_det, Am_loc, phi_v)
+if (verbose_) then
+    print *, "Assembly..."
+end if
+call assemble_3d_csr(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matBp, matBj, matBx, rhs)
+if (verbose_) then
+    print *, "CSR Matrix:"
+    print *, "    dimension:", size(matBp)-1
+    print *, "    number of nonzeros:", size(matBx)
+    print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
+        (size(matBp)-1._dp)**2
+end if
+end subroutine
+
+subroutine assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
+        dphihq, jac_det, Am_loc, phi_v)
+integer, intent(in) :: p, Nq
+real(dp), intent(in) :: lx, ly, lz
+real(dp), intent(in):: wtq(:, :, :), phihq(:, :), dphihq(:, :)
+integer :: iqx, iqy, iqz
+real(dp), dimension(Nq, Nq, Nq, p+1, p+1, p+1) :: phi_dx, phi_dy, phi_dz
+integer :: ax, ay, az, bx, by, bz
+real(dp) :: jacx, jacy, jacz
+real(dp), intent(out) :: jac_det
+real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc, phi_v
+! Precalculate basis functions:
 do az = 1, p+1
 do ay = 1, p+1
 do ax = 1, p+1
-    do iqz = 1, size(xiq)
-    do iqy = 1, size(xiq)
-    do iqx = 1, size(xiq)
+    do iqz = 1, Nq
+    do iqy = 1, Nq
+    do iqx = 1, Nq
         phi_v (iqx, iqy, iqz, ax, ay, az) = &
              phihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
         phi_dx(iqx, iqy, iqz, ax, ay, az) = &
@@ -106,11 +134,6 @@ do ax = 1, p+1
 end do
 end do
 end do
-rhs=0
-! Precalculate as much as possible:
-lx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
-ly = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
-lz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
 jacx = lx/2
 jacy = ly/2
 jacz = lz/2
@@ -118,10 +141,7 @@ jac_det = abs(jacx*jacy*jacz)
 phi_dx = phi_dx / jacx
 phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
-! Precalculate element matrices:
-if (verbose_) then
-    print *, "Precalculating local element matrix..."
-end if
+! Precalculate element matrix:
 do bz = 1, p+1
 do by = 1, p+1
 do bx = 1, p+1
@@ -139,18 +159,28 @@ do bx = 1, p+1
 end do
 end do
 end do
-if (verbose_) then
-    print *, "Assembly..."
-end if
+end subroutine
+
+subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matAi, matAj, matAx, rhs, idx)
+! The actual, low level assembly
+real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+integer, intent(out) :: matAi(:), matAj(:)
+real(dp), intent(out) :: matAx(:)
+real(dp), intent(out):: rhs(:)
+integer, intent(out) :: idx
+real(dp), dimension(size(wtq, 1), size(wtq, 2), size(wtq, 3)) :: fq
+integer :: e, i, j
+integer :: ax, ay, az, bx, by, bz
+rhs = 0
 idx = 0
-maxidx = Ne*(p+1)**6
-if (verbose_) then
-    print *, "Number of COO matrix entries:", maxidx
-end if
-allocate(matAi(maxidx), matAj(maxidx), matAx(maxidx))
 do e = 1, Ne
-    fq = rhsq(:, :, :, e)
-    fq = fq * jac_det * wtq
+    fq = rhsq(:, :, :, e) * jac_det * wtq
     do bz = 1, p+1
     do by = 1, p+1
     do bx = 1, p+1
@@ -181,18 +211,28 @@ do e = 1, Ne
     end do
     end do
 end do
-if (verbose_) then
-    print *, "Converting COO -> CSR..."
-end if
+end subroutine
+
+subroutine assemble_3d_csr(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matBp, matBj, matBx, rhs)
+real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+integer, intent(out), allocatable :: matBp(:), matBj(:)
+real(dp), intent(out), allocatable :: matBx(:)
+real(dp), intent(out):: rhs(:)
+! Maximum possible size:
+integer, dimension(Ne*(p+1)**6) :: matAi, matAj
+real(dp),  dimension(Ne*(p+1)**6) :: matAx
+! Actual size:
+integer :: idx
+call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        matAi, matAj, matAx, rhs, idx)
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
     matBp, matBj, matBx)
-if (verbose_) then
-    print *, "CSR Matrix:"
-    print *, "    dimension:", size(matBp)-1
-    print *, "    number of nonzeros:", size(matBx)
-    print "('     density:', f7.2, '%')", size(matBx) * 100._dp / &
-        (size(matBp)-1._dp)**2
-end if
 end subroutine
 
 real(dp) function integral(nodes, elems, wtq, fq) result(r)

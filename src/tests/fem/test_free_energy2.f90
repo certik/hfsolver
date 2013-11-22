@@ -1,4 +1,4 @@
-module ofmd_utils
+module test_free_energy2_utils
 
 use types, only: dp
 use feutils, only: phih, dphih
@@ -491,16 +491,16 @@ end module
 ! ------------------------------------------------------------------------
 
 
-program ofmd
+program test_free_energy2
 use types, only: dp
-use ofmd_utils, only: free_energy_min, read_pseudo
+use test_free_energy2_utils, only: free_energy_min, read_pseudo
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF, u
+integer :: p, DOF
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
@@ -510,14 +510,6 @@ call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
 allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
 call spline3ders(R, V, R, tmp, Vd, Vdd)
 density_en = -(Vdd+2*Vd/R)/(4*pi)
-open(newunit=u, file="H.pseudo.density", status="replace")
-write(u, "(a)") "# Pseudopotential. The lines are: r, V(r), V'(r), V''(r), n(r)"
-write(u, *) R
-write(u, *) V
-write(u, *) Vd
-write(u, *) Vdd
-write(u, *) density_en
-close(u)
 allocate(c(0:4, size(R, 1)-1))
 call spline3pars(R, density_en, [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))

@@ -6,7 +6,6 @@ set(SRC
     linalg_feast.f90
     lapack.f90
     feast.f90
-    openmp.f90
     sparse.f90
 
     special_functions.f90
@@ -77,6 +76,17 @@ endif()
 if(WITH_FFTW)
     set(SRC ${SRC}
         fftw.f90
+    )
+endif()
+
+# OPENMP
+if(WITH_OPENMP)
+    set(SRC ${SRC}
+        openmp.f90
+    )
+else()
+    set(SRC ${SRC}
+        openmp.dum.f90
     )
 endif()
 
