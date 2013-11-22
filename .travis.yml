@@ -27,6 +27,9 @@ before_install:
       pip install -q --use-mirrors cython==0.17.1 numpy==1.6.2 sympy==0.7.1;
       pip install -q --use-mirrors matplotlib==1.1.1;
     fi
+  - if [[ "${TEST_FFTW}" == "yes" ]]; then
+      sudo apt-get install -qq libfftw3-dev;
+    fi
 before_script:
   # Print CPU info for debugging purposes:
   - cat /proc/cpuinfo
