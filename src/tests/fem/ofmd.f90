@@ -127,6 +127,14 @@ theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
     nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_)
+print *, "Summary of energies [a.u.]:"
+print "('    Ts   = ', f14.8)", Ts
+print "('    Een  = ', f14.8)", Een
+print "('    Eee  = ', f14.8)", Eh
+print "('    Exc  = ', f14.8)", Exc
+print *, "   ---------------------"
+print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+stop "OK"
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
@@ -415,10 +423,7 @@ do i = 1, N-1
     read(u, *) R(i), V(i)
 end do
 close(u)
-! The file contains a grid from [0, 1], so we need to rescale it:
-R = R*Rcut
-! We need to add the minus sign to the potential ourselves:
-V = -V
+R = R * Rcut
 end subroutine
 
 real(dp) elemental function f(y, deriv)
@@ -486,33 +491,37 @@ program ofmd
 use types, only: dp
 use ofmd_utils, only: free_energy_min, read_pseudo
 use constants, only: Ha2eV, pi
-use utils, only: loadtxt
-use splines, only: spline3pars, iixmin, poly3
+use utils, only: loadtxt, stop_error
+use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF !, Nx, Ny, Nz, u
+integer :: p, DOF, u
 real(dp) :: Z, Ediff
-real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :), values(:, :, :)
+real(dp), allocatable :: R(:), V(:), c(:, :)
+real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
-!open(newunit=u, file="plots/Ven_reg128.txt", status="old")
-!read(u, *) Nx, Ny, Nz
-!allocate(values(Nx, Ny, Nz))
-!read(u, *) values
-!close(u)
-!call read_pseudo("H.pseudo", R, V, Z, Ediff)
-allocate(R(1), V(1)); Z=1; Ediff=0
-!call loadtxt("Venr.txt", D)
-!allocate(c(0:4, size(D, 1)-1))
-!call spline3pars(D(:, 1), D(:, 2), [2, 2], [0._dp, 0._dp], c)
+call read_pseudo("H.pseudo.orig", R, V, Z, Ediff)
+allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
+call spline3ders(R, V, R, tmp, Vd, Vdd)
+density_en = -(Vdd+2*Vd/R)/(4*pi)
+open(newunit=u, file="H.pseudo.density", status="replace")
+write(u, "(a)") "# Pseudopotential. The lines are: r, V(r), V'(r), V''(r), n(r)"
+write(u, *) R
+write(u, *) V
+write(u, *) Vd
+write(u, *) Vdd
+write(u, *) density_en
+close(u)
+allocate(c(0:4, size(R, 1)-1))
+call spline3pars(R, density_en, [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
-Rcut = 0.3_dp
-p = 4
+p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy_min(L, 5, 5, 5, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy_min(L, 3, 3, 3, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
@@ -528,42 +537,31 @@ print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 contains
 
-real(dp) function nen(x, y, z_) result(n)
-real(dp), intent(in) :: x, y, z_
-real(dp), parameter :: alpha = 12
-real(dp) :: r
-r = sqrt(x**2+y**2+z_**2)
-! This density:
-n = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
-! Corresponds to the potential:
-!V = -Z*erf(alpha*R)/R
-end function
-
-real(dp) function Ven_splines(x_, y_, z_) result(V)
+real(dp) function nen_splines(x_, y_, z_) result(n)
 real(dp), intent(in) :: x_, y_, z_
-real(dp) :: r
+real(dp) :: r_
 integer :: ip
 ! One atom in the center:
-r = sqrt(x_**2+y_**2+z_**2)
-if (r >= 1) r = 1
+r_ = sqrt((x_+L/64)**2+y_**2+z_**2)
+if (r_ >= Rcut) then
+    n = 0
+    return
+end if
+if (r_ <= 1e-4_dp) r_ = 1e-4_dp
 ip = 0
-ip = iixmin(r, D(:, 1), ip)
-V = poly3(r, c(:, ip))
-end function
-
-real(dp) function Ven_interp3d(x, y, z) result(V)
-real(dp), intent(in) :: x, y, z
-V = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], &
-        values)
+ip = iixmin(r_, R, ip)
+n = poly3(r_, c(:, ip))
+! FIXME: We need to be using "rho", and flip the sign here:
+n = -n
 end function
 
 real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 1, Z_ = 1
+real(dp), parameter :: alpha = 5, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
-n = 1
+!n = 1
 end function
 
 end program
