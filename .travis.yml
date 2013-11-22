@@ -13,7 +13,7 @@ env:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq gfortran liblapack-dev
-  - if [ "${TEST_LIBINT}" == "yes" ]; then
+  - if [[ "${TEST_LIBINT}" == "yes" ]]; then
       git clone https://github.com/qsnake/libint.git;
       pushd libint;
       ./configure --prefix=/usr > conf_log;
@@ -21,7 +21,7 @@ before_install:
       sudo make install;
       popd;
     fi
-  - if [ "${TEST_PYTHON}" == "yes" ]; then
+  - if [[ "${TEST_PYTHON}" == "yes" ]]; then
       pip install -q --use-mirrors cython==0.17.1 numpy==1.6.2 sympy==0.7.1;
       pip install -q --use-mirrors matplotlib==1.1.1;
     fi
