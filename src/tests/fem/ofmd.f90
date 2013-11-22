@@ -134,6 +134,10 @@ print "('    Eee  = ', f14.8)", Eh
 print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+call assert(abs(Ts - 10.61904507_dp) < 1e-8_dp)
+call assert(abs(Een - (-3.77207363_dp)) < 3e-3_dp)
+call assert(abs(Eh - 1.30109486_dp) < 3e-4_dp)
+call assert(abs(Exc - (-1.43805889_dp)) < 1e-8_dp)
 stop "OK"
 allocate(free_energies(max_iter))
 gamma_n = 0
