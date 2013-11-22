@@ -65,7 +65,8 @@ do j = 1, size(Dlist)
     else
         print *, "D =", D
         call sto_V_screen(Z, nbfl, nl, zl, V, D)
-        call slater_sto_screen(nbfl, nl, zl, slater, D)
+        call slater_sto_screen(nbfl, nl, zl, slater, D, &
+            verbose=.true.)
     end if
 
     H = T + V
