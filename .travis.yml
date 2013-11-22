@@ -3,13 +3,13 @@ python:
   - 2.7
 env:
   # Test all fast tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no" TEST_OPENMP="yes"
+  - BUILD_TYPE="Debug" TEST_OPENMP="yes"
   # Test all fast tests in Debug build with libint:
-  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no" TEST_OPENMP="yes"
+  - TEST_LIBINT="yes" BUILD_TYPE="Debug" TEST_OPENMP="yes"
   # Test all slow tests in Release build (to make them run faster) and disable OpenMP due to #12:
-  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release" TEST_PYTHON="no" TEST_OPENMP="no"
+  - TEST_SLOW="yes" BUILD_TYPE="Release"
   # Test all Python tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
+  - BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq gfortran liblapack-dev
