@@ -3,17 +3,19 @@ python:
   - 2.7
 env:
   # Test all fast tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no" TEST_OPENMP="yes"
+  - BUILD_TYPE="Debug" TEST_OPENMP="yes"
   # Test all fast tests in Debug build with libint:
-  - TEST_LIBINT="yes" TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="no" TEST_OPENMP="yes"
+  - TEST_LIBINT="yes" BUILD_TYPE="Debug" TEST_OPENMP="yes"
+  # Test all fast tests in Debug build with FFTW:
+  - TEST_FFTW="yes"  BUILD_TYPE="Debug" TEST_OPENMP="yes"
   # Test all slow tests in Release build (to make them run faster) and disable OpenMP due to #12:
-  - TEST_LIBINT="no"  TEST_SLOW="yes" BUILD_TYPE="Release" TEST_PYTHON="no" TEST_OPENMP="no"
+  - TEST_SLOW="yes" BUILD_TYPE="Release"
   # Test all Python tests in Debug build:
-  - TEST_LIBINT="no"  TEST_SLOW="no"  BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
+  - BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq gfortran liblapack-dev
-  - if [ "${TEST_LIBINT}" == "yes" ]; then
+  - if [[ "${TEST_LIBINT}" == "yes" ]]; then
       git clone https://github.com/qsnake/libint.git;
       pushd libint;
       ./configure --prefix=/usr > conf_log;
@@ -21,28 +23,22 @@ before_install:
       sudo make install;
       popd;
     fi
-  - if [ "${TEST_PYTHON}" == "yes" ]; then
+  - if [[ "${TEST_PYTHON}" == "yes" ]]; then
       pip install -q --use-mirrors cython==0.17.1 numpy==1.6.2 sympy==0.7.1;
       pip install -q --use-mirrors matplotlib==1.1.1;
+    fi
+  - if [[ "${TEST_FFTW}" == "yes" ]]; then
+      sudo apt-get install -qq libfftw3-dev;
     fi
 before_script:
   # Print CPU info for debugging purposes:
   - cat /proc/cpuinfo
   - gfortran -v
   - /usr/bin/f95 -v
-  - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} -DWITH_OPENMP=${TEST_OPENMP} .
+  - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DWITH_FFTW=${TEST_FFTW} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} -DWITH_OPENMP=${TEST_OPENMP} .
   - make
   - make install
 script:
-  - if [ "${TEST_PYTHON}" == "yes" ]; then
-        cd src/tests/bessel;
-        python test_modified_bessel.py;
-    else
-        if [ "${TEST_SLOW}" == "yes" ]; then
-          ctest -V --output-on-failure -L slow;
-        else
-          ctest --output-on-failure -LE slow;
-        fi
-    fi
+  - bin/test_travis.sh
 notifications:
   email: false

@@ -72,6 +72,13 @@ else()
     )
 endif()
 
+# FFTW
+if(WITH_FFTW)
+    set(SRC ${SRC}
+        fftw.f90
+    )
+endif()
+
 # OPENMP
 if(WITH_OPENMP)
     set(SRC ${SRC}

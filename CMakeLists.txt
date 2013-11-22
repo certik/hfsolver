@@ -78,6 +78,16 @@ if(WITH_LIBINT)
     set(LIBS ${LIBS} ${LIBINT_LIBRARIES})
 endif()
 
+# fftw
+set(WITH_FFTW no
+    CACHE BOOL "Build with FFTW support")
+
+if(WITH_FFTW)
+    find_package(FFTW REQUIRED)
+    include_directories(${FFTW_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${FFTW_LIBRARIES})
+endif()
+
 
 set(WITH_MPI no
     CACHE BOOL "Build with MPI support")
@@ -147,6 +157,11 @@ message("WITH_LIBINT: ${WITH_LIBINT}")
 if(WITH_LIBINT)
     message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
     message("LIBINT_LIBRARIES: ${LIBINT_LIBRARIES}")
+endif()
+message("WITH_FFTW: ${WITH_FFTW}")
+if(WITH_FFTW)
+    message("FFTW_INCLUDE_DIRS: ${FFTW_INCLUDE_DIRS}")
+    message("FFTW_LIBRARIES: ${FFTW_LIBRARIES}")
 endif()
 message("WITH_PETSC: ${WITH_PETSC}")
 if(WITH_PETSC)
