@@ -134,7 +134,6 @@ print "('    Eee  = ', f14.8)", Eh
 print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u.')", free_energy_
-stop "OK"
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
@@ -663,7 +662,7 @@ use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF, u, Nmesh, N, Nx, Ny, Nz
+integer :: p, DOF, u, Nmesh, N, Nx, Ny, Nz, i
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: density_en(:), R2(:)
@@ -694,6 +693,12 @@ close(u)
 allocate(c(0:4, size(R2, 1)-1))
 call spline3pars(R2, density_en, [2, 2], [0._dp, 0._dp], c)
 Rcut = R(size(R))
+
+open(newunit=u, file="H.pseudo.density.ft2", status="replace")
+write(u, "(a)") "# Density. The lines are: r, n(r)"
+write(u, *) R2
+write(u, *) (nen_splines(R2(i), 0._dp, 0._dp), i=1, size(R2))
+close(u)
 
 call free_energy_min(L, Nx, Ny, Nz, p, T_au, nen_splines, ne, &
     Eh, Een, Ts, Exc, DOF)
