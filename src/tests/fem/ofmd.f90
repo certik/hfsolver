@@ -482,36 +482,62 @@ end subroutine
 
 subroutine radial_density_fourier(R, V, L)
 real(dp), intent(in) :: R(:), V(:), L
-real(dp), allocatable :: Vk(:)
-real(dp) :: Rp(size(R))
+real(dp), allocatable :: Vk(:), density_ft(:), w(:), wp(:), R2(:), density(:)
+real(dp) :: Rp(size(R)), Z
 integer :: Ng ! Number of PW
-integer :: j
-real(dp) :: dk, w, Rc
+integer :: Ngmesh, Nmesh
+integer :: j, u
+real(dp) :: dk, Rc
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
 Rp = (R(size(R)) - R(1)) / (size(R)-1)
 Rc = R(size(R))
-Ng = 32
+Ng = 15
 dk = 2*pi/L
-allocate(Vk(3*(Ng/2+1)**2))
-do j = 1, 3*(Ng/2+1)**2
-    w = sqrt(real(j, dp))*dk
-    Vk(j) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + cos(w*Rc))
-end do
+! To fill out a 3D grid, we would use this:
+!allocate(Vk(3*(Ng/2+1)**2))
+!do j = 1, 3*(Ng/2+1)**2
+!    w = sqrt(real(j, dp))*dk
+!    Vk(j) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + cos(w*Rc))
+!end do
+
+Ngmesh = 1000
+allocate(Vk(Ngmesh), density_ft(Ngmesh), w(Ngmesh), wp(Ngmesh))
+Z = 1
+w = linspace(1e-5_dp, real(Ng, dp), Ngmesh)*dk
+wp = (w(size(w)) - w(1)) / (size(w)-1)
+forall (j=1:Ngmesh)
+    density_ft(j) = w(j)*integrate(Rp, R*sin(w(j)*R)*V) + cos(w(j)*Rc)
+end forall
+density_ft = Z*density_ft
+Vk = 4*pi/w**2 * density_ft
+
+Nmesh = 10000
+allocate(R2(Nmesh), density(Nmesh))
+R2 = linspace(1e-5_dp, L/2, Nmesh)
+forall (j=1:Nmesh)
+    density(j) = 1/(2*pi**2 * R2(j)) * integrate(wp, w*sin(w*R2(j))*density_ft)
+end forall
+
+open(newunit=u, file="H.pseudo.density.ft", status="replace")
+write(u, "(a)") "# Density. The lines are: r, n(r)"
+write(u, *) R2
+write(u, *) density
+close(u)
 end subroutine
 
-real(dp) function integrate(Rp, f) result(s)
+real(dp) pure function integrate(Rp, f) result(s)
 real(dp), intent(in) :: Rp(:), f(:)
 ! Choose one from the integration rules below:
-s = integrate_trapz_1(Rp, f)
+!s = integrate_trapz_1(Rp, f)
 !s = integrate_trapz_3(Rp, f)
 !s = integrate_trapz_5(Rp, f)
 !s = integrate_trapz_7(Rp, f)
-!s = integrate_simpson(Rp, f)
+s = integrate_simpson(Rp, f)
 !s = integrate_adams(Rp, f)
 end function
 
-real(dp) function integrate_trapz_1(Rp, f) result(s)
+real(dp) pure function integrate_trapz_1(Rp, f) result(s)
 real(dp), intent(in) :: Rp(:), f(:)
 real(dp) :: g(size(Rp))
 integer :: N
@@ -522,7 +548,7 @@ s = s + sum(g(2:N-1))
 end function
 
 
-real(dp) function integrate_trapz_7(Rp, f) result(s)
+real(dp) pure function integrate_trapz_7(Rp, f) result(s)
 real(dp), intent(in) :: Rp(:), f(:)
 real(dp) :: g(size(Rp))
 integer :: N
@@ -538,6 +564,90 @@ s = (  36799 * (g(1) + g(N  )) &
     ) / 120960
 s = s + sum(g(8:N-7))
 end function
+
+real(dp) pure function integrate_simpson(Rp, f) result(s)
+real(dp), intent(in) :: Rp(:), f(:)
+real(dp) :: g(size(Rp))
+integer :: i, N
+N = size(Rp)
+g = f * Rp
+s = 0
+do i = 2, N-1, 2
+    s = s + g(i-1) + 4*g(i) + g(i+1)
+end do
+s = s / 3
+if (modulo(N, 2) == 0) then
+    ! If N is even, add the last slice separately
+    s = s + (5*g(N) + 8*g(N-1) - g(N-2)) / 12
+end if
+end function
+
+
+function linspace(a, b, n) result(s)
+real(dp), intent(in) :: a, b
+integer, intent(in) :: n
+real(dp) :: s(n)
+s = mesh_exp(a, b, 1.0_dp, n-1)
+end function
+
+function mesh_exp(r_min, r_max, a, N) result(mesh)
+! Generates exponential mesh of N elements on [r_min, r_max]
+!
+! Arguments
+! ---------
+!
+! The domain [r_min, r_max], the mesh will contain both endpoints:
+real(dp), intent(in) :: r_min, r_max
+!
+! The fraction of the rightmost vs. leftmost elements of the mesh (for a > 1
+! this means the "largest/smallest"); The only requirement is a > 0. For a == 1
+! a uniform mesh will be returned:
+real(dp), intent(in) :: a
+!
+! The number of elements in the mesh:
+integer, intent(in) :: N
+!
+! Returns
+! -------
+!
+! The generated mesh:
+real(dp) :: mesh(N+1)
+!
+! Note: Every exponential mesh is fully determined by the set of parameters
+! (r_min, r_max, a, N). Use the get_mesh_exp_params() subroutine to obtain them
+! from the given mesh.
+!
+! Example
+! -------
+!
+! real(dp) :: r(11)
+! r = mesh_exp(0._dp, 50._dp, 1e9_dp, 10)
+
+integer :: i
+real(dp) :: alpha, beta
+if (a < 0) then
+    call stop_error("mesh_exp: a > 0 required")
+else if (a == 1) then
+    alpha = (r_max - r_min) / N
+    do i = 1, N+1
+        mesh(i) = alpha * (i-1.0_dp) + r_min
+    end do
+else
+    if (N > 1) then
+        beta = log(a) / (N-1)
+        alpha = (r_max - r_min) / (exp(beta*N) - 1)
+        do i = 1, N+1
+            mesh(i) = alpha * (exp(beta*(i-1)) - 1) + r_min
+        end do
+    else if (N == 1) then
+        mesh(1) = r_min
+        mesh(2) = r_max
+    else
+        call stop_error("mesh_exp: N >= 1 required")
+    end if
+end if
+end function
+
 
 
 end module
