@@ -482,17 +482,17 @@ end subroutine
 
 subroutine radial_density_fourier(R, V, L)
 real(dp), intent(in) :: R(:), V(:), L
-real(dp), allocatable :: Vk(:), density_ft(:), w(:), wp(:), R2(:), density(:)
+real(dp), allocatable :: density_ft(:), w(:), R2(:), density(:)
 real(dp) :: Rp(size(R)), Z
 integer :: Ng ! Number of PW
-integer :: Ngmesh, Nmesh
+integer :: Nmesh
 integer :: j, u
 real(dp) :: dk, Rc
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
 Rp = (R(size(R)) - R(1)) / (size(R)-1)
 Rc = R(size(R))
-Ng = 15
+Ng = 128
 dk = 2*pi/L
 ! To fill out a 3D grid, we would use this:
 !allocate(Vk(3*(Ng/2+1)**2))
@@ -501,22 +501,22 @@ dk = 2*pi/L
 !    Vk(j) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + cos(w*Rc))
 !end do
 
-Ngmesh = 1000
-allocate(Vk(Ngmesh), density_ft(Ngmesh), w(Ngmesh), wp(Ngmesh))
+! We can use denser mesh, but this looks sufficient:
+allocate(density_ft(Ng), w(Ng))
 Z = 1
-w = linspace(0._dp, real(Ng, dp), Ngmesh)*dk
-wp = (w(size(w)) - w(1)) / (size(w)-1)
-forall (j=1:Ngmesh)
+forall(j=1:Ng) w(j) = (j-1)*dk
+forall (j=1:Ng)
     density_ft(j) = w(j)*integrate(Rp, R*sin(w(j)*R)*V) + cos(w(j)*Rc)
 end forall
 density_ft = Z*density_ft
-Vk = 4*pi/w**2 * density_ft
+! The potential (infinite for w=0) would be calculated using:
+!Vk = 4*pi/w**2 * density_ft
 
 Nmesh = 10000
 allocate(R2(Nmesh), density(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
 forall (j=1:Nmesh)
-    density(j) = 1/(2*pi**2) * integrate(wp, w**2*sinc(w*R2(j))*density_ft)
+    density(j) = sum(dk * w**2*sinc(w*R2(j))*density_ft) / (2*pi**2)
 end forall
 
 open(newunit=u, file="H.pseudo.density.ft", status="replace")
@@ -529,11 +529,11 @@ end subroutine
 real(dp) pure function integrate(Rp, f) result(s)
 real(dp), intent(in) :: Rp(:), f(:)
 ! Choose one from the integration rules below:
-!s = integrate_trapz_1(Rp, f)
+s = integrate_trapz_1(Rp, f)
 !s = integrate_trapz_3(Rp, f)
 !s = integrate_trapz_5(Rp, f)
 !s = integrate_trapz_7(Rp, f)
-s = integrate_simpson(Rp, f)
+!s = integrate_simpson(Rp, f)
 !s = integrate_adams(Rp, f)
 end function
 
