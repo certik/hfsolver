@@ -403,29 +403,6 @@ end do
 Hpsi = dF0dn + Vhq + Venq + Vxc
 end subroutine
 
-subroutine read_pseudo(filename, R, V, Z, Ediff)
-! Reads the pseudopotential from the file 'filename'.
-character(len=*), intent(in) :: filename   ! File to read from, e.g. "H.pseudo"
-real(dp), allocatable, intent(out) :: R(:) ! radial grid [0, Rcut]
-! potential on the radial grid. The potential smoothly changes into -1/R for
-! r > Rcut, where Rcut = R(size(R)) is the cut-off radius
-real(dp), allocatable, intent(out) :: V(:)
-real(dp), intent(out) :: Z     ! Nuclear charge
-real(dp), intent(out) :: Ediff ! The energy correction
-real(dp) :: Rcut
-integer :: N, i, u
-open(newunit=u, file=filename, status="old")
-read(u, *) Z, N, Rcut, Ediff
-allocate(R(N-1), V(N-1))
-! The first potential value is zero in the file, so we skip it
-read(u, *) R(1), V(1)
-do i = 1, N-1
-    read(u, *) R(i), V(i)
-end do
-close(u)
-R = R * Rcut
-end subroutine
-
 real(dp) elemental function f(y, deriv)
 ! Function f(y) from Appendix A in [1].
 !
@@ -480,6 +457,29 @@ else
     end if
 end if
 end function
+
+
+subroutine read_pseudo(filename, R, V, Z, Ediff)
+! Reads the pseudopotential from the file 'filename'.
+character(len=*), intent(in) :: filename   ! File to read from, e.g. "H.pseudo"
+real(dp), allocatable, intent(out) :: R(:) ! radial grid [0, Rcut]
+! potential on the radial grid. The potential smoothly changes into -1/R for
+! r > Rcut, where Rcut = R(size(R)) is the cut-off radius
+real(dp), allocatable, intent(out) :: V(:)
+real(dp), intent(out) :: Z     ! Nuclear charge
+real(dp), intent(out) :: Ediff ! The energy correction
+real(dp) :: Rcut
+integer :: N, i, u
+open(newunit=u, file=filename, status="old")
+read(u, *) Z, N, Rcut, Ediff
+allocate(R(N), V(N))
+do i = 1, N
+    read(u, *) R(i), V(i)
+end do
+close(u)
+R = R * Rcut
+end subroutine
+
 
 end module
 
