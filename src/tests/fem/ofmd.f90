@@ -663,46 +663,40 @@ use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF, u, Nmesh
+integer :: p, DOF, u, Nmesh, N, Nx, Ny, Nz
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), c(:, :)
-real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:), R2(:), &
-    density(:)
+real(dp), allocatable :: density_en(:), R2(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
-!call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
-call read_pseudo("H.pseudo", R, V, Z, Ediff)
-allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
-call spline3ders(R, V, R, tmp, Vd, Vdd)
-density_en = -(Vdd+2*Vd/R)/(4*pi)
-open(newunit=u, file="H.pseudo.density", status="replace")
-write(u, "(a)") "# Pseudopotential. The lines are: r, V(r), V'(r), V''(r), n(r)"
-write(u, *) R
-write(u, *) V
-write(u, *) Vd
-write(u, *) Vdd
-write(u, *) density_en
-close(u)
-allocate(c(0:4, size(R, 1)-1))
-call spline3pars(R, density_en, [2, 2], [0._dp, 0._dp], c)
-Rcut = R(size(R))
 p = 5
+N = 3
 L = 2.997672536043746_dp
-T_eV = 0.0862_dp
+T_eV = 0.862_dp
 T_au = T_ev / Ha2eV
+Nx = N
+Ny = N
+Nz = N
+
+call read_pseudo("H.pseudo", R, V, Z, Ediff)
 
 Nmesh = 10000
-allocate(R2(Nmesh), density(Nmesh))
+allocate(R2(Nmesh), density_en(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
-call radial_density_fourier(R, V, L, Z, 128, R2, density)
+call radial_density_fourier(R, V, L, Z, 128, R2, density_en)
 
 open(newunit=u, file="H.pseudo.density.ft", status="replace")
 write(u, "(a)") "# Density. The lines are: r, n(r)"
 write(u, *) R2
-write(u, *) density
+write(u, *) density_en
 close(u)
 
-call free_energy_min(L, 3, 3, 3, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
+allocate(c(0:4, size(R2, 1)-1))
+call spline3pars(R2, density_en, [2, 2], [0._dp, 0._dp], c)
+Rcut = R(size(R))
+
+call free_energy_min(L, Nx, Ny, Nz, p, T_au, nen_splines, ne, &
+    Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
@@ -742,7 +736,7 @@ real(dp), parameter :: alpha = 5, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
-!n = 1
+n = 1
 end function
 
 end program
