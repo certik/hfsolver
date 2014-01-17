@@ -727,9 +727,9 @@ if (r_ >= Rcut) then
     n = 0
     return
 end if
-if (r_ <= 1e-4_dp) r_ = 1e-4_dp
+!if (r_ <= 1e-4_dp) r_ = 1e-4_dp
 ip = 0
-ip = iixmin(r_, R, ip)
+ip = iixmin(r_, R2, ip)
 n = poly3(r_, c(:, ip))
 ! FIXME: We need to be using "rho", and flip the sign here:
 n = -n
