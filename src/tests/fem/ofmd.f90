@@ -15,7 +15,7 @@ use xc, only: xc_pz
 use optimize, only: bracket, brent
 implicit none
 private
-public free_energy_min, read_pseudo, radial_density_fourier
+public free_energy_min, read_pseudo, radial_density_fourier, linspace
 
 contains
 
@@ -480,19 +480,18 @@ close(u)
 R = R * Rcut
 end subroutine
 
-subroutine radial_density_fourier(R, V, L)
-real(dp), intent(in) :: R(:), V(:), L
-real(dp), allocatable :: density_ft(:), w(:), R2(:), density(:)
-real(dp) :: Rp(size(R)), Z
-integer :: Ng ! Number of PW
-integer :: Nmesh
-integer :: j, u
+subroutine radial_density_fourier(R, V, L, Z, Ng, Rnew, density)
+real(dp), intent(in) :: R(:), V(:), L, Z, Rnew(:)
+real(dp), intent(out) :: density(:)
+real(dp), allocatable :: density_ft(:), w(:)
+real(dp) :: Rp(size(R))
+integer, intent(in) :: Ng ! Number of PW
+integer :: j
 real(dp) :: dk, Rc
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
 Rp = (R(size(R)) - R(1)) / (size(R)-1)
 Rc = R(size(R))
-Ng = 128
 dk = 2*pi/L
 ! To fill out a 3D grid, we would use this:
 !allocate(Vk(3*(Ng/2+1)**2))
@@ -503,7 +502,6 @@ dk = 2*pi/L
 
 ! We can use denser mesh, but this looks sufficient:
 allocate(density_ft(Ng), w(Ng))
-Z = 1
 forall(j=1:Ng) w(j) = (j-1)*dk
 forall (j=1:Ng)
     density_ft(j) = w(j)*integrate(Rp, R*sin(w(j)*R)*V) + cos(w(j)*Rc)
@@ -512,18 +510,9 @@ density_ft = Z*density_ft
 ! The potential (infinite for w=0) would be calculated using:
 !Vk = 4*pi/w**2 * density_ft
 
-Nmesh = 10000
-allocate(R2(Nmesh), density(Nmesh))
-R2 = linspace(0._dp, L/2, Nmesh)
-forall (j=1:Nmesh)
-    density(j) = sum(dk * w**2*sinc(w*R2(j))*density_ft) / (2*pi**2)
+forall (j=1:size(Rnew))
+    density(j) = sum(dk * w**2*sinc(w*Rnew(j))*density_ft) / (2*pi**2)
 end forall
-
-open(newunit=u, file="H.pseudo.density.ft", status="replace")
-write(u, "(a)") "# Density. The lines are: r, n(r)"
-write(u, *) R2
-write(u, *) density
-close(u)
 end subroutine
 
 real(dp) pure function integrate(Rp, f) result(s)
@@ -666,17 +655,19 @@ end module
 
 program ofmd
 use types, only: dp
-use ofmd_utils, only: free_energy_min, read_pseudo, radial_density_fourier
+use ofmd_utils, only: free_energy_min, read_pseudo, radial_density_fourier, &
+    linspace
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
-integer :: p, DOF, u
+integer :: p, DOF, u, Nmesh
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), c(:, :)
-real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
+real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:), R2(:), &
+    density(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
 !call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
@@ -700,7 +691,16 @@ L = 2.997672536043746_dp
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 
-call radial_density_fourier(R, V, L)
+Nmesh = 10000
+allocate(R2(Nmesh), density(Nmesh))
+R2 = linspace(0._dp, L/2, Nmesh)
+call radial_density_fourier(R, V, L, Z, 128, R2, density)
+
+open(newunit=u, file="H.pseudo.density.ft", status="replace")
+write(u, "(a)") "# Density. The lines are: r, n(r)"
+write(u, *) R2
+write(u, *) density
+close(u)
 
 call free_energy_min(L, 3, 3, 3, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
