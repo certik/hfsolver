@@ -15,7 +15,7 @@ use xc, only: xc_pz
 use optimize, only: bracket, brent
 implicit none
 private
-public free_energy_min, read_pseudo
+public free_energy_min, read_pseudo, radial_density_fourier
 
 contains
 
@@ -480,6 +480,65 @@ close(u)
 R = R * Rcut
 end subroutine
 
+subroutine radial_density_fourier(R, V, L)
+real(dp), intent(in) :: R(:), V(:), L
+real(dp), allocatable :: Vk(:)
+real(dp) :: Rp(size(R))
+integer :: Ng ! Number of PW
+integer :: j
+real(dp) :: dk, w, Rc
+! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
+! the mesh step (rmax-rmin)/N:
+Rp = (R(size(R)) - R(1)) / (size(R)-1)
+Rc = R(size(R))
+Ng = 32
+dk = 2*pi/L
+allocate(Vk(3*(Ng/2+1)**2))
+do j = 1, 3*(Ng/2+1)**2
+    w = sqrt(real(j, dp))*dk
+    Vk(j) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + cos(w*Rc))
+end do
+end subroutine
+
+real(dp) function integrate(Rp, f) result(s)
+real(dp), intent(in) :: Rp(:), f(:)
+! Choose one from the integration rules below:
+s = integrate_trapz_1(Rp, f)
+!s = integrate_trapz_3(Rp, f)
+!s = integrate_trapz_5(Rp, f)
+!s = integrate_trapz_7(Rp, f)
+!s = integrate_simpson(Rp, f)
+!s = integrate_adams(Rp, f)
+end function
+
+real(dp) function integrate_trapz_1(Rp, f) result(s)
+real(dp), intent(in) :: Rp(:), f(:)
+real(dp) :: g(size(Rp))
+integer :: N
+N = size(Rp)
+g = f * Rp
+s = (g(1) + g(N)) / 2
+s = s + sum(g(2:N-1))
+end function
+
+
+real(dp) function integrate_trapz_7(Rp, f) result(s)
+real(dp), intent(in) :: Rp(:), f(:)
+real(dp) :: g(size(Rp))
+integer :: N
+N = size(Rp)
+g = f * Rp
+s = (  36799 * (g(1) + g(N  )) &
+    + 176648 * (g(2) + g(N-1)) &
+    +  54851 * (g(3) + g(N-2)) &
+    + 177984 * (g(4) + g(N-3)) &
+    +  89437 * (g(5) + g(N-4)) &
+    + 130936 * (g(6) + g(N-5)) &
+    + 119585 * (g(7) + g(N-6)) &
+    ) / 120960
+s = s + sum(g(8:N-7))
+end function
+
 
 end module
 
@@ -489,7 +548,7 @@ end module
 
 program ofmd
 use types, only: dp
-use ofmd_utils, only: free_energy_min, read_pseudo
+use ofmd_utils, only: free_energy_min, read_pseudo, radial_density_fourier
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
