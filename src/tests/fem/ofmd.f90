@@ -504,7 +504,7 @@ dk = 2*pi/L
 Ngmesh = 1000
 allocate(Vk(Ngmesh), density_ft(Ngmesh), w(Ngmesh), wp(Ngmesh))
 Z = 1
-w = linspace(1e-5_dp, real(Ng, dp), Ngmesh)*dk
+w = linspace(0._dp, real(Ng, dp), Ngmesh)*dk
 wp = (w(size(w)) - w(1)) / (size(w)-1)
 forall (j=1:Ngmesh)
     density_ft(j) = w(j)*integrate(Rp, R*sin(w(j)*R)*V) + cos(w(j)*Rc)
@@ -514,9 +514,9 @@ Vk = 4*pi/w**2 * density_ft
 
 Nmesh = 10000
 allocate(R2(Nmesh), density(Nmesh))
-R2 = linspace(1e-5_dp, L/2, Nmesh)
+R2 = linspace(0._dp, L/2, Nmesh)
 forall (j=1:Nmesh)
-    density(j) = 1/(2*pi**2 * R2(j)) * integrate(wp, w*sin(w*R2(j))*density_ft)
+    density(j) = 1/(2*pi**2) * integrate(wp, w**2*sinc(w*R2(j))*density_ft)
 end forall
 
 open(newunit=u, file="H.pseudo.density.ft", status="replace")
@@ -648,6 +648,14 @@ else
 end if
 end function
 
+real(dp) elemental function sinc(x) result(r)
+real(dp), intent(in) :: x
+if (abs(x) < 1e-8_dp) then
+    r = 1
+else
+    r = sin(x)/x
+end if
+end function
 
 
 end module
