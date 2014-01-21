@@ -673,7 +673,7 @@ call read_pseudo("H.pseudo", R, V, Z, Ediff)
 Nmesh = 10000
 allocate(R2(Nmesh), density_en(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
-call radial_density_fourier(R, V, L, Z, 128, R2, density_en)
+call radial_density_fourier(R, V, L, Z, 32, R2, density_en)
 
 open(newunit=u, file="H.pseudo.density.ft", status="replace")
 write(u, "(a)") "# Density. The lines are: r, n(r)"
