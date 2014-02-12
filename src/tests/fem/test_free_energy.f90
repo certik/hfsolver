@@ -101,30 +101,31 @@ sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
-background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
-print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-print *, "Subtracting constant background (Q/V): ", background
-nenq = nenq - background
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nenq, Ap, Aj, Ax, rhs)
-print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
-print *, "Solving..."
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
-print *, "Saving Ven to VTK"
-call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
-print *, "Saving values of Ven on a line"
-call line_save("Venq_line.txt", xin, nodes, elems, in, fullsol, &
-    [0._dp, 0._dp, 0._dp], [1._dp, 0._dp, 0._dp], 500)
-print *, "    Done."
+!background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
+!print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+!print *, "Subtracting constant background (Q/V): ", background
+!nenq = nenq - background
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nenq, Ap, Aj, Ax, rhs)
+!print *, "sum(rhs):    ", sum(rhs)
+!print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
+!print *, "Solving..."
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+!call c2fullc_3d(in, ib, sol, fullsol)
+!call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+!print *, "Saving Ven to VTK"
+!call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
+!print *, "Saving values of Ven on a line"
+!call line_save("Venq_line.txt", xin, nodes, elems, in, fullsol, &
+!    [0._dp, 0._dp, 0._dp], [1._dp, 0._dp, 0._dp], 500)
+!print *, "    Done."
 
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
 ! Electron-nucleus energy
-Een = integral(nodes, elems, wtq3, Venq*nq_neutral)
+!Een = integral(nodes, elems, wtq3, Venq*nq_neutral)
+Een = 0
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
@@ -248,7 +249,7 @@ print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 print *, abs(Ts  - (+10.61905))
 call assert(abs(Ts  - (+10.61905)) < 1e-4)
 print *, abs(Een - (- 3.80769))
-call assert(abs(Een - (- 3.80769)) < 1e-4)
+call assert(abs(Een - ( 0)) < 1e-4)
 print *, abs(Eh  - (+ 1.30109))
 call assert(abs(Eh  - (+ 1.30109)) < 1e-4)
 print *, abs(Exc  - (- 1.43806))
