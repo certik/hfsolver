@@ -139,7 +139,7 @@ integer, intent(in) :: myid
 integer, allocatable, intent(out) :: mask_elems(:)
 integer :: Ne, i, j, k, idx
 integer :: nesubx, nesuby, nesubz
-integer :: iminx, imaxx, iminy, imaxy, iminz, imaxz
+integer :: iminmax(6)
 call assert(modulo(nx, nsubx) == 0)
 call assert(modulo(ny, nsuby) == 0)
 call assert(modulo(nz, nsubz) == 0)
@@ -149,44 +149,50 @@ nesuby = ny / nsuby
 nesubz = nz / nsubz
 allocate(mask_elems(Ne))
 
-do i = 1, nsubx
-    do j = 1, nsuby
-        do k = 1, nsubz
-            if (p(i, j, k) == myid) then
-                iminx = (i-1)*nesubx + 1
-                imaxx = i*nesubx
-                iminy = (j-1)*nesuby + 1
-                imaxy = j*nesuby
-                iminz = (k-1)*nesubz + 1
-                imaxz = k*nesubz
-            end if
-        end do
-    end do
-end do
+iminmax = get_minmax(myid+1, nsubx, nsuby, nsubz, nesubx, nesuby, nesubz)
+!print *, "myid=", myid, " vals: ", iminmax
 
 mask_elems = 0
 idx = 1
 do i = 1, nx
     do j = 1, ny
         do k = 1, nz
-            if     (i >= iminx .and. i <= imaxx .and. &
-                    j >= iminy .and. j <= imaxy .and. &
-                    k >= iminz .and. k <= imaxz) then
+            if     (i >= iminmax(1) .and. i <= iminmax(2) .and. &
+                    j >= iminmax(3) .and. j <= iminmax(4) .and. &
+                    k >= iminmax(5) .and. k <= iminmax(6)) then
                 mask_elems(idx) = 1
             end if
             idx = idx + 1
         end do
     end do
 end do
-
-contains
-
-    integer pure function p(i, j, k)
-    integer, intent(in) :: i, j, k
-    p = (i-1)*(ny+1)*(nz+1) + (j-1)*(nz+1) + k - 1
-    end function
-
 end subroutine
+
+function get_minmax(id, nsubx, nsuby, nsubz, nesubx, nesuby, nesubz) result(r)
+! Calculates element indices belonging to the subdomain 'id'
+integer, intent(in) :: id ! ID of the subdomain (starts from 1)
+! number of subdomains in each direction:
+integer, intent(in) :: nsubx, nsuby, nsubz
+! number of elements in a subdomain in each direction:
+integer, intent(in) :: nesubx, nesuby, nesubz
+integer :: r(6) ! r = [iminx, imaxx, iminy, imaxy, iminz, imaxz]
+integer :: i, j, k, idx
+idx = 1
+do i = 1, nsubx
+    do j = 1, nsuby
+        do k = 1, nsubz
+            if (idx == id) then
+                r = [(i-1)*nesubx + 1, i*nesubx, &
+                     (j-1)*nesuby + 1, j*nesuby, &
+                     (k-1)*nesubz + 1, k*nesubz]
+                return
+            end if
+            idx = idx + 1
+        end do
+    end do
+end do
+call stop_error("get_minmax(): 'id' not found")
+end function
 
 
 subroutine define_connect_tensor_2d(nex, ney, p, ibc, gn)
