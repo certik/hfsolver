@@ -125,6 +125,68 @@ contains
 
 end subroutine
 
+subroutine cartesian_mesh_3d_mask(myid, nx, ny, nz, nsubx, nsuby, nsubz, &
+        mask_elems)
+! Returns a uniform 3D cartesian mesh of nx x ny x nz elements
+!
+! The lower left front corner is p1(3), the upper right back corner is p2(3).
+! number of (all!) elements in x, y and z-directions:
+integer, intent(in) :: nx, ny, nz
+! number of subdomains elements in x, y and z-directions:
+integer, intent(in) :: nsubx, nsuby, nsubz
+integer, intent(in) :: myid
+integer, allocatable, intent(out) :: mask_elems(:)
+integer :: Ne, i, j, k, idx
+integer :: nesubx, nesuby, nesubz
+integer :: iminx, imaxx, iminy, imaxy, iminz, imaxz
+call assert(modulo(nx, nsubx) == 0)
+call assert(modulo(ny, nsuby) == 0)
+call assert(modulo(nz, nsubz) == 0)
+Ne = nx*ny*nz
+nesubx = nx / nsubx
+nesuby = ny / nsuby
+nesubz = nz / nsubz
+allocate(mask_elems(Ne))
+
+do i = 1, nsubx
+    do j = 1, nsuby
+        do k = 1, nsubz
+            if (p(i, j, k) == myid) then
+                iminx = (i-1)*nesubx + 1
+                imaxx = i*nesubx
+                iminy = (j-1)*nesuby + 1
+                imaxy = j*nesuby
+                iminz = (k-1)*nesubz + 1
+                imaxz = k*nesubz
+            end if
+        end do
+    end do
+end do
+
+mask_elems = 0
+idx = 1
+do i = 1, nx
+    do j = 1, ny
+        do k = 1, nz
+            if     (i >= iminx .and. i <= imaxx .and. &
+                    j >= iminy .and. j <= imaxy .and. &
+                    k >= iminz .and. k <= imaxz) then
+                mask_elems(idx) = 1
+            end if
+            idx = idx + 1
+        end do
+    end do
+end do
+
+contains
+
+    integer pure function p(i, j, k)
+    integer, intent(in) :: i, j, k
+    p = (i-1)*(ny+1)*(nz+1) + (j-1)*(nz+1) + k - 1
+    end function
+
+end subroutine
+
 
 subroutine define_connect_tensor_2d(nex, ney, p, ibc, gn)
 ! 2D connectivity table for tensor-product order p elements
