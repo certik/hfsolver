@@ -25,11 +25,12 @@ use utils, only: stop_error, newunit
 use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 use feutils, only: phih
+use utils, only: assert
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
     define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
-    vtk_save, get_element_3d, fe_eval_xyz, line_save
+    vtk_save, get_element_3d, fe_eval_xyz, line_save, cartesian_mesh_3d_mask
 
 contains
 

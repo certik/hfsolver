@@ -3,7 +3,8 @@ module test_free_energy_utils
 use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
-    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
+    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
+    cartesian_mesh_3d_mask
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
@@ -17,8 +18,9 @@ public free_energy, read_pseudo
 
 contains
 
-subroutine free_energy(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, Ts, &
+subroutine free_energy(comm, L, Nex, Ney, Nez, nsubx, nsuby, nsubz, p, T_au, fnen, fn_pos, Eh, Een, Ts, &
         Exc, Nb)
+integer, intent(in) :: comm
 integer, intent(in) :: p
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
 procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
@@ -30,6 +32,7 @@ integer :: Nn, Ne, ibc
 ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
+integer, allocatable :: mask_elems(:)
 integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
         rhs(:), sol(:), &
@@ -40,9 +43,15 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
 integer :: i, j, k, m
 integer, intent(in) :: Nex, Ney, Nez
+integer, intent(in) :: nsubx, nsuby, nsubz
 real(dp) :: background
 real(dp) :: Lx, Ly, Lz
 real(dp) :: beta, tmp
+integer :: myid, ierr, nproc
+
+call MPI_COMM_RANK(comm,myid,ierr)
+call MPI_COMM_SIZE(comm,nproc,ierr)
+call assert(nsubx*nsuby*nsubz == nproc)
 
 ibc = 3 ! Periodic boundary condition
 
@@ -52,6 +61,8 @@ Lz = L
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
+call cartesian_mesh_3d_mask(myid, Nex, Ney, Nez, nsubx, nsuby, nsubz, &
+        mask_elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = 20
@@ -239,6 +250,8 @@ comm_all  = MPI_COMM_WORLD
 call MPI_COMM_RANK(comm_all,myid,ierr)
 call MPI_COMM_SIZE(comm_all,nproc,ierr)
 
+print *, "myid =", myid
+
 
 Z = 1
 Rcut = 0.3_dp
@@ -246,7 +259,7 @@ p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(L, 8, 8, 8, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy(comm_all, L, 8, 8, 8, 2, 2, 2, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
