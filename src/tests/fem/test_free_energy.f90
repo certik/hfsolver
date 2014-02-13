@@ -56,6 +56,8 @@ integer, allocatable :: matAi(:), matAj(:)
 real(dp),  allocatable :: matAx(:)
 integer :: idx
 integer :: Nesub ! number of elements on a subdomain
+integer, allocatable :: global_to_local(:)
+integer :: Nbsub ! number of basis functions on a subdomain
 
 call MPI_COMM_RANK(comm,myid,ierr)
 call MPI_COMM_SIZE(comm,nproc,ierr)
@@ -118,7 +120,7 @@ nq_neutral = nq_pos - background
 !call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
 !    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
 
-Nesub = count(mask_elems==1)
+Nesub = count(mask_elems == 1)
 
 allocate(matAi(Nesub*(p+1)**6))
 allocate(matAj(Nesub*(p+1)**6))
@@ -126,14 +128,16 @@ allocate(matAx(Nesub*(p+1)**6))
 
 call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq3, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
+allocate(global_to_local(Nb))
 call assemble_3d_coo(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
         mask_elems, &
-        matAi, matAj, matAx, rhs, idx)
+        matAi, matAj, matAx, rhs, idx, global_to_local)
+Nbsub = count(global_to_local /= 0)
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
 print *, "Solving..."
 print *, "myid = ", myid, "mask_elems = ", mask_elems
-print *, "myid = ", myid, "idx = ", idx
+print *, "myid = ", myid, "Nbsub = ", Nbsub
 call MPI_BARRIER(comm, ierr)
 stop "OK"
 !sol = solve(A, rhs)

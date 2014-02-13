@@ -163,7 +163,7 @@ end subroutine
 
 subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
         elem_mask, &
-        matAi, matAj, matAx, rhs, idx)
+        matAi, matAj, matAx, rhs, idx, global_to_local)
 ! The actual, low level assembly
 real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
 integer, intent(in):: ib(:, :, :, :)
@@ -176,11 +176,14 @@ integer, intent(out) :: matAi(:), matAj(:)
 real(dp), intent(out) :: matAx(:)
 real(dp), intent(out):: rhs(:)
 integer, intent(out) :: idx
+integer, intent(out) :: global_to_local(:)
 real(dp), dimension(size(wtq, 1), size(wtq, 2), size(wtq, 3)) :: fq
 integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
+integer :: counter
 rhs = 0
 idx = 0
+global_to_local = 0
 do e = 1, Ne
     fq = rhsq(:, :, :, e) * jac_det * wtq
     do bz = 1, p+1
@@ -199,6 +202,7 @@ do e = 1, Ne
                 matAi(idx) = i
                 matAj(idx) = j
                 matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+                global_to_local(i) = 1
                 if (i /= j) then
                     ! Symmetric contribution
                     idx = idx + 1
@@ -214,6 +218,13 @@ do e = 1, Ne
     end do
     end do
     end do
+end do
+counter = 0
+do i = 1, size(global_to_local)
+    if (global_to_local(i) /= 0) then
+        counter = counter + 1
+        global_to_local(i) = counter
+    end if
 end do
 end subroutine
 
@@ -232,11 +243,13 @@ real(dp), intent(out):: rhs(:)
 integer, dimension(Ne*(p+1)**6) :: matAi, matAj
 real(dp),  dimension(Ne*(p+1)**6) :: matAx
 integer :: elem_mask(1) !! FIXME
+integer :: global_to_local(1) !! FIXME
 ! Actual size:
 integer :: idx
+call stop_error("stop")
 call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
         elem_mask, &
-        matAi, matAj, matAx, rhs, idx)
+        matAi, matAj, matAx, rhs, idx, global_to_local)
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
     matBp, matBj, matBx)
 end subroutine
