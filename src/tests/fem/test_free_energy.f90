@@ -219,9 +219,12 @@ use constants, only: Ha2eV, pi
 use utils, only: loadtxt, assert
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
+use mpi
+!use mpi_base
+!use mpi_constants
 implicit none
 
-include "mpif.h"
+!include "mpif.h"
 
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF
