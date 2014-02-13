@@ -51,7 +51,7 @@ integer :: myid, ierr, nproc
 
 call MPI_COMM_RANK(comm,myid,ierr)
 call MPI_COMM_SIZE(comm,nproc,ierr)
-call assert(nsubx*nsuby*nsubz == nproc)
+if (nsubx*nsuby*nsubz /= nproc) call stop_error("nproc must be equal to the number of subdomains")
 
 ibc = 3 ! Periodic boundary condition
 
