@@ -162,6 +162,7 @@ end do
 end subroutine
 
 subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        elem_mask, &
         matAi, matAj, matAx, rhs, idx)
 ! The actual, low level assembly
 real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
@@ -170,6 +171,7 @@ integer, intent(in) :: Ne, p
 real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
 real(dp), intent(in) :: jac_det
 real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+integer, intent(in) :: elem_mask(:)
 integer, intent(out) :: matAi(:), matAj(:)
 real(dp), intent(out) :: matAx(:)
 real(dp), intent(out):: rhs(:)
@@ -186,26 +188,28 @@ do e = 1, Ne
     do bx = 1, p+1
         j = ib(bx, by, bz, e)
         if (j==0) cycle
-        do az = 1, p+1
-        do ay = 1, p+1
-        do ax = 1, p+1
-            i = ib(ax, ay, az, e)
-            if (i == 0) cycle
-            if (j > i) cycle
-            idx = idx + 1
-            matAi(idx) = i
-            matAj(idx) = j
-            matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
-            if (i /= j) then
-                ! Symmetric contribution
+        if (elem_mask(e) == 1) then
+            do az = 1, p+1
+            do ay = 1, p+1
+            do ax = 1, p+1
+                i = ib(ax, ay, az, e)
+                if (i == 0) cycle
+                if (j > i) cycle
                 idx = idx + 1
-                matAi(idx) = j
-                matAj(idx) = i
+                matAi(idx) = i
+                matAj(idx) = j
                 matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
-            end if
-        end do
-        end do
-        end do
+                if (i /= j) then
+                    ! Symmetric contribution
+                    idx = idx + 1
+                    matAi(idx) = j
+                    matAj(idx) = i
+                    matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+                end if
+            end do
+            end do
+            end do
+        end if
         rhs(j) = rhs(j) + sum(phi_v(:, :, :, bx, by, bz) * fq)
     end do
     end do
@@ -227,9 +231,11 @@ real(dp), intent(out):: rhs(:)
 ! Maximum possible size:
 integer, dimension(Ne*(p+1)**6) :: matAi, matAj
 real(dp),  dimension(Ne*(p+1)**6) :: matAx
+integer :: elem_mask(1) !! FIXME
 ! Actual size:
 integer :: idx
 call assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
+        elem_mask, &
         matAi, matAj, matAx, rhs, idx)
 call coo2csr_canonical(matAi(:idx), matAj(:idx), matAx(:idx), &
     matBp, matBj, matBx)

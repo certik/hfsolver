@@ -5,7 +5,8 @@ use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
     cartesian_mesh_3d_mask
-use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz
+use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
+    assemble_3d_precalc, assemble_3d_coo
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -48,6 +49,13 @@ real(dp) :: background
 real(dp) :: Lx, Ly, Lz
 real(dp) :: beta, tmp
 integer :: myid, ierr, nproc
+real(dp), allocatable :: phi_v(:, :, :, :, :, :), Am_loc(:, :, :, :, :, :)
+!real(dp) :: lx, ly, lz
+real(dp) :: jac_det
+integer, allocatable :: matAi(:), matAj(:)
+real(dp),  allocatable :: matAx(:)
+integer :: idx
+integer :: Nesub ! number of elements on a subdomain
 
 call MPI_COMM_RANK(comm,myid,ierr)
 call MPI_COMM_SIZE(comm,nproc,ierr)
@@ -63,6 +71,9 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 call cartesian_mesh_3d_mask(myid, Nex, Ney, Nez, nsubx, nsuby, nsubz, &
         mask_elems)
+!print *, "myid = ", myid, "mask_elems = ", mask_elems
+!call MPI_BARRIER(comm, ierr)
+!stop "OK"
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = 20
@@ -74,6 +85,8 @@ print *, "p =", p
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
+allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
 call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
 forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
 allocate(phihq(size(xiq), size(xin)))
@@ -102,11 +115,27 @@ background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nq_neutral = nq_pos - background
-call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
+
+Nesub = count(mask_elems==1)
+
+allocate(matAi(Nesub*(p+1)**6))
+allocate(matAj(Nesub*(p+1)**6))
+allocate(matAx(Nesub*(p+1)**6))
+
+call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq3, phihq, &
+        dphihq, jac_det, Am_loc, phi_v)
+call assemble_3d_coo(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
+        mask_elems, &
+        matAi, matAj, matAx, rhs, idx)
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
 print *, "Solving..."
+print *, "myid = ", myid, "mask_elems = ", mask_elems
+print *, "myid = ", myid, "idx = ", idx
+call MPI_BARRIER(comm, ierr)
+stop "OK"
 !sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
 call c2fullc_3d(in, ib, sol, fullsol)
@@ -250,7 +279,7 @@ comm_all  = MPI_COMM_WORLD
 call MPI_COMM_RANK(comm_all,myid,ierr)
 call MPI_COMM_SIZE(comm_all,nproc,ierr)
 
-print *, "myid =", myid
+!print *, "myid =", myid
 
 
 Z = 1
@@ -259,7 +288,7 @@ p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(comm_all, L, 8, 8, 8, 2, 2, 2, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy(comm_all, L, 2, 2, 2, 2, 1, 1, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
