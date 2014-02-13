@@ -97,7 +97,7 @@ print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
 print *, "Solving..."
 !sol = solve(A, rhs)
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
@@ -220,10 +220,22 @@ use utils, only: loadtxt, assert
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 implicit none
+
+include "mpif.h"
+
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF
 real(dp) :: Z
 real(dp) :: Rcut, L, T_eV, T_au
+!  parallel variables
+integer :: myid, comm_all, nproc, ierr
+
+
+call MPI_INIT(ierr)
+comm_all  = MPI_COMM_WORLD
+call MPI_COMM_RANK(comm_all,myid,ierr)
+call MPI_COMM_SIZE(comm_all,nproc,ierr)
+
 
 Z = 1
 Rcut = 0.3_dp
@@ -254,6 +266,8 @@ print *, abs(Eh  - (+ 1.30109))
 call assert(abs(Eh  - (+ 1.30109)) < 1e-4)
 print *, abs(Exc  - (- 1.43806))
 call assert(abs(Exc  - (- 1.43806)) < 1e-4)
+
+call MPI_FINALIZE(ierr)
 
 contains
 
