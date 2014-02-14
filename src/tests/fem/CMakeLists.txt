@@ -1,5 +1,5 @@
 #link_directories("/nh/nest/u/ondrej/repos/bddc/xx/lib /nh/nest/u/ondrej/repos/hashstack/default/lib")
-set(LIBS ${LIBS} /nh/nest/u/ondrej/repos/bddc/xx/lib/libbddcml.a)
+set(LIBS ${LIBS} $ENV{PYTHONHPC}/lib/libbddcml.a)
 macro(ADDPROG name)
     add_executable(${name} ${name}.f90)
     target_link_libraries(${name} hfsolver ${LIBS})
