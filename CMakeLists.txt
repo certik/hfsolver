@@ -64,10 +64,6 @@ endif ()
 # FEAST is included in src/feast
 set(LIBS ${LIBS} feast)
 
-# Lapack
-find_package(Lapack REQUIRED)
-set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
-
 # libint2
 set(WITH_LIBINT no
     CACHE BOOL "Build with libint (http://sourceforge.net/p/libint/) support")
@@ -104,6 +100,15 @@ if(WITH_PETSC)
     include_directories(${PETSC_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${PETSC_LIBRARIES})
 endif()
+
+# Lapack
+find_package(BDDCML REQUIRED)
+set(LIBS ${LIBS} ${BDDCML_LIBRARIES})
+
+# Lapack
+find_package(Lapack REQUIRED)
+set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+
 
 # MPI
 if (WITH_MPI)
@@ -153,6 +158,7 @@ endif ()
 message("LIBS: ${LIBS}")
 message("Installation prefix: ${CMAKE_INSTALL_PREFIX}")
 message("LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
+message("BDDCML_LIBRARIES: ${BDDCML_LIBRARIES}")
 message("WITH_LIBINT: ${WITH_LIBINT}")
 if(WITH_LIBINT)
     message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
