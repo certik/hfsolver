@@ -69,6 +69,37 @@ real(dp) :: elx, ely, elz
 integer :: iax, iay, iaz
 integer :: e
 real(dp) :: jacx, jacy, jacz
+integer :: nlevels, nsub_loc_1, verbose_level
+integer :: nsublev(2)
+integer :: is_rhs_complete_int
+integer :: is_assembled_int
+integer :: matrixtype
+
+integer,parameter :: use_preconditioner_defaults = 0
+
+! use arithmetic constraints on edges and faces?
+integer,parameter :: use_arithmetic_constraints = 1
+
+! use adaptive constraints on faces?
+integer,parameter :: use_adaptive_constraints = 0
+
+! use user constraints? - not used in this example
+integer,parameter :: use_user_constraints = 0
+
+! what type of weights use on interface?
+! 0 - weights by cardinality
+! 1 - weights by diagonal stiffness
+! 2 - weights based on first row of element data
+! 3 - weights based on dof data
+! 4 - weights by Marta Certikova - unit load
+! 5 - weights by Marta Certikova - unit jump
+! 6 - weights by Schur row sums for whole subdomain
+! 7 - weights by Schur row sums computed face by face
+integer,parameter :: weights_type = 0
+
+! should parallel division be used (ParMETIS instead of METIS) on the first level?
+integer,parameter :: parallel_division = 1
+
 
 call MPI_COMM_RANK(comm,myid,ierr)
 call MPI_COMM_SIZE(comm,nproc,ierr)
@@ -206,6 +237,20 @@ sols = 0
 matAi = global_to_local(matAi)
 matAj = global_to_local(matAj)
 
+nlevels = 2  ! bddc levels
+nsublev = [nproc, 1]
+
+! tell me how much subdomains should I load
+nsub_loc_1 = -1
+verbose_level = 1
+
+matrixtype = 1
+
+is_assembled_int = 0
+is_rhs_complete_int = 1
+
+call bddcml_init(nlevels, nsublev, size(nsublev), nsub_loc_1, comm, verbose_level, 1)
+
 call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
                myid+1, Nesub, Nbsub, Nbsub, &
                elems_sub,size(elems_sub),nnets,size(nnets), nndfs,size(nndfs), &
@@ -213,12 +258,20 @@ call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
                     size(local_to_global), isegns,size(isegns), &
                xyzs,size(xyzs, 1), size(xyzs, 2), &
                ifixs,size(ifixs), fixvs,size(fixvs), &
-               rhss,size(rhss), 1, &
+               rhss,size(rhss), is_rhs_complete_int, &
                sols,size(sols), &
-               1, matAi, matAj, matAx, size(matAx), 0, &
+               matrixtype, matAi, matAj, matAx, size(matAx), is_assembled_int, &
                user_constraints,size(user_constraints, 1),size(user_constraints, 2), &
                element_data,size(element_data, 1),size(element_data, 2), &
                dof_data,size(dof_data))
+
+call bddcml_setup_preconditioner(matrixtype,&
+                                   use_preconditioner_defaults, &
+                                   parallel_division,&
+                                   use_arithmetic_constraints,&
+                                   use_adaptive_constraints,&
+                                   use_user_constraints,&
+                                   weights_type)
 
 
 print *, "sum(rhs):    ", sum(rhs)
