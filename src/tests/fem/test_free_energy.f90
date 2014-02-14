@@ -207,7 +207,10 @@ allocate(matAi(Asize))
 allocate(matAj(Asize))
 allocate(matAx(Asize))
 
-call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq3, phihq, &
+elx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+ely = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
+elz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
+call assemble_3d_precalc(p, Nq, elx, ely, elz, wtq3, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
 allocate(global_to_local(Nb))
 call assemble_3d_coo(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
@@ -243,9 +246,6 @@ allocate(nnets(Nesub))
 nnets = Nbelem
 allocate(nndfs(Nbsub))
 nndfs = 1
-elx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
-ely = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
-elz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
 jacx = elx/2
 jacy = ely/2
 jacz = elz/2
