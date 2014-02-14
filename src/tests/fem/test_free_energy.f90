@@ -311,6 +311,10 @@ call bddcml_solve(comm, krylov_method, tol,maxit,ndecrmax, &
     recycling_int, max_number_of_stored_vectors, &
     num_iter, converged_reason, condition_number)
 
+call bddcml_download_global_solution(sol, size(sol))
+call bddcml_finalize()
+
+
 
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
