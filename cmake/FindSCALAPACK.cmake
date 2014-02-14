@@ -1,0 +1,4 @@
+find_library(SCALAPACK_LIBRARIES scalapack $ENV{PYTHONHPC}/lib NO_DEFAULT_PATH)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(SCALAPACK_LIBRARIES DEFAULT_MSG SCALAPACK_LIBRARIES)
