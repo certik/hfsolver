@@ -485,7 +485,7 @@ p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(comm_all, L, 8, 8, 8, 2, 2, 2, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy(comm_all, L, 8, 8, 8, 2, 1, 1, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 if (myid == 0) then
 print *, "p =", p
