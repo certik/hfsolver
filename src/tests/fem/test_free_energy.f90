@@ -35,13 +35,13 @@ real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer, allocatable :: mask_elems(:)
 integer :: Nq
-real(dp), allocatable :: xin(:), xiq(:), wtq(:), Ax(:), &
+real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
         rhs(:), sol(:), &
         fullsol(:), Vhq(:, :, :, :), wtq3(:, :, :), phihq(:, :), dphihq(:, :),&
         nenq(:, :, :, :), &
         Venq(:, :, :, :), y(:, :, :, :), F0(:, :, :, :), &
         exc_density(:, :, :, :), nq_pos(:, :, :, :), nq_neutral(:, :, :, :)
-integer, allocatable :: in(:, :, :, :), ib(:, :, :, :), Ap(:), Aj(:)
+integer, allocatable :: in(:, :, :, :), ib(:, :, :, :) !Ap(:), Aj(:)
 integer :: i, j, k, m
 integer, intent(in) :: Nex, Ney, Nez
 integer, intent(in) :: nsubx, nsuby, nsubz
@@ -325,10 +325,10 @@ print *, "Solving..."
 print *, "myid = ", myid, "mask_elems = ", mask_elems
 print *, "myid = ", myid, "Nbsub = ", Nbsub
 print *, "myid = ", myid, "local_to_global = ", local_to_global
-call MPI_BARRIER(comm, ierr)
-stop "OK"
+!call MPI_BARRIER(comm, ierr)
+!stop "OK"
 !sol = solve(A, rhs)
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
