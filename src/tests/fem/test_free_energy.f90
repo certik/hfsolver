@@ -63,7 +63,7 @@ integer, allocatable :: elems_sub(:), isegns(:), nnets(:), nndfs(:)
 integer, allocatable :: ifixs(:)
 real(dp), allocatable :: xyzs(:, :), xyz_global(:, :), fixvs(:), rhss(:), &
     sols(:)
-real(dp) :: user_constraints(1, 1), element_data(1, 1), dof_data(1)
+real(dp) :: user_constraints(1), element_data(1), dof_data(1)
 real(dp), dimension(p+1) :: xp, yp, zp
 real(dp) :: elx, ely, elz
 integer :: iax, iay, iaz
@@ -77,6 +77,7 @@ integer :: matrixtype
 
 real(dp) :: condition_number
 integer :: num_iter, converged_reason
+integer :: Asize
 
 ! *************************
 ! KRYLOV METHOD PARAMETERS:
@@ -198,9 +199,12 @@ nq_neutral = nq_pos - background
 
 Nesub = count(mask_elems == 1)
 
-allocate(matAi(Nesub*(p+1)**6))
-allocate(matAj(Nesub*(p+1)**6))
-allocate(matAx(Nesub*(p+1)**6))
+Nbelem = (p+1)**3
+Asize = Nesub * Nbelem * (Nbelem+1)/2
+
+allocate(matAi(Asize))
+allocate(matAj(Asize))
+allocate(matAx(Asize))
 
 call assemble_3d_precalc(p, Nq, lx, ly, lz, wtq3, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
@@ -217,7 +221,6 @@ do i = 1, size(global_to_local)
         j = j + 1
     end if
 end do
-Nbelem = (p+1)**3
 allocate(elems_sub(Nesub*Nbelem))
 j = 1
 do i = 1, Ne
@@ -295,9 +298,9 @@ call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
                rhss,size(rhss), is_rhs_complete_int, &
                sols,size(sols), &
                matrixtype, matAi, matAj, matAx, size(matAx), is_assembled_int, &
-               user_constraints,size(user_constraints, 1),size(user_constraints, 2), &
-               element_data,size(element_data, 1),size(element_data, 2), &
-               dof_data,size(dof_data))
+               user_constraints, 0, 0, &
+               element_data, 0, 0, &
+               dof_data, 0)
 
 call bddcml_setup_preconditioner(matrixtype,&
                                    use_preconditioner_defaults, &
