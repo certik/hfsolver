@@ -101,9 +101,13 @@ if(WITH_PETSC)
     set(LIBS ${LIBS} ${PETSC_LIBRARIES})
 endif()
 
-# Lapack
+# BDDCML
 find_package(BDDCML REQUIRED)
 set(LIBS ${LIBS} ${BDDCML_LIBRARIES})
+
+# MUMPS
+find_package(MUMPS REQUIRED)
+set(LIBS ${LIBS} ${MUMPS_LIBRARIES})
 
 # Lapack
 find_package(Lapack REQUIRED)
@@ -159,6 +163,7 @@ message("LIBS: ${LIBS}")
 message("Installation prefix: ${CMAKE_INSTALL_PREFIX}")
 message("LAPACK_LIBRARIES: ${LAPACK_LIBRARIES}")
 message("BDDCML_LIBRARIES: ${BDDCML_LIBRARIES}")
+message("MUMPS_LIBRARIES: ${MUMPS_LIBRARIES}")
 message("WITH_LIBINT: ${WITH_LIBINT}")
 if(WITH_LIBINT)
     message("LIBINT_INCLUDE_DIRS: ${LIBINT_INCLUDE_DIRS}")
