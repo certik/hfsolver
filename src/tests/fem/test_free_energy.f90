@@ -30,7 +30,7 @@ real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
 
 integer :: Nn, Ne, ibc
-! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
+! nodes(:, i) are the (x,y,z) coordinates of the i-th mesh node
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer, allocatable :: mask_elems(:)
@@ -56,8 +56,19 @@ integer, allocatable :: matAi(:), matAj(:)
 real(dp),  allocatable :: matAx(:)
 integer :: idx
 integer :: Nesub ! number of elements on a subdomain
+integer :: Nbelem
 integer, allocatable :: global_to_local(:), local_to_global(:)
 integer :: Nbsub ! number of basis functions on a subdomain
+integer, allocatable :: elems_sub(:), isegns(:), nnets(:), nndfs(:)
+integer, allocatable :: ifixs(:)
+real(dp), allocatable :: xyzs(:, :), xyz_global(:, :), fixvs(:), rhss(:), &
+    sols(:)
+real(dp) :: user_constraints(1, 1), element_data(1, 1), dof_data(1)
+real(dp), dimension(p+1) :: xp, yp, zp
+real(dp) :: elx, ely, elz
+integer :: iax, iay, iaz
+integer :: e
+real(dp) :: jacx, jacy, jacz
 
 call MPI_COMM_RANK(comm,myid,ierr)
 call MPI_COMM_SIZE(comm,nproc,ierr)
@@ -141,6 +152,75 @@ do i = 1, size(global_to_local)
         j = j + 1
     end if
 end do
+Nbelem = (p+1)**3
+allocate(elems_sub(Nesub*Nbelem))
+j = 1
+do i = 1, Ne
+    if (mask_elems(i) == 1) then
+        elems_sub(j:j+Nbelem-1) = global_to_local(reshape(ib(:, :, :, i), [Nbelem]))
+        j = j + Nbelem
+    end if
+end do
+allocate(isegns(Nesub))
+j = 1
+do i = 1, Ne
+    if (mask_elems(i) == 1) then
+        isegns(j) = i
+        j = j + 1
+    end if
+end do
+allocate(nnets(Nesub))
+nnets = Nbelem
+allocate(nndfs(Nbsub))
+nndfs = 1
+elx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
+ely = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
+elz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
+jacx = elx/2
+jacy = ely/2
+jacz = elz/2
+allocate(xyz_global(3, Nb))
+do e = 1, Ne
+    xp = (xin + 1) * jacx + nodes(1, elems(1, e))
+    yp = (xin + 1) * jacy + nodes(2, elems(1, e))
+    zp = (xin + 1) * jacz + nodes(3, elems(1, e))
+    do iaz = 1, p+1
+    do iay = 1, p+1
+    do iax = 1, p+1
+        i = ib(iax, iay, iaz, e)
+        xyz_global(:, i) = [xp(iax), yp(iay), zp(iaz)]
+    end do
+    end do
+    end do
+end do
+allocate(xyzs(Nbsub, 3))
+xyzs = transpose(xyz_global(:, local_to_global))
+allocate(ifixs(Nbsub))
+ifixs = 0
+allocate(fixvs(Nbsub))
+fixvs = 0
+allocate(rhss(Nbsub))
+rhss = rhs(local_to_global)
+allocate(sols(Nbsub))
+sols = 0
+matAi = global_to_local(matAi)
+matAj = global_to_local(matAj)
+
+call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
+               myid+1, Nesub, Nbsub, Nbsub, &
+               elems_sub,size(elems_sub),nnets,size(nnets), nndfs,size(nndfs), &
+               local_to_global,size(local_to_global), local_to_global, &
+                    size(local_to_global), isegns,size(isegns), &
+               xyzs,size(xyzs, 1), size(xyzs, 2), &
+               ifixs,size(ifixs), fixvs,size(fixvs), &
+               rhss,size(rhss), 1, &
+               sols,size(sols), &
+               1, matAi, matAj, matAx, size(matAx), 0, &
+               user_constraints,size(user_constraints, 1),size(user_constraints, 2), &
+               element_data,size(element_data, 1),size(element_data, 2), &
+               dof_data,size(dof_data))
+
+
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
 print *, "Solving..."

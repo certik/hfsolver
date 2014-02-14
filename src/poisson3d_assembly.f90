@@ -197,19 +197,20 @@ do e = 1, Ne
             do ax = 1, p+1
                 i = ib(ax, ay, az, e)
                 if (i == 0) cycle
-                if (j > i) cycle
+                if (j < i) cycle
                 idx = idx + 1
                 matAi(idx) = i
                 matAj(idx) = j
                 matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
                 global_to_local(i) = 1
-                if (i /= j) then
-                    ! Symmetric contribution
-                    idx = idx + 1
-                    matAi(idx) = j
-                    matAj(idx) = i
-                    matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
-                end if
+                ! Only upper triangle is stored.
+                !if (i /= j) then
+                !    ! Symmetric contribution
+                !    idx = idx + 1
+                !    matAi(idx) = j
+                !    matAj(idx) = i
+                !    matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+                !end if
             end do
             end do
             end do
