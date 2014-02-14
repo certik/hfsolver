@@ -75,6 +75,40 @@ integer :: is_rhs_complete_int
 integer :: is_assembled_int
 integer :: matrixtype
 
+real(dp) :: condition_number
+integer :: num_iter, converged_reason
+
+! *************************
+! KRYLOV METHOD PARAMETERS:
+! *************************
+
+! Krylov subspace iterative method to be used
+!     -1 - use solver defaults
+!     0 - PCG
+!     1 - BICGSTAB (choose for general symmetric and general matrices)
+      integer,parameter :: krylov_method = 0
+
+! use recycling of Krylov subspace
+!     0 - no recycling used
+!     1 - basis of the Krylov subspace will be orthogonalized and also used for new right hand sides
+      integer,parameter :: recycling_int = 1
+! size of the Krylov subspace basis to store
+      integer,parameter :: max_number_of_stored_vectors = 50
+
+! maximum number of iterations of a Krylov subspace method
+      integer,parameter :: maxit = 500
+
+! maximum number of iterations of a Krylov subspace method with non-decreasing residual
+      integer,parameter :: ndecrmax = 50
+
+! relative precision of the Krylov subspace method ||residual||/||right-hand side||
+      real(dp),parameter :: tol = 1.e-6_dp
+
+! *******************************
+! BDDC PRECONDITIONER PARAMETERS:
+! *******************************
+
+
 integer,parameter :: use_preconditioner_defaults = 0
 
 ! use arithmetic constraints on edges and faces?
@@ -272,6 +306,10 @@ call bddcml_setup_preconditioner(matrixtype,&
                                    use_adaptive_constraints,&
                                    use_user_constraints,&
                                    weights_type)
+
+call bddcml_solve(comm, krylov_method, tol,maxit,ndecrmax, &
+    recycling_int, max_number_of_stored_vectors, &
+    num_iter, converged_reason, condition_number)
 
 
 print *, "sum(rhs):    ", sum(rhs)
