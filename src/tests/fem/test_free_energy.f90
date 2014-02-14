@@ -342,6 +342,18 @@ if (myid == 0) then
     !nenq = nenq - background
     !call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
     !    4*pi*nenq, Ap, Aj, Ax, rhs)
+
+    ! 1. rhs
+
+    call bddcml_change_subdomain_data(isub, &
+                                       ifixs,lifixs, fixvs,lfixvs, &
+                                       rhss,lrhss, is_rhs_complete_int, &
+                                       sols,lsols)
+
+    call bddcml_setup_new_data
+    ! solve (just like above)
+    ! download_global_solution (just like above)
+
     !print *, "sum(rhs):    ", sum(rhs)
     !print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
     !print *, "Solving..."
