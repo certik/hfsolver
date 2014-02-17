@@ -108,14 +108,13 @@ real(dp), intent(in) :: Ax(:)
 integer, allocatable, intent(out) :: Bp(:), Bj(:)
 real(dp), allocatable, intent(out) :: Bx(:)
 logical, optional, intent(in) :: verbose
-integer, allocatable :: Bj_(:)
-real(dp), allocatable :: Bx_(:)
+integer :: Bj_(size(Ai))
+real(dp) :: Bx_(size(Ai))
 integer :: nnz
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
-! TODO: debug this and try to reallocate
-allocate(Bp(maxval(Ai)+1), Bj_(size(Ai)), Bx_(size(Ai)))
+allocate(Bp(maxval(Ai)+1))
 if (verbose_) print *, "coo2csr"
 call coo2csr(Ai, Aj, Ax, Bp, Bj_, Bx_)
 if (verbose_) print *, "csr_sort_indices"
