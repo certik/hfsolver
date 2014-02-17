@@ -129,6 +129,9 @@ psi_norm = integral(nodes, elems, wtq3, psi**2)
 print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
+call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
+    nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+    Eh, Een, Ts, Exc, free_energy_)
 call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
     xiq, wtq3, T_au, &
     nenq_pos, psi**2, phihq, dphihq, Hpsi)
@@ -140,9 +143,6 @@ phi = ksi
 phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
 eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
-call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
-    Eh, Een, Ts, Exc, free_energy_)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
@@ -165,6 +165,9 @@ do iter = 1, max_iter
         T_au, &
         nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_)
+    call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
+        xiq, wtq3, T_au, &
+        nenq_pos, psi**2, phihq, dphihq, Hpsi)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
     print *, "Norm of psi:", psi_norm
@@ -186,11 +189,6 @@ do iter = 1, max_iter
             return
         end if
     end if
-    ! TODO: calculate the derivative together with the free energy, as pretty
-    ! much the whole calculation is shared.
-    call free_energy_derivative(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, &
-        xiq, wtq3, T_au, &
-        nenq_pos, psi**2, phihq, dphihq, Hpsi)
     Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
     mu = 1._dp / Nelec * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
     ksi_prev = ksi
