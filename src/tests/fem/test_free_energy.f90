@@ -199,6 +199,7 @@ nq_neutral = nq_pos - background
 !call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
 !    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
 
+
 Nesub = count(mask_elems == 1)
 
 Nbelem = (p+1)**3
@@ -211,13 +212,16 @@ allocate(matAx(Asize))
 elx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
 ely = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
 elz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
+print *, "precalculating"
 call assemble_3d_precalc(p, Nq, elx, ely, elz, wtq3, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
 allocate(global_to_local(Nb))
+print *, "assembling 1"
 call assemble_3d_coo(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
         mask_elems, &
         matAi, matAj, matAx, rhs, idx, global_to_local)
 call assert(idx == Asize)
+print *, "preparing data..."
 Nbsub = count(global_to_local /= 0)
 allocate(local_to_global(Nbsub))
 j = 1
@@ -251,6 +255,7 @@ jacx = elx/2
 jacy = ely/2
 jacz = elz/2
 allocate(xyz_global(3, Nb))
+print *, "preparing xyz data"
 do e = 1, Ne
     xp = (xin + 1) * jacx + nodes(1, elems(1, e))
     yp = (xin + 1) * jacy + nodes(2, elems(1, e))
@@ -264,6 +269,7 @@ do e = 1, Ne
     end do
     end do
 end do
+print *, "preparing the rest"
 allocate(xyzs(Nbsub, 3))
 xyzs = transpose(xyz_global(:, local_to_global))
 allocate(ifixs(Nbsub))
@@ -289,10 +295,12 @@ matrixtype = 1
 is_assembled_int = 0
 is_rhs_complete_int = 1
 
+print *, "bddcml_init"
 call bddcml_init(nlevels, nsublev, size(nsublev), nsub_loc_1, comm, verbose_level, 1)
 
 isub = myid + 1
 
+print *, "bddcml_upload_subdomain_data"
 call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
                isub, Nesub, Nbsub, Nbsub, &
                elems_sub,size(elems_sub),nnets,size(nnets), nndfs,size(nndfs), &
@@ -307,6 +315,7 @@ call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
                element_data, 0, 0, &
                dof_data, 0)
 
+print *, "bddcml_setup_preconditioner"
 call bddcml_setup_preconditioner(matrixtype,&
                                    use_preconditioner_defaults, &
                                    parallel_division,&
@@ -323,7 +332,11 @@ call bddcml_solve(comm, krylov_method, tol,maxit,ndecrmax, &
     recycling_int, max_number_of_stored_vectors, &
     num_iter, converged_reason, condition_number)
 
+print *, "getting the solution"
+
 call bddcml_download_global_solution(sol, size(sol))
+
+print *, "broadcasting"
 
 call MPI_BCAST(sol, size(sol), MPI_DOUBLE_PRECISION, 0, comm, ierr)
 
@@ -334,9 +347,11 @@ print *, "myid = ", myid, "Nbsub = ", Nbsub
 !stop "OK"
 !sol = solve(A, rhs)
 !sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
+print *, "converting to quadrature points"
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
+print *, "background"
 background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
 print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
 print *, "Subtracting constant background (Q/V): ", background
@@ -344,14 +359,17 @@ nenq = nenq - background
 !call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
 !    4*pi*nenq, Ap, Aj, Ax, rhs)
 
+print *, "assembly rhs"
 call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq, jac_det, wtq3, ib, phi_v, rhs)
 rhss = rhs(local_to_global)
 
+print *, "update rhs"
 call bddcml_change_subdomain_data(isub, &
     ifixs, size(ifixs), fixvs, size(fixvs), &
     rhss, size(rhss), is_rhs_complete_int, &
     sols, size(sols))
 
+print *, "setup_data"
 call bddcml_setup_new_data()
 
 print *, "sum(rhs):    ", sum(rhs)
@@ -362,14 +380,19 @@ call bddcml_solve(comm, krylov_method, tol,maxit,ndecrmax, &
     recycling_int, max_number_of_stored_vectors, &
     num_iter, converged_reason, condition_number)
 
+print *, "getting the solution"
 call bddcml_download_global_solution(sol, size(sol))
 
+print *, "broadcasting"
 call MPI_BCAST(sol, size(sol), MPI_DOUBLE_PRECISION, 0, comm, ierr)
 
+print *, "done"
 call bddcml_finalize()
 
 
 !sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+
+print *, "converting to quad points"
 
 call c2fullc_3d(in, ib, sol, fullsol)
 call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
@@ -380,6 +403,7 @@ call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 !    [0._dp, 0._dp, 0._dp], [1._dp, 0._dp, 0._dp], 500)
 !print *, "    Done."
 
+print *, "integrals..."
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
@@ -404,6 +428,7 @@ end do
 end do
 end do
 Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
+print *, "done"
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
