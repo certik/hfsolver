@@ -6,7 +6,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
     cartesian_mesh_3d_mask
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc, assemble_3d_coo
+    assemble_3d_precalc, assemble_3d_coo, assemble_3d_coo_rhs
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -136,6 +136,7 @@ integer,parameter :: weights_type = 0
 ! should parallel division be used (ParMETIS instead of METIS) on the first level?
 integer,parameter :: parallel_division = 1
 
+integer :: isub
 
 call MPI_COMM_RANK(comm,myid,ierr)
 call MPI_COMM_SIZE(comm,nproc,ierr)
@@ -290,8 +291,10 @@ is_rhs_complete_int = 1
 
 call bddcml_init(nlevels, nsublev, size(nsublev), nsub_loc_1, comm, verbose_level, 1)
 
+isub = myid + 1
+
 call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
-               myid+1, Nesub, Nbsub, Nbsub, &
+               isub, Nesub, Nbsub, Nbsub, &
                elems_sub,size(elems_sub),nnets,size(nnets), nndfs,size(nndfs), &
                local_to_global,size(local_to_global), local_to_global, &
                     size(local_to_global), isegns,size(isegns), &
@@ -312,76 +315,95 @@ call bddcml_setup_preconditioner(matrixtype,&
                                    use_user_constraints,&
                                    weights_type)
 
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
+print *, "Solving..."
+
 call bddcml_solve(comm, krylov_method, tol,maxit,ndecrmax, &
     recycling_int, max_number_of_stored_vectors, &
     num_iter, converged_reason, condition_number)
 
 call bddcml_download_global_solution(sol, size(sol))
-call bddcml_finalize()
 
 call MPI_BCAST(sol, size(sol), MPI_DOUBLE_PRECISION, 0, comm, ierr)
 
-if (myid == 0) then
+!print *, "myid = ", myid, "mask_elems = ", mask_elems
+print *, "myid = ", myid, "Nbsub = ", Nbsub
+!print *, "myid = ", myid, "local_to_global = ", local_to_global
+!call MPI_BARRIER(comm, ierr)
+!stop "OK"
+!sol = solve(A, rhs)
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
+call c2fullc_3d(in, ib, sol, fullsol)
+call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
 
-    print *, "sum(rhs):    ", sum(rhs)
-    print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
-    print *, "Solving..."
-    !print *, "myid = ", myid, "mask_elems = ", mask_elems
-    print *, "myid = ", myid, "Nbsub = ", Nbsub
-    !print *, "myid = ", myid, "local_to_global = ", local_to_global
-    !call MPI_BARRIER(comm, ierr)
-    !stop "OK"
-    !sol = solve(A, rhs)
-    !sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400, .true.)
-    call c2fullc_3d(in, ib, sol, fullsol)
-    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
+print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nenq = nenq - background
+!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
+!    4*pi*nenq, Ap, Aj, Ax, rhs)
 
-    !background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
-    !print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-    !print *, "Subtracting constant background (Q/V): ", background
-    !nenq = nenq - background
-    !call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-    !    4*pi*nenq, Ap, Aj, Ax, rhs)
-    !print *, "sum(rhs):    ", sum(rhs)
-    !print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
-    !print *, "Solving..."
-    !sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-    !call c2fullc_3d(in, ib, sol, fullsol)
-    !call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
-    !print *, "Saving Ven to VTK"
-    !call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
-    !print *, "Saving values of Ven on a line"
-    !call line_save("Venq_line.txt", xin, nodes, elems, in, fullsol, &
-    !    [0._dp, 0._dp, 0._dp], [1._dp, 0._dp, 0._dp], 500)
-    !print *, "    Done."
+call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq, jac_det, wtq3, ib, phi_v, rhs)
+rhss = rhs(local_to_global)
+
+call bddcml_change_subdomain_data(isub, &
+    ifixs, size(ifixs), fixvs, size(fixvs), &
+    rhss, size(rhss), is_rhs_complete_int, &
+    sols, size(sols))
+
+call bddcml_setup_new_data()
+
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nenq)
+print *, "Solving..."
+
+call bddcml_solve(comm, krylov_method, tol,maxit,ndecrmax, &
+    recycling_int, max_number_of_stored_vectors, &
+    num_iter, converged_reason, condition_number)
+
+call bddcml_download_global_solution(sol, size(sol))
+
+call MPI_BCAST(sol, size(sol), MPI_DOUBLE_PRECISION, 0, comm, ierr)
+
+call bddcml_finalize()
 
 
-    ! Hartree energy
-    Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
-    ! Electron-nucleus energy
-    !Een = integral(nodes, elems, wtq3, Venq*nq_neutral)
-    Een = 0
-    ! Kinetic energy using Perrot parametrization
-    beta = 1/T_au
-    ! The density must be positive, the f(y) fails for negative "y". Thus we use
-    ! nq_pos.
-    y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
-    if (any(y < 0)) call stop_error("Density must be positive")
-    F0 = nq_pos / beta * f(y)
-    Ts = integral(nodes, elems, wtq3, F0)
-    ! Exchange and correlation energy
-    do m = 1, Ne
-    do k = 1, Nq
-    do j = 1, Nq
-    do i = 1, Nq
-        call xc_pz(nq_pos(i, j, k, m), exc_density(i, j, k, m), tmp)
-    end do
-    end do
-    end do
-    end do
-    Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
-end if
-call MPI_BARRIER(comm, ierr)
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+
+call c2fullc_3d(in, ib, sol, fullsol)
+call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+!print *, "Saving Ven to VTK"
+!call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
+!print *, "Saving values of Ven on a line"
+!call line_save("Venq_line.txt", xin, nodes, elems, in, fullsol, &
+!    [0._dp, 0._dp, 0._dp], [1._dp, 0._dp, 0._dp], 500)
+!print *, "    Done."
+
+
+! Hartree energy
+Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
+! Electron-nucleus energy
+Een = integral(nodes, elems, wtq3, Venq*nq_neutral)
+! Kinetic energy using Perrot parametrization
+beta = 1/T_au
+! The density must be positive, the f(y) fails for negative "y". Thus we use
+! nq_pos.
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
+if (any(y < 0)) call stop_error("Density must be positive")
+F0 = nq_pos / beta * f(y)
+Ts = integral(nodes, elems, wtq3, F0)
+! Exchange and correlation energy
+do m = 1, Ne
+do k = 1, Nq
+do j = 1, Nq
+do i = 1, Nq
+    call xc_pz(nq_pos(i, j, k, m), exc_density(i, j, k, m), tmp)
+end do
+end do
+end do
+end do
+Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
 end subroutine
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)
@@ -481,34 +503,34 @@ call MPI_COMM_SIZE(comm_all,nproc,ierr)
 
 Z = 1
 Rcut = 0.3_dp
-p = 3
+p = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(comm_all, L, 2, 2, 2, 2, 1, 1, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy(comm_all, L, 8, 8, 8, 2, 1, 1, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 if (myid == 0) then
-print *, "p =", p
-print *, "DOF =", DOF
-print *, "Rcut =", Rcut
-print *, "T_au =", T_au
-print *, "Summary of energies [a.u.]:"
-print "('    Ts   = ', f14.8)", Ts
-print "('    Een  = ', f14.8)", Een
-print "('    Eee  = ', f14.8)", Eh
-print "('    Exc  = ', f14.8)", Exc
-print *, "   ---------------------"
-print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+    print *, "p =", p
+    print *, "DOF =", DOF
+    print *, "Rcut =", Rcut
+    print *, "T_au =", T_au
+    print *, "Summary of energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eh
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
-! The reference answers are converged to at least 1e-5:
-print *, abs(Ts  - (+10.61905))
-call assert(abs(Ts  - (+10.61905)) < 1e-4)
-print *, abs(Een - (- 3.80769))
-call assert(abs(Een - ( 0)) < 1e-4)
-print *, abs(Eh  - (+ 1.30109))
-call assert(abs(Eh  - (+ 1.30109)) < 1e-4)
-print *, abs(Exc  - (- 1.43806))
-call assert(abs(Exc  - (- 1.43806)) < 1e-4)
+    ! The reference answers are converged to at least 1e-5:
+    print *, abs(Ts  - (+10.61905))
+    call assert(abs(Ts  - (+10.61905)) < 1e-4)
+    print *, abs(Een - (- 3.80769))
+    call assert(abs(Een - (- 3.80769)) < 1e-4)
+    print *, abs(Eh  - (+ 1.30109))
+    call assert(abs(Eh  - (+ 1.30109)) < 1e-4)
+    print *, abs(Exc  - (- 1.43806))
+    call assert(abs(Exc  - (- 1.43806)) < 1e-4)
 end if
 
 call MPI_FINALIZE(ierr)
