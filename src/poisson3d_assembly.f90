@@ -190,13 +190,14 @@ do e = 1, Ne
     do by = 1, p+1
     do bx = 1, p+1
         j = ib(bx, by, bz, e)
-        if (j==0) cycle
+        call assert(j /= 0)
         if (elem_mask(e) == 1) then
             do az = 1, p+1
             do ay = 1, p+1
             do ax = 1, p+1
                 i = ib(ax, ay, az, e)
                 if (i == 0) cycle
+                call assert(i /= 0)
                 if (j < i) cycle
                 idx = idx + 1
                 matAi(idx) = i
@@ -246,7 +247,8 @@ do e = 1, Ne
     do by = 1, p+1
     do bx = 1, p+1
         j = ib(bx, by, bz, e)
-        call assert(j /= 0)
+        ! j is never equal to zero, that was checked by
+        ! assemble_3d_coo()
         rhs(j) = rhs(j) + sum(phi_v(:, :, :, bx, by, bz) * fq)
     end do
     end do
