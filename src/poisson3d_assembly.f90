@@ -7,7 +7,7 @@ use sparse, only: coo2csr_canonical
 implicit none
 private
 public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
-    assemble_3d_coo, assemble_3d_csr
+    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -206,6 +206,33 @@ do e = 1, Ne
         end do
         end do
         end do
+        rhs(j) = rhs(j) + sum(phi_v(:, :, :, bx, by, bz) * fq)
+    end do
+    end do
+    end do
+end do
+end subroutine
+
+subroutine assemble_3d_coo_rhs(Ne, p, rhsq, jac_det, wtq, ib, phi_v, rhs)
+real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(out):: rhs(:)
+real(dp), dimension(size(wtq, 1), size(wtq, 2), size(wtq, 3)) :: fq
+integer :: e, j
+integer :: bx, by, bz
+rhs = 0
+do e = 1, Ne
+    fq = rhsq(:, :, :, e) * jac_det * wtq
+    do bz = 1, p+1
+    do by = 1, p+1
+    do bx = 1, p+1
+        j = ib(bx, by, bz, e)
+        ! For periodic BC, 'j' is always nonzero. Uncomment the following line
+        ! to check that:
+        ! call assert(j /= 0)
         rhs(j) = rhs(j) + sum(phi_v(:, :, :, bx, by, bz) * fq)
     end do
     end do
