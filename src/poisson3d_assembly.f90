@@ -7,7 +7,7 @@ use sparse, only: coo2csr_canonical
 implicit none
 private
 public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
-    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs
+    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs, assemble_3d_coo_A
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -159,6 +159,51 @@ do bx = 1, p+1
 end do
 end do
 end do
+end subroutine
+
+subroutine assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi, matAj, matAx)
+! Assembles the matrix A
+! Assumes ib is never 0!
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+! Allocate the following three arrays to Ne*(p+1)**6 elements
+integer, intent(out) :: matAi(:), matAj(:)
+real(dp), intent(out) :: matAx(:)
+integer :: idx
+integer :: e, i, j
+integer :: ax, ay, az, bx, by, bz
+call assert(all(ib > 0))
+idx = 0
+do e = 1, Ne
+    do bz = 1, p+1
+    do by = 1, p+1
+    do bx = 1, p+1
+        j = ib(bx, by, bz, e)
+        do az = 1, p+1
+        do ay = 1, p+1
+        do ax = 1, p+1
+            i = ib(ax, ay, az, e)
+            if (j > i) cycle
+            idx = idx + 1
+            matAi(idx) = i
+            matAj(idx) = j
+            matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+            if (i /= j) then
+                ! Symmetric contribution
+                idx = idx + 1
+                matAi(idx) = j
+                matAj(idx) = i
+                matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+            end if
+        end do
+        end do
+        end do
+    end do
+    end do
+    end do
+end do
+call assert(idx == Ne*(p+1)**6)
 end subroutine
 
 subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
