@@ -5,11 +5,12 @@ use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc, assemble_3d_csr
+    assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
+use sparse, only: coo2csr_canonical
 use constants, only: pi
 use xc, only: xc_pz
 use optimize, only: bracket, brent
@@ -45,6 +46,11 @@ real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
 real(dp) :: Nelec, jac_det
 real(dp) :: psi_norm
+integer :: Ncoo
+integer, allocatable :: matAi_coo(:), matAj_coo(:)
+real(dp), allocatable :: matAx_coo(:)
+integer, allocatable :: matAp(:), matAj(:)
+real(dp), allocatable :: matAx(:)
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -89,7 +95,12 @@ call assemble_3d_precalc(p, Nq, &
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
+Ncoo = Ne*(p+1)**6
+allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
+call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo)
+call coo2csr_canonical(matAi_coo, matAj_coo, matAx_coo, matAp, matAj, matAx)
 print *, "DOFs =", Nb
+
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
 allocate(Hpsi(Nq, Nq, Nq, Ne))
