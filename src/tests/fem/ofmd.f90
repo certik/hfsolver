@@ -5,7 +5,8 @@ use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A
+    assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
+    assemble_3d_coo_rhs
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -86,18 +87,22 @@ forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
 allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+print *, "Precalculating element matrix"
 call assemble_3d_precalc(p, Nq, &
     nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)), &
     nodes(2, elems(7, 1)) - nodes(2, elems(1, 1)), &
     nodes(3, elems(7, 1)) - nodes(3, elems(1, 1)), &
     wtq3, phihq, dphihq, jac_det, Am_loc, phi_v)
 
+print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
 Nb = maxval(ib)
 Ncoo = Ne*(p+1)**6
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
+print *, "Assembling matrix A"
 call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo)
+print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo, matAj_coo, matAx_coo, matAp, matAj, matAx)
 print *, "DOFs =", Nb
 
@@ -136,7 +141,7 @@ phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
 eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
+    nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
@@ -158,7 +163,7 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
+        nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
@@ -205,7 +210,7 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, Am_loc, phi_v, jac_det, &
+        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
         Eh, Een, Ts, Exc, energy)
     end function
 
@@ -214,21 +219,21 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, Am_loc, phi_v, jac_det, &
+    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, phi_v, jac_det, &
     Eh, Een, Ts, Exc, Etot, verbose)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
 real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
-    xin(:), xiq(:), wtq3(:, :, :), Am_loc(:, :, :, :, :, :), &
-    phi_v(:, :, :, :, :, :), jac_det
+    xin(:), xiq(:), wtq3(:, :, :), &
+    phi_v(:, :, :, :, :, :), jac_det, Ax(:)
+integer, intent(in) :: Ap(:), Aj(:)
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 logical, intent(in), optional :: verbose
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
     nq_neutral, Venq, Vhq, nenq_neutral
-integer, allocatable :: Ap(:), Aj(:)
-real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp
 integer :: p, i, j, k, m, Nn, Ne, Nq
 logical :: verbose_
@@ -252,18 +257,14 @@ if (verbose_) then
 end if
 nq_neutral = nq_pos - background
 if (verbose_) then
-    print *, "Assembling..."
+    print *, "Assembling RHS..."
 end if
-!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-!    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
-call assemble_3d_csr(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
-        Ap, Aj, Ax, rhs)
+call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, phi_v, rhs)
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
     print *, "Solving..."
 end if
-!sol = solve(A, rhs)
 sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 if (verbose_) then
     print *, "Converting..."
@@ -278,12 +279,10 @@ if (verbose_) then
 end if
 nenq_neutral = nenq_pos - background
 if (verbose_) then
-    print *, "Assembling..."
+    print *, "Assembling RHS..."
 end if
-!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-!    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
-call assemble_3d_csr(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, Am_loc, &
-    phi_v, Ap, Aj, Ax, rhs)
+call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
+    rhs)
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
