@@ -46,6 +46,8 @@ set(SRC
     c_hfsolver.f90
 
     optimize.f90
+
+    random.f90
 )
 
 # LIBINT
