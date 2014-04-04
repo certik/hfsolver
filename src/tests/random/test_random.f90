@@ -30,7 +30,7 @@ contains
     n = size(x)
 
     ! Mean test
-    avg = sum(x)/size(x)
+    avg = sum(x)/n
     sigma_avg = 1/sqrt(real(n, dp))
     print *, "avg =", avg, "sigma =", sigma_avg
     call assert(abs(avg-avg0) < 5*sigma_avg)
