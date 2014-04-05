@@ -31,13 +31,16 @@ contains
 
     ! Mean test
     avg = sum(x)/n
-    sigma_avg = 1/sqrt(real(n, dp))
+    ! The sigma of the average is just like for normal distribution, as long as
+    ! size(x) is big:
+    sigma_avg = sqrt(var0/real(n, dp))
     print *, "avg =", avg, "sigma =", sigma_avg
     call assert(abs(avg-avg0) < 5*sigma_avg)
 
     ! Variance test
     var = sum((x-avg)**2)/n
-    sigma_var = sqrt(2._dp/(n-1))
+    ! The sigma of variance is given by this formula for large size(x):
+    sigma_var = sqrt(2*var0**2/(n-1))
     print *, "var =", var, "sigma =", sigma_var
     call assert(abs(var-var0) < 5*sigma_var)
     end subroutine
