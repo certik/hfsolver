@@ -1,10 +1,11 @@
 program test_random
 use types, only: dp
-use random, only: randn
+use random, only: randn, rand_gamma
 use utils, only: assert, init_random
 implicit none
 
 real(dp) :: a, x(100000), m(10, 10)
+real(dp) :: s
 call init_random()
 
 ! Uniform distribution [0, 1), average 0.5, variance 1/12
@@ -18,6 +19,13 @@ call randn(a) ! Test scalar
 call randn(x) ! Test vector
 call randn(m) ! Test matrix
 call tests(x, 0._dp, 1._dp)
+
+! Gamma distribution, average s, variance s:
+s = 50
+call rand_gamma(s, a) ! Test scalar
+call rand_gamma(s, x) ! Test vector
+call rand_gamma(s, m) ! Test matrix
+call tests(x, s, s)
 
 contains
 
