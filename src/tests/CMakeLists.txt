@@ -55,6 +55,8 @@ ADDTEST(test_fourier)
 
 ADDTEST(test_brent)
 
+ADDTEST(test_random)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
