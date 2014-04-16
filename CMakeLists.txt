@@ -46,6 +46,17 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
         set(CMAKE_EXE_LINKER_FLAGS_RELEASE
             "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fopenmp")
     endif ()
+elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+    if (WITH_OPENMP)
+        set(CMAKE_Fortran_FLAGS_DEBUG
+            "${CMAKE_Fortran_FLAGS_DEBUG}   -openmp")
+        set(CMAKE_Fortran_FLAGS_RELEASE
+            "${CMAKE_Fortran_FLAGS_RELEASE} -openmp")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG
+            "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -openmp")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE
+            "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -openmp")
+    endif ()
 endif ()
 
 set(WITH_PYTHON no
