@@ -8,13 +8,14 @@ use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
     assemble_3d_coo_rhs
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
-use linalg, only: solve
+!use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use sparse, only: coo2csr_canonical
 use constants, only: pi
 use xc, only: xc_pz
 use optimize, only: bracket, brent
+use umfpack, only: factorize, solve, free_data, umfpack_numeric
 implicit none
 private
 public free_energy_min, read_pseudo, radial_density_fourier, linspace
@@ -52,6 +53,7 @@ integer, allocatable :: matAi_coo(:), matAj_coo(:)
 real(dp), allocatable :: matAx_coo(:)
 integer, allocatable :: matAp(:), matAj(:)
 real(dp), allocatable :: matAx(:)
+type(umfpack_numeric) :: matd
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -105,6 +107,9 @@ call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo)
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo, matAj_coo, matAx_coo, matAp, matAj, matAx)
 print *, "DOFs =", Nb
+print *, "umfpack factorize"
+call factorize(Nb, matAp, matAj, matAx, matd)
+print *, "done"
 
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
@@ -130,7 +135,7 @@ print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+    nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
@@ -160,7 +165,7 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+        nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
@@ -180,6 +185,7 @@ do iter = 1, max_iter
             minval(free_energies(iter-3:iter))
         if (last3 < energy_eps) then
             nq_pos = psi**2
+            call free_data(matd)
             return
         end if
     end if
@@ -202,7 +208,7 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, matd, phi_v, jac_det, &
         Eh, Een, Ts, Exc, energy)
     end function
 
@@ -211,7 +217,7 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, phi_v, jac_det, &
+    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, matd, phi_v, jac_det, &
     Eh, Een, Ts, Exc, Etot, verbose, Hpsi)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
@@ -220,6 +226,7 @@ real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     xin(:), xiq(:), wtq3(:, :, :), &
     phi_v(:, :, :, :, :, :), jac_det, Ax(:)
 integer, intent(in) :: Ap(:), Aj(:)
+type(umfpack_numeric), intent(in) :: matd
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 logical, intent(in), optional :: verbose
 ! If Hpsi is present, it
@@ -263,7 +270,8 @@ if (verbose_) then
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
     print *, "Solving..."
 end if
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call solve(Ap, Aj, Ax, sol, rhs, matd)
 if (verbose_) then
     print *, "Converting..."
 end if
@@ -286,7 +294,8 @@ if (verbose_) then
     print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
     print *, "Solving..."
 end if
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call solve(Ap, Aj, Ax, sol, rhs, matd)
 if (verbose_) then
     print *, "Converting..."
 end if
