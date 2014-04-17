@@ -323,10 +323,16 @@ if (verbose_) then
     print *, "Converting..."
 end if
 call c2fullc_3d(in, ib, sol, fullsol)
+if (verbose_) then
+    print *, "Transferring to quadrature points"
+end if
 if (spectral) then
     call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Vhq)
 else
     call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+end if
+if (verbose_) then
+    print *, "Done"
 end if
 
 ! Hartree energy
