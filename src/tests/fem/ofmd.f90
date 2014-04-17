@@ -54,6 +54,7 @@ real(dp), allocatable :: matAx_coo(:)
 integer, allocatable :: matAp(:), matAj(:)
 real(dp), allocatable :: matAx(:)
 type(umfpack_numeric) :: matd
+integer :: idx
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -103,9 +104,9 @@ Nb = maxval(ib)
 Ncoo = Ne*(p+1)**6
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
-call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo)
+call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
 print *, "COO -> CSR"
-call coo2csr_canonical(matAi_coo, matAj_coo, matAx_coo, matAp, matAj, matAx)
+call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), matAp, matAj, matAx)
 print *, "DOFs =", Nb
 print *, "umfpack factorize"
 call factorize(Nb, matAp, matAj, matAx, matd)

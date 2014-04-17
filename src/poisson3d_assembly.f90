@@ -161,7 +161,7 @@ end do
 end do
 end subroutine
 
-subroutine assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi, matAj, matAx)
+subroutine assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi, matAj, matAx, idx)
 ! Assembles the matrix A
 ! Assumes ib is never 0!
 integer, intent(in):: ib(:, :, :, :)
@@ -170,7 +170,7 @@ real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
 ! Allocate the following three arrays to Ne*(p+1)**6 elements
 integer, intent(out) :: matAi(:), matAj(:)
 real(dp), intent(out) :: matAx(:)
-integer :: idx
+integer, intent(out) :: idx
 integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
 call assert(all(ib > 0))
@@ -189,6 +189,10 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+            if (abs(matAx(idx)) < 1e-12_dp) then
+                idx = idx - 1
+                cycle
+            end if
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
@@ -203,7 +207,7 @@ do e = 1, Ne
     end do
     end do
 end do
-call assert(idx == Ne*(p+1)**6)
+!call assert(idx == Ne*(p+1)**6)
 end subroutine
 
 subroutine assemble_3d_coo(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, phi_v, &
