@@ -48,6 +48,8 @@ set(SRC
     optimize.f90
 
     random.f90
+
+    umfpack.f90
 )
 
 # LIBINT

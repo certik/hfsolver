@@ -75,6 +75,15 @@ endif ()
 # FEAST is included in src/feast
 set(LIBS ${LIBS} feast)
 
+# UMFPACK (needs to go before Lapack)
+set(WITH_UMFPACK no
+    CACHE BOOL "Build with UMFPACK support")
+if(WITH_UMFPACK)
+    find_package(UMFPACK REQUIRED)
+    include_directories(${UMFPACK_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${UMFPACK_LIBRARIES})
+endif()
+
 # Lapack
 find_package(Lapack REQUIRED)
 set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
@@ -178,6 +187,11 @@ message("WITH_PETSC: ${WITH_PETSC}")
 if(WITH_PETSC)
     message("PETSC_INCLUDE_DIRS: ${PETSC_INCLUDE_DIRS}")
     message("PETSC_LIBRARIES: ${PETSC_LIBRARIES}")
+endif()
+message("WITH_UMFPACK: ${WITH_UMFPACK}")
+if(WITH_UMFPACK)
+    message("UMFPACK_INCLUDE_DIRS: ${UMFPACK_INCLUDE_DIRS}")
+    message("UMFPACK_LIBRARIES: ${UMFPACK_LIBRARIES}")
 endif()
 message("WITH_PYTHON: ${WITH_PYTHON}")
 message("WITH_OPENMP: ${WITH_OPENMP}")
