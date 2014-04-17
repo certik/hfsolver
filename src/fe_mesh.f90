@@ -409,9 +409,9 @@ real(dp), intent(out) :: uq(:, :, :, :)
 integer :: ie, iqx, iqy, iqz
 ! evaluate at quad points in each element
 do ie = 1, size(elems, 2)
-    do iqx = 1, size(xiq)
-    do iqy = 1, size(xiq)
     do iqz = 1, size(xiq)
+    do iqy = 1, size(xiq)
+    do iqx = 1, size(xiq)
         uq(iqx, iqy, iqz, ie) = fullu(in(iqx, iqy, iqz, ie))
     end do
     end do
