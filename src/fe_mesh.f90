@@ -29,7 +29,7 @@ implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
     define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
-    vtk_save, get_element_3d, fe_eval_xyz, line_save
+    vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto
 
 contains
 
@@ -394,6 +394,25 @@ do ie = 1, size(elems, 2)
         end do
         end do
         end do
+    end do
+    end do
+    end do
+end do
+end subroutine
+
+subroutine fe2quad_3d_lobatto(elems, xiq, in, fullu, uq)
+integer, intent(in) :: elems(:, :)
+real(dp), intent(in) :: xiq(:)
+integer, intent(in) :: in(:, :, :, :)
+real(dp), intent(in) :: fullu(:)
+real(dp), intent(out) :: uq(:, :, :, :)
+integer :: ie, iqx, iqy, iqz
+! evaluate at quad points in each element
+do ie = 1, size(elems, 2)
+    do iqx = 1, size(xiq)
+    do iqy = 1, size(xiq)
+    do iqz = 1, size(xiq)
+        uq(iqx, iqy, iqz, ie) = fullu(in(iqx, iqy, iqz, ie))
     end do
     end do
     end do
