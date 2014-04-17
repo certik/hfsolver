@@ -41,7 +41,8 @@ integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
         wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
-    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
+    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta, Venq, &
+    nenq_neutral
 real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k, iter, max_iter
@@ -58,6 +59,8 @@ real(dp), allocatable :: matAx(:)
 type(umfpack_numeric) :: matd
 integer :: idx, quad_type
 logical :: spectral ! Are we using spectral elements
+real(dp) :: background
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -126,7 +129,9 @@ call factorize(Nb, matAp, matAj, matAx, matd)
 print *, "done"
 
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
+allocate(nenq_neutral(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
+allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(Hpsi(Nq, Nq, Nq, Ne))
 allocate(psi(Nq, Nq, Nq, Ne))
 allocate(psi_(Nq, Nq, Nq, Ne))
@@ -139,6 +144,30 @@ allocate(eta(Nq, Nq, Nq, Ne))
 
 nenq_pos = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
+
+! Calculate Venq
+allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)))
+background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
+print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nenq_neutral = nenq_pos - background
+print *, "Assembling RHS..."
+call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
+    rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
+print *, "Solving..."
+!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call solve(matAp, matAj, matAx, sol, rhs, matd)
+print *, "Converting..."
+call c2fullc_3d(in, ib, sol, fullsol)
+if (spectral) then
+    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Venq)
+else
+    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+end if
+print *, "Done"
+
 
 psi = sqrt(nq_pos)
 psi_norm = integral(nodes, elems, wtq3, psi**2)
@@ -234,13 +263,13 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, matd, spectral, &
+    T_au, Venq, nq_pos, phihq, Ap, Aj, Ax, matd, spectral, &
     phi_v, jac_det, &
     Eh, Een, Ts, Exc, Etot, verbose, Hpsi)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
-real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
+real(dp), intent(in) :: Venq(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     xin(:), xiq(:), wtq3(:, :, :), &
     phi_v(:, :, :, :, :, :), jac_det, Ax(:)
 integer, intent(in) :: Ap(:), Aj(:)
@@ -256,7 +285,7 @@ logical, intent(in), optional :: verbose
 real(dp), intent(out), optional :: Hpsi(:, :, :, :)
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
-    nq_neutral, Venq, Vhq, nenq_neutral, Vxc, dF0dn
+    Vhq, nq_neutral, Vxc, dF0dn
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp, dydn
 integer :: p, i, j, k, m, Nn, Ne, Nq
@@ -272,7 +301,6 @@ allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
 allocate(exc_density(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
-allocate(Venq(Nq, Nq, Nq, Ne))
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 if (verbose_) then
@@ -299,34 +327,6 @@ if (spectral) then
     call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Vhq)
 else
     call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
-end if
-
-background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
-if (verbose_) then
-    print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-    print *, "Subtracting constant background (Q/V): ", background
-end if
-nenq_neutral = nenq_pos - background
-if (verbose_) then
-    print *, "Assembling RHS..."
-end if
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
-    rhs)
-if (verbose_) then
-    print *, "sum(rhs):    ", sum(rhs)
-    print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
-    print *, "Solving..."
-end if
-!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-call solve(Ap, Aj, Ax, sol, rhs, matd)
-if (verbose_) then
-    print *, "Converting..."
-end if
-call c2fullc_3d(in, ib, sol, fullsol)
-if (spectral) then
-    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Venq)
-else
-    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 end if
 
 ! Hartree energy
