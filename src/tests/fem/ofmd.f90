@@ -7,7 +7,8 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
     assemble_3d_coo_rhs
-use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
+use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
+    quad_lobatto
 !use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
@@ -54,7 +55,8 @@ real(dp), allocatable :: matAx_coo(:)
 integer, allocatable :: matAp(:), matAj(:)
 real(dp), allocatable :: matAx(:)
 type(umfpack_numeric) :: matd
-integer :: idx
+integer :: idx, quad_type
+logical :: spectral ! Are we using spectral elements
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -72,16 +74,25 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-Nq = 20
+Nq = p+1
+quad_type = quad_lobatto
+
+spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 print *, "Nq =", Nq
 print *, "p =", p
+if (spectral) then
+    print *, "Spectral elements: ON"
+else
+    print *, "Spectral elements: OFF"
+end if
+
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
+call get_parent_quad_pts_wts(quad_type, Nq, xiq, wtq)
 forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
@@ -108,6 +119,7 @@ call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), matAp, matAj, matAx)
 print *, "DOFs =", Nb
+print *, "nnz =", size(matAx)
 print *, "umfpack factorize"
 call factorize(Nb, matAp, matAj, matAx, matd)
 print *, "done"
