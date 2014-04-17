@@ -3,7 +3,8 @@ module ofmd_utils
 use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
-    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
+    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
+    fe2quad_3d_lobatto
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
     assemble_3d_coo_rhs
@@ -148,7 +149,8 @@ print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, phi_v, jac_det, &
+    nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
+    phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
@@ -178,7 +180,8 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, phi_v, jac_det, &
+        nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
+        phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
@@ -221,7 +224,8 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, matd, phi_v, jac_det, &
+        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, matd, spectral, &
+        phi_v, jac_det, &
         Eh, Een, Ts, Exc, energy)
     end function
 
@@ -230,7 +234,8 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, matd, phi_v, jac_det, &
+    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, matd, spectral, &
+    phi_v, jac_det, &
     Eh, Een, Ts, Exc, Etot, verbose, Hpsi)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
@@ -241,6 +246,7 @@ real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
 integer, intent(in) :: Ap(:), Aj(:)
 type(umfpack_numeric), intent(in) :: matd
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
+logical, intent(in) :: spectral
 logical, intent(in), optional :: verbose
 ! If Hpsi is present, it
 ! returns "delta F / delta n", the functional derivative with respect to the
@@ -289,7 +295,11 @@ if (verbose_) then
     print *, "Converting..."
 end if
 call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+if (spectral) then
+    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Vhq)
+else
+    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+end if
 
 background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
 if (verbose_) then
@@ -313,7 +323,11 @@ if (verbose_) then
     print *, "Converting..."
 end if
 call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+if (spectral) then
+    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Venq)
+else
+    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+end if
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
