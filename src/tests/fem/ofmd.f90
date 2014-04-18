@@ -22,6 +22,8 @@ implicit none
 private
 public free_energy_min, read_pseudo, radial_density_fourier, linspace
 
+logical, parameter :: WITH_UMFPACK=.false.
+
 contains
 
 subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, &
@@ -124,9 +126,11 @@ print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), matAp, matAj, matAx)
 print *, "DOFs =", Nb
 print *, "nnz =", size(matAx)
-print *, "umfpack factorize"
-call factorize(Nb, matAp, matAj, matAx, matd)
-print *, "done"
+if (WITH_UMFPACK) then
+    print *, "umfpack factorize"
+    call factorize(Nb, matAp, matAj, matAx, matd)
+    print *, "done"
+end if
 
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
 allocate(nenq_neutral(Nq, Nq, Nq, Ne))
@@ -157,8 +161,11 @@ call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
 print *, "Solving..."
-!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-call solve(matAp, matAj, matAx, sol, rhs, matd)
+if (WITH_UMFPACK) then
+    call solve(matAp, matAj, matAx, sol, rhs, matd)
+else
+    sol = solve_cg(matAp, matAj, matAx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+end if
 print *, "Converting..."
 call c2fullc_3d(in, ib, sol, fullsol)
 if (spectral) then
@@ -230,7 +237,9 @@ do iter = 1, max_iter
             minval(free_energies(iter-3:iter))
         if (last3 < energy_eps) then
             nq_pos = psi**2
-            call free_data(matd)
+            if (WITH_UMFPACK) then
+                call free_data(matd)
+            end if
             return
         end if
     end if
@@ -317,8 +326,11 @@ if (verbose_) then
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
     print *, "Solving..."
 end if
-!sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-call solve(Ap, Aj, Ax, sol, rhs, matd)
+if (WITH_UMFPACK) then
+    call solve(Ap, Aj, Ax, sol, rhs, matd)
+else
+    sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+end if
 if (verbose_) then
     print *, "Converting..."
 end if
