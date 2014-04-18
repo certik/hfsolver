@@ -10,7 +10,7 @@ implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
     fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-    fft3_inplace
+    fft3_inplace, fft3_inplace_transpose, ifft3_inplace
 
 contains
 
@@ -328,7 +328,7 @@ J = 0
 NTRY = 0
 do while (NL /= 1)
     J = J+1
-    IF (J <= 4) then
+    if (J <= 4) then
         NTRY = NTRYH(J)
     else
         NTRY = NTRY+2
@@ -337,7 +337,7 @@ do while (NL /= 1)
     do while (NL /= 1)
         NQ = NL/NTRY
         NR = NL-NTRY*NQ
-        IF (NR /= 0) exit
+        if (NR /= 0) exit
         NF = NF+1
         fac_tmp(NF) = NTRY
         NL = NQ
@@ -416,7 +416,7 @@ do K1 = 1, size(ifac)
             call passf(NAC, IDO, IP, L1, IDL1, CH, CH, CH, C, C, &
                 WA(IW:IW+(IP-1)*IDO-1))
         end if
-        IF (NAC == 0) NA = 1-NA
+        if (NAC == 0) NA = 1-NA
     end select
     NA = 1-NA
     L1 = L2
@@ -472,6 +472,13 @@ do i = 1, size(x, 1)
 end do
 end subroutine
 
+subroutine global_transpose(w, h, x, y)
+integer, intent(in) :: w, h
+complex(dp), intent(in) :: x(w, h)
+complex(dp), intent(out) :: y(h, w)
+y = transpose(x)
+end subroutine
+
 subroutine fft3_inplace(x)
 complex(dp), intent(inout) :: x(:, :, :)
 complex(dp), dimension(size(x, 1)) :: angles1, CH1
@@ -504,6 +511,47 @@ do j = 1, size(x, 2)
         x(i, j, :) = x3
     end do
 end do
+end subroutine
+
+subroutine fft3_inplace_transpose(xyz)
+! The same as fft3_inplace() but using a global transpose instead
+complex(dp), intent(inout) :: xyz(:, :, :)
+complex(dp), dimension(size(xyz, 1)) :: angles1, CH1
+complex(dp), dimension(size(xyz, 2)) :: angles2, CH2
+complex(dp), dimension(size(xyz, 3)) :: angles3, CH3
+complex(dp) :: yzx(size(xyz, 2), size(xyz, 3) * size(xyz, 1))
+complex(dp) :: zxy(size(xyz, 3), size(xyz, 1) * size(xyz, 2))
+integer, allocatable :: fac1(:), fac2(:), fac3(:)
+integer :: i, j
+call calculate_factors(size(xyz, 1), fac1)
+call precalculate_angles(fac1, angles1)
+call calculate_factors(size(xyz, 2), fac2)
+call precalculate_angles(fac2, angles2)
+call calculate_factors(size(xyz, 3), fac3)
+call precalculate_angles(fac3, angles3)
+do j = 1, size(xyz, 3)
+    do i = 1, size(xyz, 2)
+        call calc_fft(size(xyz, 1), xyz(:, i, j), CH1, angles1, fac1)
+    end do
+end do
+call global_transpose(size(xyz, 1), size(xyz)/size(xyz, 1), xyz, yzx)
+do i = 1, size(yzx, 2)
+    call calc_fft(size(yzx, 1), yzx(:, i), CH2, angles2, fac2)
+end do
+call global_transpose(size(yzx, 1), size(yzx, 2), yzx, zxy)
+do i = 1, size(zxy, 2)
+    call calc_fft(size(zxy, 1), zxy(:, i), CH3, angles3, fac3)
+end do
+call global_transpose(size(zxy, 1), size(zxy, 2), zxy, xyz)
+end subroutine
+
+subroutine ifft3_inplace(x)
+! Inverse FFT, defined as: ifft3(fft3(x))/n = x,
+! i.e. don't forget to divide by n, where n=n1*n2*n3
+complex(dp), intent(inout) :: x(:, :, :)
+x = conjg(x)
+call fft3_inplace(x)
+x = conjg(x)
 end subroutine
 
 end module
