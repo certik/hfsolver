@@ -11,7 +11,7 @@ real(dp), allocatable :: x(:)
 complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :), x3d(:, :, :)
 real(dp) :: tmp
 real(dp) :: t1, t2
-integer :: n, i, j, k
+integer :: l, m, n, i, j, k
 
 ! Test 1-16
 call test_factors(1, [1])
@@ -188,6 +188,31 @@ call cpu_time(t2)
 print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 deallocate(x, xdft)
+
+print *, "fft3 l m n:"
+l = 15
+m = 17
+n = 19
+allocate(x3(l, m, n), x3d(l, m, n))
+do i = 1, size(x3, 1)
+do j = 1, size(x3, 2)
+do k = 1, size(x3, 3)
+    call random_number(tmp)
+    x3(i, j, k) = tmp
+end do
+end do
+end do
+x3d = x3
+call cpu_time(t1)
+call fft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call cpu_time(t1)
+call ifft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call assert(all(abs(x3 - x3d/(l*m*n)) < 5e-15_dp))
+deallocate(x3, x3d)
 
 print *, "fft3:"
 n = 16
