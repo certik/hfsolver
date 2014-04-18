@@ -48,8 +48,6 @@ set(SRC
     optimize.f90
 
     random.f90
-
-    umfpack.f90
 )
 
 # LIBINT
@@ -73,6 +71,17 @@ if(WITH_PETSC)
 else()
     set(SRC ${SRC}
         petsc.dum.f90
+    )
+endif()
+
+# UMFPACK
+if(WITH_UMFPACK)
+    set(SRC ${SRC}
+        umfpack.f90
+    )
+else()
+    set(SRC ${SRC}
+        umfpack.dum.f90
     )
 endif()
 
