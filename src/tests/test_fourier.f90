@@ -234,7 +234,7 @@ call cpu_time(t1)
 call ifft3_inplace(x3d)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
-call assert(all(abs(x3 - x3d/n**3) < 1e-15_dp))
+call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
 deallocate(x3, x3d)
 
 contains
