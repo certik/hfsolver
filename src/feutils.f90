@@ -10,7 +10,9 @@ private
 public get_nodes, define_connect, get_quad_pts, define_connect_n, &
     define_connect_np, get_parent_quad_pts_wts, &
     fe2quad, c2fullc, c2fullc2, fe_evaluate, calc_proj_error, &
-    get_parent_nodes, phih, dphih
+    get_parent_nodes, phih, dphih, quad_gauss, quad_lobatto
+
+integer, parameter :: quad_gauss = 1, quad_lobatto = 2
 
 contains
 

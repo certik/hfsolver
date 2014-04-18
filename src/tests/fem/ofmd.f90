@@ -3,21 +3,26 @@ module ofmd_utils
 use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
-    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
+    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
+    fe2quad_3d_lobatto
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
     assemble_3d_coo_rhs
-use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
-use linalg, only: solve
+use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
+    quad_lobatto
+!use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use sparse, only: coo2csr_canonical
 use constants, only: pi
 use xc, only: xc_pz
 use optimize, only: bracket, brent
+use umfpack, only: factorize, solve, free_data, umfpack_numeric
 implicit none
 private
 public free_energy_min, read_pseudo, radial_density_fourier, linspace
+
+logical, parameter :: WITH_UMFPACK=.false.
 
 contains
 
@@ -38,7 +43,8 @@ integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
         wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
-    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
+    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta, Venq, &
+    nenq_neutral
 real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k, iter, max_iter
@@ -52,6 +58,11 @@ integer, allocatable :: matAi_coo(:), matAj_coo(:)
 real(dp), allocatable :: matAx_coo(:)
 integer, allocatable :: matAp(:), matAj(:)
 real(dp), allocatable :: matAx(:)
+type(umfpack_numeric) :: matd
+integer :: idx, quad_type
+logical :: spectral ! Are we using spectral elements
+real(dp) :: background
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -69,16 +80,25 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-Nq = 20
+Nq = p+1
+quad_type = quad_lobatto
+
+spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 print *, "Nq =", Nq
 print *, "p =", p
+if (spectral) then
+    print *, "Spectral elements: ON"
+else
+    print *, "Spectral elements: OFF"
+end if
+
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
+call get_parent_quad_pts_wts(quad_type, Nq, xiq, wtq)
 forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
@@ -101,13 +121,21 @@ Nb = maxval(ib)
 Ncoo = Ne*(p+1)**6
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
-call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo)
+call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
 print *, "COO -> CSR"
-call coo2csr_canonical(matAi_coo, matAj_coo, matAx_coo, matAp, matAj, matAx)
+call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), matAp, matAj, matAx)
 print *, "DOFs =", Nb
+print *, "nnz =", size(matAx)
+if (WITH_UMFPACK) then
+    print *, "umfpack factorize"
+    call factorize(Nb, matAp, matAj, matAx, matd)
+    print *, "done"
+end if
 
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
+allocate(nenq_neutral(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
+allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(Hpsi(Nq, Nq, Nq, Ne))
 allocate(psi(Nq, Nq, Nq, Ne))
 allocate(psi_(Nq, Nq, Nq, Ne))
@@ -121,6 +149,33 @@ allocate(eta(Nq, Nq, Nq, Ne))
 nenq_pos = func2quad(nodes, elems, xiq, fnen)
 nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 
+! Calculate Venq
+allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)))
+background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
+print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nenq_neutral = nenq_pos - background
+print *, "Assembling RHS..."
+call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
+    rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
+print *, "Solving..."
+if (WITH_UMFPACK) then
+    call solve(matAp, matAj, matAx, sol, rhs, matd)
+else
+    sol = solve_cg(matAp, matAj, matAx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+end if
+print *, "Converting..."
+call c2fullc_3d(in, ib, sol, fullsol)
+if (spectral) then
+    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Venq)
+else
+    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+end if
+print *, "Done"
+
+
 psi = sqrt(nq_pos)
 psi_norm = integral(nodes, elems, wtq3, psi**2)
 print *, "Initial norm of psi:", psi_norm
@@ -130,7 +185,8 @@ print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+    nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
+    phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
@@ -160,7 +216,8 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+        nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
+        phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
     print *, "Iteration:", iter
     psi_norm = integral(nodes, elems, wtq3, psi**2)
@@ -180,6 +237,9 @@ do iter = 1, max_iter
             minval(free_energies(iter-3:iter))
         if (last3 < energy_eps) then
             nq_pos = psi**2
+            if (WITH_UMFPACK) then
+                call free_data(matd)
+            end if
             return
         end if
     end if
@@ -202,7 +262,8 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, phi_v, jac_det, &
+        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, matd, spectral, &
+        phi_v, jac_det, &
         Eh, Een, Ts, Exc, energy)
     end function
 
@@ -211,16 +272,19 @@ end subroutine
 
 
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, Ap, Aj, Ax, phi_v, jac_det, &
+    T_au, Venq, nq_pos, phihq, Ap, Aj, Ax, matd, spectral, &
+    phi_v, jac_det, &
     Eh, Een, Ts, Exc, Etot, verbose, Hpsi)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
-real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
+real(dp), intent(in) :: Venq(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
     xin(:), xiq(:), wtq3(:, :, :), &
     phi_v(:, :, :, :, :, :), jac_det, Ax(:)
 integer, intent(in) :: Ap(:), Aj(:)
+type(umfpack_numeric), intent(in) :: matd
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
+logical, intent(in) :: spectral
 logical, intent(in), optional :: verbose
 ! If Hpsi is present, it
 ! returns "delta F / delta n", the functional derivative with respect to the
@@ -230,7 +294,7 @@ logical, intent(in), optional :: verbose
 real(dp), intent(out), optional :: Hpsi(:, :, :, :)
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
-    nq_neutral, Venq, Vhq, nenq_neutral, Vxc, dF0dn
+    Vhq, nq_neutral, Vxc, dF0dn
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 real(dp) :: background, beta, tmp, dydn
 integer :: p, i, j, k, m, Nn, Ne, Nq
@@ -246,7 +310,6 @@ allocate(y(Nq, Nq, Nq, Ne))
 allocate(F0(Nq, Nq, Nq, Ne))
 allocate(exc_density(Nq, Nq, Nq, Ne))
 allocate(nq_neutral(Nq, Nq, Nq, Ne))
-allocate(Venq(Nq, Nq, Nq, Ne))
 ! Make the charge density net neutral (zero integral):
 background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
 if (verbose_) then
@@ -263,35 +326,26 @@ if (verbose_) then
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
     print *, "Solving..."
 end if
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+if (WITH_UMFPACK) then
+    call solve(Ap, Aj, Ax, sol, rhs, matd)
+else
+    sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+end if
 if (verbose_) then
     print *, "Converting..."
 end if
 call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
-
-background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
 if (verbose_) then
-    print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-    print *, "Subtracting constant background (Q/V): ", background
+    print *, "Transferring to quadrature points"
 end if
-nenq_neutral = nenq_pos - background
+if (spectral) then
+    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Vhq)
+else
+    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+end if
 if (verbose_) then
-    print *, "Assembling RHS..."
+    print *, "Done"
 end if
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
-    rhs)
-if (verbose_) then
-    print *, "sum(rhs):    ", sum(rhs)
-    print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
-    print *, "Solving..."
-end if
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-if (verbose_) then
-    print *, "Converting..."
-end if
-call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
 
 ! Hartree energy
 Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
