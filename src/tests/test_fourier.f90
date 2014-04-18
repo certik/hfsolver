@@ -2,13 +2,13 @@ program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-        fft3_inplace
+        fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
 
 real(dp), allocatable :: x(:)
-complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :)
+complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :), x3d(:, :, :)
 real(dp) :: tmp
 real(dp) :: t1, t2
 integer :: n, i, j, k
@@ -191,7 +191,7 @@ deallocate(x, xdft)
 
 print *, "fft3:"
 n = 16
-allocate(x3(n, n, n))
+allocate(x3(n, n, n), x3d(n, n, n))
 do i = 1, size(x3, 1)
 do j = 1, size(x3, 2)
 do k = 1, size(x3, 3)
@@ -200,11 +200,17 @@ do k = 1, size(x3, 3)
 end do
 end do
 end do
+x3d = x3
 call cpu_time(t1)
-call fft3_inplace(x3)
+call fft3_inplace(x3d)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
-deallocate(x3)
+call cpu_time(t1)
+call ifft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call assert(all(abs(x3 - x3d/n**3) < 1e-15_dp))
+deallocate(x3, x3d)
 
 contains
 

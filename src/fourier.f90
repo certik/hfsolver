@@ -10,7 +10,7 @@ implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
     fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-    fft3_inplace, fft3_inplace_transpose
+    fft3_inplace, fft3_inplace_transpose, ifft3_inplace
 
 contains
 
@@ -543,6 +543,15 @@ do i = 1, size(zxy, 2)
     call calc_fft(size(zxy, 1), zxy(:, i), CH3, angles3, fac3)
 end do
 call global_transpose(size(zxy, 1), size(zxy, 2), zxy, xyz)
+end subroutine
+
+subroutine ifft3_inplace(x)
+! Inverse FFT, defined as: ifft3(fft3(x))/n = x,
+! i.e. don't forget to divide by n, where n=n1*n2*n3
+complex(dp), intent(inout) :: x(:, :, :)
+x = conjg(x)
+call fft3_inplace(x)
+x = conjg(x)
 end subroutine
 
 end module
