@@ -328,7 +328,7 @@ J = 0
 NTRY = 0
 do while (NL /= 1)
     J = J+1
-    IF (J <= 4) then
+    if (J <= 4) then
         NTRY = NTRYH(J)
     else
         NTRY = NTRY+2
@@ -337,7 +337,7 @@ do while (NL /= 1)
     do while (NL /= 1)
         NQ = NL/NTRY
         NR = NL-NTRY*NQ
-        IF (NR /= 0) exit
+        if (NR /= 0) exit
         NF = NF+1
         fac_tmp(NF) = NTRY
         NL = NQ
@@ -416,7 +416,7 @@ do K1 = 1, size(ifac)
             call passf(NAC, IDO, IP, L1, IDL1, CH, CH, CH, C, C, &
                 WA(IW:IW+(IP-1)*IDO-1))
         end if
-        IF (NAC == 0) NA = 1-NA
+        if (NAC == 0) NA = 1-NA
     end select
     NA = 1-NA
     L1 = L2
