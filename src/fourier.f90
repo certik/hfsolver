@@ -262,6 +262,48 @@ do K = 1, L1
 end do
 end subroutine
 
+subroutine passf8(IDO, L1, CC, CH, WA1, WA2, WA3, WA4, WA5, WA6, WA7)
+integer, intent(in) :: IDO, L1
+complex(dp), intent(in) :: CC(IDO, 8, L1), WA1(:), WA2(:), WA3(:), WA4(:), &
+    WA5(:), WA6(:), WA7(:)
+complex(dp), intent(out) :: CH(IDO, L1, 8)
+integer :: I, K
+do K = 1, L1
+    do I = 1, IDO
+        CH(I,K,1) =          (CC(I,1,K) + CC(I,2,K) + CC(I,3,K) + CC(I,4,K) &
+            + CC(I,5,K) + CC(I,6,K) + CC(I,7,K) + CC(I,8,K))
+
+        CH(I,K,2) = WA1(I) * (CC(I,1,K) + exp(-i_*pi/4)*CC(I,2,K) - &
+            i_*CC(I,3,K) + exp(-3*i_*pi/4)*CC(I,4,K) -CC(I,5,K) + &
+            exp(-5*i_*pi/4)*CC(I,6,K) + i_*CC(I,7,K) +exp(-7*i_*pi/4)*CC(I,8,K))
+
+        CH(I,K,3) = WA2(I) * (CC(I,1,K) - i_*CC(I,2,K) - CC(I,3,K) + &
+            i_*CC(I,4,K) + CC(I,5,K) -i_*CC(I,6,K) - CC(I,7,K) + i_*CC(I,8,K))
+
+        CH(I,K,4) = WA3(I) * (CC(I,1,K) + exp(-3*i_*pi/4)*CC(I,2,K) + &
+            i_*CC(I,3,K) + exp(-9*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
+            exp(-15*i_*pi/4)*CC(I,6,K) - i_*CC(I,7,K) + &
+            exp(-21*i_*pi/4)*CC(I,8,K))
+
+        CH(I,K,5) = WA4(I) * (CC(I,1,K) - CC(I,2,K) + CC(I,3,K) - CC(I,4,K) + &
+            CC(I,5,K) - CC(I,6,K) + CC(I,7,K) - CC(I,8,K))
+
+        CH(I,K,6) = WA5(I) * (CC(I,1,K) + exp(-5*i_*pi/4)*CC(I,2,K) &
+            -i_*CC(I,3,K) + exp(-15*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
+            exp(-25*i_*pi/4)*CC(I,6,K) + i_*CC(I,7,K) + &
+            exp(-35*i_*pi/4)*CC(I,8,K))
+
+        CH(I,K,7) = WA6(I) * (CC(I,1,K) + i_*CC(I,2,K) - CC(I,3,K) - &
+            i_*CC(I,4,K) + CC(I,5,K) + i_*CC(I,6,K) - CC(I,7,K) - i_*CC(I,8,K))
+
+        CH(I,K,8) = WA7(I) * (CC(I,1,K) + exp(-7*i_*pi/4)*CC(I,2,K) + &
+            i_*CC(I,3,K) + exp(-21*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
+            exp(-35*i_*pi/4)*CC(I,6,K) -i_*CC(I,7,K) + &
+            exp(-49*i_*pi/4)*CC(I,8,K))
+    end do
+end do
+end subroutine
+
 subroutine passf(NAC, IDO, IP, L1, IDL1, CC, C1, C2, CH, CH2, WA)
 ! Works for any odd IP
 integer, intent(out) :: NAC
