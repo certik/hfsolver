@@ -447,6 +447,14 @@ do K1 = 1, size(ifac)
     IDO = N/L2
     w(1:IDO,1:IP-1) => WA(IW:IW+(IP-1)*IDO-1)
     select case(IP)
+    case (8)
+        if (NA == 0) then
+            call passf8(IDO,L1,C,CH,w(:, 1),w(:, 2),w(:, 3), &
+                w(:, 4),w(:, 5),w(:, 6),w(:, 7))
+        else
+            call passf8(IDO,L1,CH,C,w(:, 1),w(:, 2),w(:, 3), &
+                w(:, 4),w(:, 5),w(:, 6),w(:, 7))
+        end if
     case (4)
         if (NA == 0) then
             call passf4(IDO,L1,C,CH,w(:, 1),w(:, 2),w(:, 3))
