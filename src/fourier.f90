@@ -159,7 +159,7 @@ do K1 = 1, size(fac)
            ARG = FI*ARGLD
            wa(i) = cos(arg) - i_ * sin(arg)
         end do
-        if (IP > 5) wa(i1) = wa(i)
+        if (IP > 5 .and. IP /= 8) wa(i1) = wa(i)
     end do
     L1 = L2
 end do
