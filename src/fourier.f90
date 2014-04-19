@@ -10,7 +10,8 @@ implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
     fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-    fft3_inplace, fft3_inplace_transpose, ifft3_inplace
+    fft3_inplace, fft3_inplace_transpose, ifft3_inplace, fft_pass_inplace_fac,&
+    fft_pass_fac
 
 contains
 
@@ -429,6 +430,16 @@ call precalculate_angles(fac, angles)
 call calc_fft(n, x, CH, angles, fac)
 end subroutine
 
+subroutine fft_pass_inplace_fac(x, fac)
+complex(dp), intent(inout) :: x(:)
+integer, intent(in) :: fac(:)
+complex(dp), dimension(size(x)) :: angles, CH
+integer :: n
+n = size(x)
+call precalculate_angles(fac, angles)
+call calc_fft(n, x, CH, angles, fac)
+end subroutine
+
 
 subroutine calc_fft(N,C,CH,WA,IFAC)
 integer, intent(in) :: N
@@ -502,6 +513,14 @@ real(dp), intent(in) :: x(:)
 complex(dp) :: p(size(x))
 p = x
 call fft_pass_inplace(p)
+end function
+
+function fft_pass_fac(x, fac) result(p)
+real(dp), intent(in) :: x(:)
+integer, intent(in) :: fac(:)
+complex(dp) :: p(size(x))
+p = x
+call fft_pass_inplace_fac(p, fac)
 end function
 
 function ifft_pass(x) result(p)
