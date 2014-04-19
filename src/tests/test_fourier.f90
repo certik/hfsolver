@@ -164,11 +164,11 @@ n = 2*1024**2
 call init_random()
 allocate(x(n), xdft(n))
 call random_number(x)
-call cpu_time(t1)
-xdft = fft(x)
-call cpu_time(t2)
-print *, "fft"
-print *, "time:", (t2-t1)*1000, "ms"
+!call cpu_time(t1)
+!xdft = fft(x)
+!call cpu_time(t2)
+!print *, "fft"
+!print *, "time:", (t2-t1)*1000, "ms"
 
 call cpu_time(t1)
 xdft = fft_vectorized(x)
