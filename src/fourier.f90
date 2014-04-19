@@ -269,6 +269,7 @@ complex(dp), intent(in) :: CC(IDO, 8, L1), WA1(:), WA2(:), WA3(:), WA4(:), &
     WA5(:), WA6(:), WA7(:)
 complex(dp), intent(out) :: CH(IDO, L1, 8)
 integer :: I, K
+complex(dp) :: a, b, c, d
 do K = 1, L1
     do I = 1, IDO
         CH(I,K,1) =          (CC(I,1,K) + CC(I,5,K) + (CC(I,3,K) + CC(I,7,K)) &
@@ -284,14 +285,14 @@ end do
 
 do K = 1, L1
     do I = 1, IDO
-        CH(I,K,2) = WA1(I) * (CC(I,1,K)-CC(I,5,K) - i_*(CC(I,3,K)-CC(I,7,K)) &
-            + exp(-i_*pi/4)* (CC(I,2,K)-CC(I,6,K) - i_*(CC(I,4,K)-CC(I,8,K))))
-        CH(I,K,4) = WA3(I) * (CC(I,1,K)-CC(I,5,K) + i_*(CC(I,3,K)-CC(I,7,K)) &
-      + exp(-3*i_*pi/4)* (CC(I,2,K)-CC(I,6,K) + i_*(CC(I,4,K)-CC(I,8,K))))
-        CH(I,K,6) = WA5(I) * (CC(I,1,K)-CC(I,5,K) - i_*(CC(I,3,K)-CC(I,7,K)) &
-            - exp(-i_*pi/4)* (CC(I,2,K)-CC(I,6,K) - i_*(CC(I,4,K)-CC(I,8,K))))
-        CH(I,K,8) = WA7(I) * (CC(I,1,K)-CC(I,5,K) + i_*(CC(I,3,K)-CC(I,7,K)) &
-      - exp(-3*i_*pi/4)* (CC(I,2,K)-CC(I,6,K) + i_*(CC(I,4,K)-CC(I,8,K))))
+        a = CC(I,1,K)-CC(I,5,K)
+        b = CC(I,3,K)-CC(I,7,K)
+        c = CC(I,2,K)-CC(I,6,K)
+        d = CC(I,4,K)-CC(I,8,K)
+        CH(I,K,2) = WA1(I) * (a - i_*b + exp(  -i_*pi/4) * (c - i_*d))
+        CH(I,K,4) = WA3(I) * (a + i_*b + exp(-3*i_*pi/4) * (c + i_*d))
+        CH(I,K,6) = WA5(I) * (a - i_*b - exp(  -i_*pi/4) * (c - i_*d))
+        CH(I,K,8) = WA7(I) * (a + i_*b - exp(-3*i_*pi/4) * (c + i_*d))
     end do
 end do
 end subroutine
