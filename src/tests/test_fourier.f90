@@ -2,7 +2,7 @@ program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-        fft3_inplace, ifft3_inplace
+        fft3_inplace, ifft3_inplace, fft_pass_fac
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
@@ -160,7 +160,7 @@ call fft3_inplace(x3)
 call assert(abs(sum(x3)-630) < 1e-9_dp)
 deallocate(x3)
 
-n = 1024
+n = 2*1024**2
 call init_random()
 allocate(x(n), xdft(n))
 call random_number(x)
@@ -183,10 +183,18 @@ print *, "fft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 
 call cpu_time(t1)
+xdft = fft_pass_fac(x, [8, 8, 8, 8, 8, 8, 8])
+call cpu_time(t2)
+print *, "fft_pass_fac"
+print *, "time:", (t2-t1)*1000, "ms"
+
+call cpu_time(t1)
 xdft = ifft_pass(xdft)
 call cpu_time(t2)
 print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
+print *, maxval(abs(x-real(xdft, dp)/n))
+print *, maxval(abs(aimag(xdft)))
 deallocate(x, xdft)
 
 print *, "fft3 l m n:"
