@@ -285,20 +285,13 @@ end do
 do K = 1, L1
     do I = 1, IDO
         CH(I,K,2) = WA1(I) * (CC(I,1,K)-CC(I,5,K) - i_*(CC(I,3,K)-CC(I,7,K)) &
-            + exp(-i_*pi/4)*CC(I,2,K) + exp(-3*i_*pi/4)*CC(I,4,K) + &
-              exp(-5*i_*pi/4)*CC(I,6,K) + exp(-7*i_*pi/4)*CC(I,8,K))
-
+            + exp(-i_*pi/4)* (CC(I,2,K)-CC(I,6,K) - i_*(CC(I,4,K)-CC(I,8,K))))
         CH(I,K,4) = WA3(I) * (CC(I,1,K)-CC(I,5,K) + i_*(CC(I,3,K)-CC(I,7,K)) &
-            + exp(-3*i_*pi/4)*CC(I,2,K) + exp(-i_*pi/4)*CC(I,4,K) + &
-              exp(-7*i_*pi/4)*CC(I,6,K) + exp(-5*i_*pi/4)*CC(I,8,K))
-
+            + exp(-i_*pi/4)* (CC(I,4,K)-CC(I,8,K) - i_*(CC(I,2,K)-CC(I,6,K))))
         CH(I,K,6) = WA5(I) * (CC(I,1,K)-CC(I,5,K) - i_*(CC(I,3,K)-CC(I,7,K)) &
-            + exp(-5*i_*pi/4)*CC(I,2,K) + exp(-7*i_*pi/4)*CC(I,4,K) + &
-              exp(-i_*pi/4)*CC(I,6,K)  + exp(-3*i_*pi/4)*CC(I,8,K))
-
+            - exp(-i_*pi/4)* (CC(I,2,K)-CC(I,6,K) - i_*(CC(I,4,K)-CC(I,8,K))))
         CH(I,K,8) = WA7(I) * (CC(I,1,K)-CC(I,5,K) + i_*(CC(I,3,K)-CC(I,7,K)) &
-            + exp(-7*i_*pi/4)*CC(I,2,K) + exp(-5*i_*pi/4)*CC(I,4,K) + &
-              exp(-3*i_*pi/4)*CC(I,6,K) + exp(-i_*pi/4)*CC(I,8,K))
+            - exp(-i_*pi/4)* (CC(I,4,K)-CC(I,8,K) - i_*(CC(I,2,K)-CC(I,6,K))))
     end do
 end do
 end subroutine
