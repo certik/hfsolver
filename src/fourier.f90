@@ -282,25 +282,25 @@ do K = 1, L1
             i_*CC(I,4,K) + CC(I,5,K) -i_*CC(I,6,K) - CC(I,7,K) + i_*CC(I,8,K))
 
         CH(I,K,4) = WA3(I) * (CC(I,1,K) + exp(-3*i_*pi/4)*CC(I,2,K) + &
-            i_*CC(I,3,K) + exp(-9*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
-            exp(-15*i_*pi/4)*CC(I,6,K) - i_*CC(I,7,K) + &
-            exp(-21*i_*pi/4)*CC(I,8,K))
+            i_*CC(I,3,K) + exp(-i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
+            exp(-7*i_*pi/4)*CC(I,6,K) - i_*CC(I,7,K) + &
+            exp(-5*i_*pi/4)*CC(I,8,K))
 
         CH(I,K,5) = WA4(I) * (CC(I,1,K) - CC(I,2,K) + CC(I,3,K) - CC(I,4,K) + &
             CC(I,5,K) - CC(I,6,K) + CC(I,7,K) - CC(I,8,K))
 
         CH(I,K,6) = WA5(I) * (CC(I,1,K) + exp(-5*i_*pi/4)*CC(I,2,K) &
-            -i_*CC(I,3,K) + exp(-15*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
-            exp(-25*i_*pi/4)*CC(I,6,K) + i_*CC(I,7,K) + &
-            exp(-35*i_*pi/4)*CC(I,8,K))
+            -i_*CC(I,3,K) + exp(-7*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
+            exp(-i_*pi/4)*CC(I,6,K) + i_*CC(I,7,K) + &
+            exp(-3*i_*pi/4)*CC(I,8,K))
 
         CH(I,K,7) = WA6(I) * (CC(I,1,K) + i_*CC(I,2,K) - CC(I,3,K) - &
             i_*CC(I,4,K) + CC(I,5,K) + i_*CC(I,6,K) - CC(I,7,K) - i_*CC(I,8,K))
 
         CH(I,K,8) = WA7(I) * (CC(I,1,K) + exp(-7*i_*pi/4)*CC(I,2,K) + &
-            i_*CC(I,3,K) + exp(-21*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
-            exp(-35*i_*pi/4)*CC(I,6,K) -i_*CC(I,7,K) + &
-            exp(-49*i_*pi/4)*CC(I,8,K))
+            i_*CC(I,3,K) + exp(-5*i_*pi/4)*CC(I,4,K) - CC(I,5,K) + &
+            exp(-3*i_*pi/4)*CC(I,6,K) -i_*CC(I,7,K) + &
+            exp(-i_*pi/4)*CC(I,8,K))
     end do
 end do
 end subroutine
