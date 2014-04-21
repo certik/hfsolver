@@ -554,4 +554,56 @@ call fft3_inplace(x)
 x = conjg(x)
 end subroutine
 
+complex(dp) pure function w(k, N)
+integer, intent(in) :: k, N
+w = exp(-2*pi*i_*k/N)
+end function
+
+subroutine fft_noleaves(y)
+complex(dp), intent(inout) :: y(0:)
+complex(dp) :: U(0:size(y)/2-1), Z(0:size(y)/4-1), Zp(0:size(y)/4-1)
+integer :: N, k
+N = size(y)
+if (N > 2) then
+    call fft_noleaves(y(::2))
+    call fft_noleaves(y(1::4))
+    call fft_noleaves(y(3::4))
+    U  = y(::2)
+    Z  = y(1::4)
+    Zp = y(3::4)
+    do k = 0, N/4-1
+        y(k)       = U(k)     +      (w(k, N) * Z(k) + w(-k, N) * Zp(k))
+        y(k+N/2)   = U(k)     -      (w(k, N) * Z(k) + w(-k, N) * Zp(k))
+        y(k+N/4)   = U(k+N/4) - i_ * (w(k, N) * Z(k) - w(-k, N) * Zp(k))
+        y(k+3*N/4) = U(k+N/4) + i_ * (w(k, N) * Z(k) - w(-k, N) * Zp(k))
+    end do
+end if
+end subroutine
+
+subroutine fft_south(delta, Nl, x, y)
+integer, intent(in) :: delta(0:), Nl
+complex(dp), intent(in) :: x(0:)
+complex(dp), intent(out) :: y(0:)
+integer :: N, k, j, log2N
+N = size(y)
+j = 0
+do k = 0, N / Nl / 3
+    y(delta(j))   = x(j) + x(j+N/2)
+    y(delta(j)+1) = x(j) - x(j+N/2)
+    j = j + 1
+end do
+log2N = int(log(real(N, dp)) / log(2._dp) + 0.5_dp)
+do k = 0, N / Nl / 3 + (ieor(iand(log2N, 1), 1)) - 1
+    y(delta(j))   = x(j)
+    y(delta(j)+1) = x(j+N/2)
+    j = j + 1
+end do
+do k = 0, N / Nl / 3 - 1
+    y(delta(j))   = x(j+N/2) + x(j)
+    y(delta(j)+1) = x(j+N/2) - x(j)
+    j = j + 1
+end do
+call fft_noleaves(y)
+end subroutine
+
 end module
