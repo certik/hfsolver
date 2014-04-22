@@ -12,7 +12,8 @@ private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
     fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
     fft3_inplace, fft3_inplace_transpose, ifft3_inplace, init_offsets, &
-    fft_south, fft_split_radix, fft_conjugate_pair_split_radix
+    fft_south, fft_split_radix, fft_conjugate_pair_split_radix, &
+    fft_conjugate_pair_split_radix_coeff
 
 contains
 
@@ -588,12 +589,25 @@ else
 end if
 end function
 
-function fft_conjugate_pair_split_radix(x) result(y)
-complex(dp), intent(in) :: x(0:)
+subroutine fft_conjugate_pair_split_radix_coeff(N, w)
+integer, intent(in) :: N
+complex(dp), intent(out) :: w(0:, :)
+integer :: k, log2N
+if (N > 2) then
+    call fft_conjugate_pair_split_radix_coeff(N/2, w)
+    log2N = int(log(real(N, dp)) / log(2._dp) + 0.5_dp)
+    do k = 0, N/4-1
+        w(k, log2N) = cos(-2*pi*k/N) + i_*sin(-2*pi*k/N)
+    end do
+end if
+end subroutine
+
+function fft_conjugate_pair_split_radix(x, w) result(y)
+complex(dp), intent(in) :: x(0:), w(0:, :)
 complex(dp) :: y(0:size(x)-1)
 complex(dp) :: U(0:size(y)/2-1), Z(0:size(y)/4-1), Zp(0:size(y)/4-1)
 complex(dp) :: w1, w2
-integer :: N, k
+integer :: N, k, log2N
 N = size(y)
 if (N == 1) then
     y = x
@@ -601,11 +615,12 @@ else if (N == 2) then
     y(0) = x(0) + x(1)
     y(1) = x(0) - x(1)
 else
-    U  = fft_conjugate_pair_split_radix(x(::2))
-    Z  = fft_conjugate_pair_split_radix(x(1::4))
-    Zp = fft_conjugate_pair_split_radix([x(N-1), x(3:N-4:4)])
+    U  = fft_conjugate_pair_split_radix(x(::2), w)
+    Z  = fft_conjugate_pair_split_radix(x(1::4), w)
+    Zp = fft_conjugate_pair_split_radix([x(N-1), x(3:N-4:4)], w)
+    log2N = int(log(real(N, dp)) / log(2._dp) + 0.5_dp)
     do k = 0, N/4-1
-        w1 = cos(-2*pi*k/N) + i_*sin(-2*pi*k/N)
+        w1 = w(k, log2N)
         w2 = conjg(w1)
         y(k)       = U(k)     +      (w1 * Z(k) + w2 * Zp(k))
         y(k+N/2)   = U(k)     -      (w1 * Z(k) + w2 * Zp(k))
