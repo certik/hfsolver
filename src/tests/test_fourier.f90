@@ -163,8 +163,9 @@ deallocate(x3)
 
 n = 1024
 call init_random()
-allocate(x(n), xdft(n))
+allocate(x(n), xx(n), xdft(n))
 call random_number(x)
+xx = x
 call cpu_time(t1)
 xdft = fft(x)
 call cpu_time(t2)
@@ -184,11 +185,23 @@ print *, "fft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 
 call cpu_time(t1)
+xdft = fft_conjugate_pair_split_radix(xx)
+call cpu_time(t2)
+print *, "fft_conjugate_pair_split_radix"
+print *, "time:", (t2-t1)*1000, "ms"
+
+call cpu_time(t1)
+xdft = fft_split_radix(xx)
+call cpu_time(t2)
+print *, "fft_split_radix"
+print *, "time:", (t2-t1)*1000, "ms"
+
+call cpu_time(t1)
 xdft = ifft_pass(xdft)
 call cpu_time(t2)
 print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
-deallocate(x, xdft)
+deallocate(x, xx, xdft)
 
 print *, "fft3 l m n:"
 l = 15
