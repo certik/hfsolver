@@ -162,7 +162,7 @@ call fft3_inplace(x3)
 call assert(abs(sum(x3)-630) < 1e-9_dp)
 deallocate(x3)
 
-n = 1024**2
+n = 1024
 call init_random()
 allocate(x(n), xx(n), xdft(n), w(n, 20))
 call random_number(x)
@@ -280,11 +280,11 @@ allocate(x(n), xx(n), xdft(n), w(n, 20))
 call random_number(x)
 xx = x
 call cpu_time(t1)
-!call fft_south(init_offsets(8, n), 8, xx, xdft)
+call fft_south(init_offsets(2, n), 2, xx, xdft)
 !xdft = fft_pass(x)
 !xdft = fft_split_radix(xx)
-call fft_conjugate_pair_split_radix_coeff(n, w)
-xdft = fft_conjugate_pair_split_radix(6, xx, w)
+!call fft_conjugate_pair_split_radix_coeff(n, w)
+!xdft = fft_conjugate_pair_split_radix(6, xx, w)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 xx = ifft_pass(xdft)/n
