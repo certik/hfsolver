@@ -237,10 +237,17 @@ print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
 deallocate(x3, x3d)
 
+call assert(all(init_offsets(1, 1) == [0]))
+call assert(all(init_offsets(1, 2) == [0, 1]))
+call assert(all(init_offsets(1, 4) == [0, 3, 2, 1]))
+call assert(all(init_offsets(1, 8) == [0, 3, 4, 6, 2, 7, 1, 5]))
+
+call assert(all(init_offsets(2, 2) == [0]))
 call assert(all(init_offsets(2, 4) == [0, 2]))
 call assert(all(init_offsets(2, 8) == [0, 4, 6, 2]))
 call assert(all(init_offsets(2, 16) == [0, 8, 4, 6, 12, 14, 2, 10]))
 
+call assert(all(init_offsets(4, 4) == [0]))
 call assert(all(init_offsets(4, 8) == [0, 4]))
 call assert(all(init_offsets(4, 16) == [0, 8, 4, 12]))
 call assert(all(init_offsets(4, 32) == [0, 16, 8, 28, 4, 20, 12, 24]))
