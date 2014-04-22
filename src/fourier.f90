@@ -573,11 +573,35 @@ else if (N == 2) then
     y(0) = x(0) + x(1)
     y(1) = x(0) - x(1)
 else
-    U  = fft_split_radix(y(::2))
-    Z  = fft_split_radix(y(1::4))
-    Zp(0) = y(N-1)
-    Zp(1:) = y(3:N-4:4)
-    Zp = fft_split_radix(Zp)
+    U  = fft_split_radix(x(::2))
+    Z  = fft_split_radix(x(1::4))
+    Zp = fft_split_radix(x(3::4))
+    do k = 0, N/4-1
+        y(k)       = U(k)     +      (w(k, N) * Z(k) + w(3*k, N) * Zp(k))
+        y(k+N/2)   = U(k)     -      (w(k, N) * Z(k) + w(3*k, N) * Zp(k))
+        y(k+N/4)   = U(k+N/4) - i_ * (w(k, N) * Z(k) - w(3*k, N) * Zp(k))
+        y(k+3*N/4) = U(k+N/4) + i_ * (w(k, N) * Z(k) - w(3*k, N) * Zp(k))
+    end do
+end if
+end function
+
+function fft_conjugate_pair_split_radix(x) result(y)
+complex(dp), intent(in) :: x(0:)
+complex(dp) :: y(0:size(x)-1)
+complex(dp) :: U(0:size(y)/2-1), Z(0:size(y)/4-1), Zp(0:size(y)/4-1)
+integer :: N, k
+N = size(y)
+if (N == 1) then
+    y = x
+else if (N == 2) then
+    y(0) = x(0) + x(1)
+    y(1) = x(0) - x(1)
+else
+    U  = fft_conjugate_pair_split_radix(x(::2))
+    Z  = fft_conjugate_pair_split_radix(x(1::4))
+    Zp(0) = x(N-1)
+    Zp(1:) = x(3:N-4:4)
+    Zp = fft_conjugate_pair_split_radix(Zp)
     do k = 0, N/4-1
         y(k)       = U(k)     +      (w(k, N) * Z(k) + w(-k, N) * Zp(k))
         y(k+N/2)   = U(k)     -      (w(k, N) * Z(k) + w(-k, N) * Zp(k))
