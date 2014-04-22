@@ -599,9 +599,7 @@ else if (N == 2) then
 else
     U  = fft_conjugate_pair_split_radix(x(::2))
     Z  = fft_conjugate_pair_split_radix(x(1::4))
-    Zp(0) = x(N-1)
-    Zp(1:) = x(3:N-4:4)
-    Zp = fft_conjugate_pair_split_radix(Zp)
+    Zp = fft_conjugate_pair_split_radix([x(N-1), x(3:N-4:4)])
     do k = 0, N/4-1
         y(k)       = U(k)     +      (w(k, N) * Z(k) + w(-k, N) * Zp(k))
         y(k+N/2)   = U(k)     -      (w(k, N) * Z(k) + w(-k, N) * Zp(k))
