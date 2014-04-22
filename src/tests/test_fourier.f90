@@ -251,7 +251,7 @@ allocate(x(n), xx(n), xdft(n))
 call random_number(x)
 xx = x
 call cpu_time(t1)
-call fft_south(init_offsets(8, 64), 8, xx, xdft)
+call fft_south(init_offsets(8, n), 8, xx, xdft)
 !xdft = fft_pass(x)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
