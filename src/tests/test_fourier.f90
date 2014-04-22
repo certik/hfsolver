@@ -3,15 +3,16 @@ use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace, init_offsets, fft_south, fft_split_radix, &
-        fft_conjugate_pair_split_radix
+        fft_conjugate_pair_split_radix, fft_conjugate_pair_split_radix_coeff
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
 
 real(dp), allocatable :: x(:)
-complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :), x3d(:, :, :), xx(:)
+complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :), x3d(:, :, :), &
+    xx(:), w(:, :)
 real(dp) :: tmp
-real(dp) :: t1, t2
+real(dp) :: t1, t2, t3
 integer :: l, m, n, i, j, k
 
 ! Test 1-16
@@ -161,9 +162,9 @@ call fft3_inplace(x3)
 call assert(abs(sum(x3)-630) < 1e-9_dp)
 deallocate(x3)
 
-n = 1024
+n = 1024**2
 call init_random()
-allocate(x(n), xx(n), xdft(n))
+allocate(x(n), xx(n), xdft(n), w(n, 20))
 call random_number(x)
 xx = x
 call cpu_time(t1)
@@ -185,10 +186,13 @@ print *, "fft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
 
 call cpu_time(t1)
-xdft = fft_conjugate_pair_split_radix(xx)
+call fft_conjugate_pair_split_radix_coeff(n, w)
 call cpu_time(t2)
+xdft = fft_conjugate_pair_split_radix(20, xx, w)
+call cpu_time(t3)
 print *, "fft_conjugate_pair_split_radix"
-print *, "time:", (t2-t1)*1000, "ms"
+print *, "time all:", (t3-t1)*1000, "ms"
+print *, "time fft:", (t3-t2)*1000, "ms"
 
 call cpu_time(t1)
 xdft = fft_split_radix(xx)
@@ -201,7 +205,7 @@ xdft = ifft_pass(xdft)
 call cpu_time(t2)
 print *, "ifft_pass"
 print *, "time:", (t2-t1)*1000, "ms"
-deallocate(x, xx, xdft)
+deallocate(x, xx, xdft, w)
 
 print *, "fft3 l m n:"
 l = 15
@@ -272,14 +276,15 @@ call assert(all(init_offsets(8, 32) == [0, 16, 8, 24]))
 call assert(all(init_offsets(8, 64) == [0, 32, 16, 56, 8, 40, 24, 48]))
 
 n = 64
-allocate(x(n), xx(n), xdft(n))
+allocate(x(n), xx(n), xdft(n), w(n, 20))
 call random_number(x)
 xx = x
 call cpu_time(t1)
 !call fft_south(init_offsets(8, n), 8, xx, xdft)
 !xdft = fft_pass(x)
 !xdft = fft_split_radix(xx)
-xdft = fft_conjugate_pair_split_radix(xx)
+call fft_conjugate_pair_split_radix_coeff(n, w)
+xdft = fft_conjugate_pair_split_radix(6, xx, w)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 xx = ifft_pass(xdft)/n
