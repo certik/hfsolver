@@ -237,9 +237,15 @@ print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
 deallocate(x3, x3d)
 
+call assert(all(init_offsets(4, 8) == [0, 4]))
+call assert(all(init_offsets(4, 16) == [0, 8, 4, 12]))
+call assert(all(init_offsets(4, 32) == [0, 16, 8, 28, 4, 20, 12, 24]))
 
-print *, "XXXX"
-!print *, init_offsets(8, 64)
+call assert(all(init_offsets(8, 8) == [0]))
+call assert(all(init_offsets(8, 16) == [0, 8]))
+call assert(all(init_offsets(8, 32) == [0, 16, 8, 24]))
+call assert(all(init_offsets(8, 64) == [0, 32, 16, 56, 8, 40, 24, 48]))
+
 n = 64
 allocate(x(n), xx(n), xdft(n))
 call random_number(x)

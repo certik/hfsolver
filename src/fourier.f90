@@ -625,17 +625,17 @@ end subroutine
 
 function init_offsets(Nl, N) result(delta_out)
 integer, intent(in) :: Nl, N
-integer :: delta(0:2*N/Nl-1), delta_out(N/Nl)
+integer :: delta(2*N/Nl), delta_out(N/Nl)
 integer :: i
 integer :: idx(N/Nl)
 call elab(delta, Nl, N, 0, 0, 1, .true.)
-do i = 0, 2*N/Nl - 1, 2
+do i = 1, 2*N/Nl, 2
     if (delta(i) < 0) then
         delta(i) = delta(i) + N
     end if
 end do
 idx = argsort(delta(::2))
-delta_out = delta(1::2)
+delta_out = delta(2::2)
 delta_out = delta_out(idx)
 end function
 
