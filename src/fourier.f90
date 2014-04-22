@@ -605,6 +605,7 @@ do k = 0, N / Nl / 3 - 1
     y(delta(j)+1) = x(j+N/2) - x(j)
     j = j + 1
 end do
+call assert(j == N / Nl)
 call fft_noleaves(y)
 end subroutine
 
