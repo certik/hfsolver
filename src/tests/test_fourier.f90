@@ -2,7 +2,8 @@ program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-        fft3_inplace, ifft3_inplace, init_offsets, fft_south, fft_split_radix
+        fft3_inplace, ifft3_inplace, init_offsets, fft_south, fft_split_radix, &
+        fft_conjugate_pair_split_radix
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
@@ -264,7 +265,8 @@ xx = x
 call cpu_time(t1)
 !call fft_south(init_offsets(8, n), 8, xx, xdft)
 !xdft = fft_pass(x)
-xdft = fft_split_radix(xx)
+!xdft = fft_split_radix(xx)
+xdft = fft_conjugate_pair_split_radix(xx)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 xx = ifft_pass(xdft)/n

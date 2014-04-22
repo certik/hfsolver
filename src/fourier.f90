@@ -12,7 +12,7 @@ private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
     fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
     fft3_inplace, fft3_inplace_transpose, ifft3_inplace, init_offsets, &
-    fft_south, fft_split_radix
+    fft_south, fft_split_radix, fft_conjugate_pair_split_radix
 
 contains
 
