@@ -602,12 +602,13 @@ if (N > 2) then
 end if
 end subroutine
 
-function fft_conjugate_pair_split_radix(x, w) result(y)
+function fft_conjugate_pair_split_radix(log2N, x, w) result(y)
+integer, intent(in) :: log2N
 complex(dp), intent(in) :: x(0:), w(0:, :)
 complex(dp) :: y(0:size(x)-1)
 complex(dp) :: U(0:size(y)/2-1), Z(0:size(y)/4-1), Zp(0:size(y)/4-1)
 complex(dp) :: w1, w2
-integer :: N, k, log2N
+integer :: N, k
 N = size(y)
 if (N == 1) then
     y = x
@@ -615,10 +616,9 @@ else if (N == 2) then
     y(0) = x(0) + x(1)
     y(1) = x(0) - x(1)
 else
-    U  = fft_conjugate_pair_split_radix(x(::2), w)
-    Z  = fft_conjugate_pair_split_radix(x(1::4), w)
-    Zp = fft_conjugate_pair_split_radix([x(N-1), x(3:N-4:4)], w)
-    log2N = int(log(real(N, dp)) / log(2._dp) + 0.5_dp)
+    U  = fft_conjugate_pair_split_radix(log2N-1, x(::2), w)
+    Z  = fft_conjugate_pair_split_radix(log2N-2, x(1::4), w)
+    Zp = fft_conjugate_pair_split_radix(log2N-2, [x(N-1), x(3:N-4:4)], w)
     do k = 0, N/4-1
         w1 = w(k, log2N)
         w2 = conjg(w1)
