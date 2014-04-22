@@ -6,7 +6,7 @@ module fourier
 use types, only: dp
 use constants, only: i_, pi
 use utils, only: stop_error, assert
-use sorting, only: sort
+use sorting, only: argsort
 implicit none
 private
 public dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
@@ -607,43 +607,35 @@ end do
 call fft_noleaves(y)
 end subroutine
 
-function ELAB(Nl, N, Oi, Oo, S, E) result(delta)
+subroutine ELAB(delta, Nl, N, Oi, Oo, S, E)
+integer, intent(out) :: delta(0:)
 integer, intent(in) :: Nl, N, Oi, Oo, S
 logical, intent(in) :: E
-integer :: delta(0:N/Nl-1), T0(0:N/Nl/2-1), T1(0:N/Nl/4-1), T2(0:N/Nl/4-1)
 if ((E .and. N == Nl) .or. (.not. E .and. N <= Nl)) then
-    call assert(size(delta) == 1)
-    delta(0) = Oi*2 * Oo
-else if (N >= 2) then
-    T0 = ELAB(Nl, N/2, Oi, Oo, S+1, E)
-    T1 = ELAB(Nl, N/4, Oi + ishft(1, S), Oo + N/2, S+2, .true.)
-    if (N/4 >= Nl) then
-        T2 = ELAB(Nl, N/4, Oi - ishft(1, S), Oo + 3*N/4, S+2, .true.)
-    else
-        T2 = 0
-    end if
-    !print *, "N=", N, "Nl=", Nl
-    !print *, size(T0), size(T1), size(T2), size(delta)
-    call assert(size(T0) + size(T1) + size(T2) == size(delta))
-    delta = [T0, T1, T2]
+    delta(2*Oo/Nl)   = Oi*2
+    delta(2*Oo/Nl+1) = Oo
+else if (N > 4) then
+    call ELAB(delta, Nl, N/2, Oi, Oo, S+1, E)
+    call ELAB(delta, Nl, N/4, Oi + ishft(1, S), Oo + N/2, S+2, .false.)
+    if (N/4 >= Nl) &
+        call ELAB(delta, Nl, N/4, Oi - ishft(1, S), Oo + 3*N/4, S+2, .false.)
 end if
-end function
+end subroutine
 
-function init_offsets(Nl, N) result(delta)
+function init_offsets(Nl, N) result(delta_out)
 integer, intent(in) :: Nl, N
-integer :: delta(0:N/Nl-1)
+integer :: delta(0:2*N/Nl-1), delta_out(N/Nl)
 integer :: i
-delta = elab(Nl, N, 0, 0, 1, .false.)
-print *, delta
-do i = 0, maxval(delta) - 1
+integer :: idx(N/Nl)
+call elab(delta, Nl, N, 0, 0, 1, .true.)
+do i = 0, 2*N/Nl - 1, 2
     if (delta(i) < 0) then
         delta(i) = delta(i) + N
     end if
 end do
-call sort(delta)
-do i = 0, maxval(delta) - 1
-    delta(i) = delta(i)
-end do
+idx = argsort(delta(::2))
+delta_out = delta(1::2)
+delta_out = delta_out(idx)
 end function
 
 end module
