@@ -2,13 +2,13 @@ program test_fourier
 use types, only: dp
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
-        fft3_inplace, ifft3_inplace
+        fft3_inplace, ifft3_inplace, init_offsets, fft_south
 use utils, only: assert, init_random
 use constants, only: i_
 implicit none
 
 real(dp), allocatable :: x(:)
-complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :), x3d(:, :, :)
+complex(dp), allocatable :: xdft(:), x2(:, :), x3(:, :, :), x3d(:, :, :), xx(:)
 real(dp) :: tmp
 real(dp) :: t1, t2
 integer :: l, m, n, i, j, k
@@ -236,6 +236,21 @@ call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
 deallocate(x3, x3d)
+
+
+print *, "XXXX"
+!print *, init_offsets(8, 64)
+n = 64
+allocate(x(n), xx(n), xdft(n))
+call random_number(x)
+xx = x
+call cpu_time(t1)
+call fft_south(init_offsets(8, 64), 8, xx, xdft)
+!xdft = fft_pass(x)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+xx = ifft_pass(xdft)/n
+print *, maxval(abs(x-xx))
 
 contains
 
