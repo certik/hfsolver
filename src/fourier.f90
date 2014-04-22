@@ -658,22 +658,25 @@ subroutine fft_south(delta, Nl, x, y)
 integer, intent(in) :: delta(0:), Nl
 complex(dp), intent(in) :: x(0:)
 complex(dp), intent(out) :: y(0:)
-integer :: N, k, j, i1
+integer :: N, k, j, i0, i1, i2
 N = size(y)
+i0 = N / Nl / 3 + 1
+i1 = N / Nl / 3
+if (mod(N/Nl, 3) > 1) i1 = i1 + 1
+i2 = N / Nl / 3
+call assert(i0+i1+i2 == N / Nl)
 j = 0
-do k = 0, N / Nl / 3
+do k = 0, i0-1
     y(delta(j))   = x(j) + x(j+N/2)
     y(delta(j)+1) = x(j) - x(j+N/2)
     j = j + 1
 end do
-i1 = N/Nl/3 - 1
-if (mod(N/Nl, 3) > 1) i1 = i1 + 1
-do k = 0, i1
+do k = 0, i1-1
     y(delta(j))   = x(j)
     y(delta(j)+1) = x(j+N/2)
     j = j + 1
 end do
-do k = 0, N / Nl / 3 - 1
+do k = 0, i2-1
     y(delta(j))   = x(j+N/2) + x(j)
     y(delta(j)+1) = x(j+N/2) - x(j)
     j = j + 1
