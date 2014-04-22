@@ -658,7 +658,7 @@ subroutine fft_south(delta, Nl, x, y)
 integer, intent(in) :: delta(0:), Nl
 complex(dp), intent(in) :: x(0:)
 complex(dp), intent(out) :: y(0:)
-integer :: N, k, j, log2N
+integer :: N, k, j, i1
 N = size(y)
 j = 0
 do k = 0, N / Nl / 3
@@ -666,8 +666,9 @@ do k = 0, N / Nl / 3
     y(delta(j)+1) = x(j) - x(j+N/2)
     j = j + 1
 end do
-log2N = int(log(real(N, dp)) / log(2._dp) + 0.5_dp)
-do k = 0, N / Nl / 3 + (ieor(iand(log2N, 1), 1)) - 1
+i1 = N/Nl/3 - 1
+if (mod(N/Nl, 3) > 1) i1 = i1 + 1
+do k = 0, i1
     y(delta(j))   = x(j)
     y(delta(j)+1) = x(j+N/2)
     j = j + 1
