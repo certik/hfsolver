@@ -616,7 +616,7 @@ logical, intent(in) :: E
 if ((E .and. N == Nl) .or. (.not. E .and. N <= Nl)) then
     delta(2*Oo/Nl)   = Oi*2
     delta(2*Oo/Nl+1) = Oo
-else if (N > 4) then
+else if (N >= 2) then
     call ELAB(delta, Nl, N/2, Oi, Oo, S+1, E)
     call ELAB(delta, Nl, N/4, Oi + ishft(1, S), Oo + N/2, S+2, .false.)
     if (N/4 >= Nl) &
