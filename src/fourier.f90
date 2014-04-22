@@ -636,6 +636,9 @@ complex(dp) :: U(0:size(y)/2-1), Z(0:size(y)/4-1), Zp(0:size(y)/4-1)
 integer :: N, k
 N = size(y)
 if (N > 2) then
+    call assert(size(y(::2)) == N/2)
+    call assert(size(y(1::4)) == N/4)
+    call assert(size(y(3::4)) == N/4)
     call fft_noleaves(y(::2))
     call fft_noleaves(y(1::4))
     call fft_noleaves(y(3::4))
