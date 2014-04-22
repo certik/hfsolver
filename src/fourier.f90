@@ -635,7 +635,7 @@ do i = 0, 2*N/Nl - 1, 2
 end do
 idx = argsort(delta(::2))
 delta_out = delta(1::2)
-delta_out = delta_out(idx)
+delta_out = delta_out(idx)*2
 end function
 
 end module
