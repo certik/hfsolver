@@ -45,6 +45,7 @@ real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
 real(dp) :: Nelec, jac_det
 real(dp) :: psi_norm
+real(dp) :: fa, fb, fc
 
 energy_eps = 3.6749308286427368e-5_dp
 brent_eps = 1e-3_dp
@@ -132,7 +133,7 @@ gamma_n = 0
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.false.)
+    call bracket(f, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
     call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
         free_energy_, verbose=.true.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
