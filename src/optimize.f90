@@ -158,15 +158,15 @@ end do
 call stop_error("brent: The maximum number of iterations exceeded.")
 end subroutine
 
-subroutine bracket(f, xa, xb, xc, grow_limit, maxiter, verbose)
+subroutine bracket(f, xa, xb, xc, fa, fb, fc, grow_limit, maxiter, verbose)
 procedure(func) :: f
 real(dp), intent(inout) :: xa, xb
-real(dp), intent(out) :: xc
+real(dp), intent(out) :: xc, fa, fb, fc
 real(dp), intent(in) :: grow_limit
 integer, intent(in) :: maxiter
 logical, intent(in), optional :: verbose
 real(dp), parameter :: golden_ratio = (1+sqrt(5._dp))/2
-real(dp) :: denom, dum, fa, fb, fc, fw, tmp1, tmp2, val, w, wlim
+real(dp) :: denom, dum, fw, tmp1, tmp2, val, w, wlim
 integer :: iter
 logical :: verbose_
 verbose_ = .false.
