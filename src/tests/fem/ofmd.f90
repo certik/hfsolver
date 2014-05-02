@@ -26,6 +26,19 @@ logical, parameter :: WITH_UMFPACK=.false.
 
 contains
 
+subroutine parabola_vertex(x1, y1, x2, y2, x3, y3, xv, yv)
+real(dp), intent(in) :: x1, y1, x2, y2, x3, y3
+real(dp), intent(out) :: xv, yv
+real(dp) :: denom, A, B, C
+denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
+A     = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
+B     = (x3**2 * (y1 - y2) + x2**2 * (y3 - y1) + x1**2 * (y2 - y3)) / denom
+C     = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + &
+            x1 * x2 * (x1 - x2) * y3) / denom
+xv = -B / (2*A)
+yv = C - B**2 / (4*A)
+end subroutine
+
 subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, &
     Ts, Exc, Nb)
 integer, intent(in) :: p
