@@ -63,7 +63,8 @@ integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k, iter, max_iter
 integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
-    gamma_d, gamma_n, theta, theta_a, theta_b, theta_c
+    gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
+real(dp) :: f2
 real(dp) :: Nelec, jac_det
 real(dp) :: psi_norm
 integer :: Ncoo
@@ -221,9 +222,13 @@ gamma_n = 0
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, 100._dp, 20, verbose=.false.)
-    call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
-        free_energy_, verbose=.true.)
+    call bracket(f, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+    if (iter < 2) then
+        call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+            free_energy_, verbose=.true.)
+    else
+        call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
+    end if
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
