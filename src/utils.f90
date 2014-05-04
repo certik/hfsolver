@@ -8,7 +8,7 @@ implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
     stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random, &
-    zeros
+    zeros, mesh_exp, linspace
 
 interface str
     module procedure str_int, str_real, str_real_n
@@ -358,5 +358,70 @@ call system_clock(count=clock)
 seed = clock + 37 * [(i - 1, i = 1, n)]
 call random_seed(put=seed)
 end subroutine
+
+function linspace(a, b, n) result(s)
+real(dp), intent(in) :: a, b
+integer, intent(in) :: n
+real(dp) :: s(n)
+s = mesh_exp(a, b, 1.0_dp, n-1)
+end function
+
+function mesh_exp(r_min, r_max, a, N) result(mesh)
+! Generates exponential mesh of N elements on [r_min, r_max]
+!
+! Arguments
+! ---------
+!
+! The domain [r_min, r_max], the mesh will contain both endpoints:
+real(dp), intent(in) :: r_min, r_max
+!
+! The fraction of the rightmost vs. leftmost elements of the mesh (for a > 1
+! this means the "largest/smallest"); The only requirement is a > 0. For a == 1
+! a uniform mesh will be returned:
+real(dp), intent(in) :: a
+!
+! The number of elements in the mesh:
+integer, intent(in) :: N
+!
+! Returns
+! -------
+!
+! The generated mesh:
+real(dp) :: mesh(N+1)
+!
+! Note: Every exponential mesh is fully determined by the set of parameters
+! (r_min, r_max, a, N). Use the get_mesh_exp_params() subroutine to obtain them
+! from the given mesh.
+!
+! Example
+! -------
+!
+! real(dp) :: r(11)
+! r = mesh_exp(0._dp, 50._dp, 1e9_dp, 10)
+
+integer :: i
+real(dp) :: alpha, beta
+if (a < 0) then
+    call stop_error("mesh_exp: a > 0 required")
+else if (a == 1) then
+    alpha = (r_max - r_min) / N
+    do i = 1, N+1
+        mesh(i) = alpha * (i-1.0_dp) + r_min
+    end do
+else
+    if (N > 1) then
+        beta = log(a) / (N-1)
+        alpha = (r_max - r_min) / (exp(beta*N) - 1)
+        do i = 1, N+1
+            mesh(i) = alpha * (exp(beta*(i-1)) - 1) + r_min
+        end do
+    else if (N == 1) then
+        mesh(1) = r_min
+        mesh(2) = r_max
+    else
+        call stop_error("mesh_exp: N >= 1 required")
+    end if
+end if
+end function
 
 end module

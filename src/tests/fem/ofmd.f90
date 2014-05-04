@@ -11,33 +11,21 @@ use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
     quad_lobatto
 !use linalg, only: solve
+use ofdft, only: f
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use sparse, only: coo2csr_canonical
 use constants, only: pi
 use xc, only: xc_pz
-use optimize, only: bracket, brent
+use optimize, only: bracket, brent, parabola_vertex
 use umfpack, only: factorize, solve, free_data, umfpack_numeric
 implicit none
 private
-public free_energy_min, read_pseudo, radial_density_fourier, linspace
+public free_energy_min, radial_density_fourier
 
 logical, parameter :: WITH_UMFPACK=.false.
 
 contains
-
-subroutine parabola_vertex(x1, y1, x2, y2, x3, y3, xv, yv)
-real(dp), intent(in) :: x1, y1, x2, y2, x3, y3
-real(dp), intent(out) :: xv, yv
-real(dp) :: denom, A, B, C
-denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
-A     = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
-B     = (x3**2 * (y1 - y2) + x2**2 * (y3 - y1) + x1**2 * (y2 - y3)) / denom
-C     = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + &
-            x1 * x2 * (x1 - x2) * y3) / denom
-xv = -B / (2*A)
-yv = C - B**2 / (4*A)
-end subroutine
 
 subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, &
     Ts, Exc, Nb)
@@ -222,9 +210,9 @@ gamma_n = 0
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+    call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
     if (iter < 2) then
-        call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+        call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.true.)
     else
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
@@ -275,7 +263,7 @@ call stop_error("free_energy_minimization: The maximum number of iterations exce
 
 contains
 
-    real(dp) function f(theta) result(energy)
+    real(dp) function func(theta) result(energy)
     real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
@@ -411,83 +399,6 @@ if (present(Hpsi)) then
 end if
 end subroutine
 
-real(dp) elemental function f(y, deriv)
-! Function f(y) from Appendix A in [1].
-!
-! [1] Perrot, F. (1979). Gradient correction to the statistical electronic free
-! energy at nonzero temperatures: Application to equation-of-state
-! calculations. Physical Review A, 20(2), 586–594.
-real(dp), intent(in) :: y ! must be positive
-! if deriv == .true. compute df/dy instead. Default .false.
-logical, intent(in), optional :: deriv
-real(dp), parameter :: y0 = 3*pi/(4*sqrt(2._dp))
-real(dp), parameter :: c(*) = [-0.8791880215_dp, 0.1989718742_dp, &
-    0.1068697043e-2_dp, -0.8812685726e-2_dp, 0.1272183027e-1_dp, &
-    -0.9772758583e-2_dp, 0.3820630477e-2_dp, -0.5971217041e-3_dp]
-real(dp), parameter :: d(*) = [0.7862224183_dp, -0.1882979454e1_dp, &
-    0.5321952681_dp, 0.2304457955e1_dp, -0.1614280772e2_dp, &
-    0.5228431386e2_dp, -0.9592645619e2_dp, 0.9462230172e2_dp, &
-    -0.3893753937e2_dp]
-real(dp) :: u
-integer :: i
-logical :: deriv_
-deriv_ = .false.
-if (present(deriv)) deriv_ = deriv
-
-if (.not. deriv_) then
-    if (y <= y0) then
-        f = log(y)
-        do i = 0, 7
-            f = f + c(i+1) * y**i
-        end do
-    else
-        u = y**(2._dp / 3)
-        f = 0
-        do i = 0, 8
-            f = f + d(i+1) / u**(2*i-1)
-        end do
-        ! Note: Few terms in [1] have "y" instead of "u" in them for y > y0, but
-        ! that is obviously a typo.
-    end if
-else
-    if (y <= y0) then
-        f = 1 / y
-        do i = 0, 6
-            f = f + (i+1) * c(i+2) * y**i
-        end do
-    else
-        u = y**(2._dp / 3)
-        f = 0
-        do i = 0, 8
-            f = f - (2*i-1) * d(i+1) / u**(2*i)
-        end do
-        f = f * 2._dp/3 / y**(1._dp/3)
-    end if
-end if
-end function
-
-
-subroutine read_pseudo(filename, R, V, Z, Ediff)
-! Reads the pseudopotential from the file 'filename'.
-character(len=*), intent(in) :: filename   ! File to read from, e.g. "H.pseudo"
-real(dp), allocatable, intent(out) :: R(:) ! radial grid [0, Rcut]
-! potential on the radial grid. The potential smoothly changes into -1/R for
-! r > Rcut, where Rcut = R(size(R)) is the cut-off radius
-real(dp), allocatable, intent(out) :: V(:)
-real(dp), intent(out) :: Z     ! Nuclear charge
-real(dp), intent(out) :: Ediff ! The energy correction
-real(dp) :: Rcut
-integer :: N, i, u
-open(newunit=u, file=filename, status="old")
-read(u, *) Z, N, Rcut, Ediff
-allocate(R(N), V(N))
-do i = 1, N
-    read(u, *) R(i), V(i)
-end do
-close(u)
-R = R * Rcut
-end subroutine
-
 subroutine radial_density_fourier(R, V, L, Z, Ng, Rnew, density)
 real(dp), intent(in) :: R(:), V(:), L, Z, Rnew(:)
 real(dp), intent(out) :: density(:)
@@ -579,72 +490,6 @@ if (modulo(N, 2) == 0) then
 end if
 end function
 
-
-function linspace(a, b, n) result(s)
-real(dp), intent(in) :: a, b
-integer, intent(in) :: n
-real(dp) :: s(n)
-s = mesh_exp(a, b, 1.0_dp, n-1)
-end function
-
-function mesh_exp(r_min, r_max, a, N) result(mesh)
-! Generates exponential mesh of N elements on [r_min, r_max]
-!
-! Arguments
-! ---------
-!
-! The domain [r_min, r_max], the mesh will contain both endpoints:
-real(dp), intent(in) :: r_min, r_max
-!
-! The fraction of the rightmost vs. leftmost elements of the mesh (for a > 1
-! this means the "largest/smallest"); The only requirement is a > 0. For a == 1
-! a uniform mesh will be returned:
-real(dp), intent(in) :: a
-!
-! The number of elements in the mesh:
-integer, intent(in) :: N
-!
-! Returns
-! -------
-!
-! The generated mesh:
-real(dp) :: mesh(N+1)
-!
-! Note: Every exponential mesh is fully determined by the set of parameters
-! (r_min, r_max, a, N). Use the get_mesh_exp_params() subroutine to obtain them
-! from the given mesh.
-!
-! Example
-! -------
-!
-! real(dp) :: r(11)
-! r = mesh_exp(0._dp, 50._dp, 1e9_dp, 10)
-
-integer :: i
-real(dp) :: alpha, beta
-if (a < 0) then
-    call stop_error("mesh_exp: a > 0 required")
-else if (a == 1) then
-    alpha = (r_max - r_min) / N
-    do i = 1, N+1
-        mesh(i) = alpha * (i-1.0_dp) + r_min
-    end do
-else
-    if (N > 1) then
-        beta = log(a) / (N-1)
-        alpha = (r_max - r_min) / (exp(beta*N) - 1)
-        do i = 1, N+1
-            mesh(i) = alpha * (exp(beta*(i-1)) - 1) + r_min
-        end do
-    else if (N == 1) then
-        mesh(1) = r_min
-        mesh(2) = r_max
-    else
-        call stop_error("mesh_exp: N >= 1 required")
-    end if
-end if
-end function
-
 real(dp) elemental function sinc(x) result(r)
 real(dp), intent(in) :: x
 if (abs(x) < 1e-8_dp) then
@@ -663,12 +508,13 @@ end module
 
 program ofmd
 use types, only: dp
-use ofmd_utils, only: free_energy_min, read_pseudo, radial_density_fourier, &
-    linspace
+use ofmd_utils, only: free_energy_min, radial_density_fourier
+use ofdft, only: read_pseudo
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
+use utils, only: linspace
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF, u, Nmesh, N, Nx, Ny, Nz, i
