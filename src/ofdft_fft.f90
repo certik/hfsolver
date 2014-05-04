@@ -23,6 +23,10 @@ public reciprocal_space_vectors, free_energy, free_energy_min, &
 integer, parameter :: update_fletcher_reeves = 1
 integer, parameter :: update_polak_ribiere   = 2
 
+interface integralF
+    module procedure integralF_complex, integralF_real
+end interface
+
 contains
 
 subroutine reciprocal_space_vectors(L, G, G2)
@@ -78,7 +82,7 @@ real(dp), intent(in) :: L, f(:, :, :)
 r = sum(f) * L**3 / size(f)
 end function
 
-real(dp) function integralF(L, fF) result(r)
+real(dp) function integralF_complex(L, fF) result(r)
 real(dp), intent(in) :: L
 complex(dp), intent(in) :: fF(:, :, :)
 complex(dp) :: s
@@ -87,7 +91,7 @@ r = real(s, dp)
 call assert(abs(aimag(s)) < 1e-12_dp)
 end function
 
-real(dp) function integralF2(fF, L) result(r)
+real(dp) function integralF_real(fF, L) result(r)
 real(dp), intent(in) :: L, fF(:, :, :)
 r = sum(fF) * L**3
 end function
