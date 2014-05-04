@@ -49,6 +49,7 @@ set(SRC
 
     random.f90
 
+    integration.f90
     ofdft.f90
     ofdft_fft.f90
 )

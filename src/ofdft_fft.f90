@@ -14,6 +14,7 @@ use ofdft, only: f
 use xc, only: xc_pz
 use utils, only: stop_error, assert
 use fourier, only: fft3_inplace, ifft3_inplace
+use integration, only: integrate_trapz_1
 implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
@@ -199,16 +200,6 @@ end subroutine
 real(dp) pure function integrate(Rp, f) result(s)
 real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
-end function
-
-real(dp) pure function integrate_trapz_1(Rp, f) result(s)
-real(dp), intent(in) :: Rp(:), f(:)
-real(dp) :: g(size(Rp))
-integer :: N
-N = size(Rp)
-g = f * Rp
-s = (g(1) + g(N)) / 2
-s = s + sum(g(2:N-1))
 end function
 
 subroutine free_energy_min(L, G2, T_au, VenF, ne, Eee, Een, Ts, Exc, Etot)
