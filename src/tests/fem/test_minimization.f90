@@ -13,6 +13,7 @@ use utils, only: assert, zeros, stop_error
 use constants, only: pi
 use xc, only: xc_pz
 use optimize, only: bracket, brent
+use ofdft, only: f
 implicit none
 private
 public free_energy_min, read_pseudo
@@ -133,8 +134,8 @@ gamma_n = 0
 do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(f, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
-    call brent(f, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+    call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+    call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
         free_energy_, verbose=.true.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
@@ -183,7 +184,7 @@ call stop_error("free_energy_minimization: The maximum number of iterations exce
 
 contains
 
-    real(dp) function f(theta) result(energy)
+    real(dp) function func(theta) result(energy)
     real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
@@ -421,61 +422,6 @@ R = R*Rcut
 ! We need to add the minus sign to the potential ourselves:
 V = -V
 end subroutine
-
-real(dp) elemental function f(y, deriv)
-! Function f(y) from Appendix A in [1].
-!
-! [1] Perrot, F. (1979). Gradient correction to the statistical electronic free
-! energy at nonzero temperatures: Application to equation-of-state
-! calculations. Physical Review A, 20(2), 586–594.
-real(dp), intent(in) :: y ! must be positive
-! if deriv == .true. compute df/dy instead. Default .false.
-logical, intent(in), optional :: deriv
-real(dp), parameter :: y0 = 3*pi/(4*sqrt(2._dp))
-real(dp), parameter :: c(*) = [-0.8791880215_dp, 0.1989718742_dp, &
-    0.1068697043e-2_dp, -0.8812685726e-2_dp, 0.1272183027e-1_dp, &
-    -0.9772758583e-2_dp, 0.3820630477e-2_dp, -0.5971217041e-3_dp]
-real(dp), parameter :: d(*) = [0.7862224183_dp, -0.1882979454e1_dp, &
-    0.5321952681_dp, 0.2304457955e1_dp, -0.1614280772e2_dp, &
-    0.5228431386e2_dp, -0.9592645619e2_dp, 0.9462230172e2_dp, &
-    -0.3893753937e2_dp]
-real(dp) :: u
-integer :: i
-logical :: deriv_
-deriv_ = .false.
-if (present(deriv)) deriv_ = deriv
-
-if (.not. deriv_) then
-    if (y <= y0) then
-        f = log(y)
-        do i = 0, 7
-            f = f + c(i+1) * y**i
-        end do
-    else
-        u = y**(2._dp / 3)
-        f = 0
-        do i = 0, 8
-            f = f + d(i+1) / u**(2*i-1)
-        end do
-        ! Note: Few terms in [1] have "y" instead of "u" in them for y > y0, but
-        ! that is obviously a typo.
-    end if
-else
-    if (y <= y0) then
-        f = 1 / y
-        do i = 0, 6
-            f = f + (i+1) * c(i+2) * y**i
-        end do
-    else
-        u = y**(2._dp / 3)
-        f = 0
-        do i = 0, 8
-            f = f - (2*i-1) * d(i+1) / u**(2*i)
-        end do
-        f = f * 2._dp/3 / y**(1._dp/3)
-    end if
-end if
-end function
 
 end module
 
