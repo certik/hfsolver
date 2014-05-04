@@ -6,7 +6,7 @@ use types, only: dp
 use utils, only: stop_error
 implicit none
 private
-public bisect, brent, bracket
+public bisect, brent, bracket, parabola_vertex
 
 interface
     real(dp) function func(x)
@@ -225,6 +225,21 @@ do while (fc < fb)
             iter, xa, xb, xc
     end if
 end do
+end subroutine
+
+subroutine parabola_vertex(x1, y1, x2, y2, x3, y3, xv, yv)
+! Calculates the position (xv, yv) of the parabola vertex.
+! The parabola is defined by 3 points (x1, y1), (x2, y2), (x3, y3).
+real(dp), intent(in) :: x1, y1, x2, y2, x3, y3
+real(dp), intent(out) :: xv, yv
+real(dp) :: denom, A, B, C
+denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
+A     = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
+B     = (x3**2 * (y1 - y2) + x2**2 * (y3 - y1) + x1**2 * (y2 - y3)) / denom
+C     = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + &
+            x1 * x2 * (x1 - x2) * y3) / denom
+xv = -B / (2*A)
+yv = C - B**2 / (4*A)
 end subroutine
 
 end module
