@@ -16,7 +16,7 @@ use optimize, only: bracket, brent
 use ofdft, only: f
 implicit none
 private
-public free_energy_min, read_pseudo
+public free_energy_min
 
 contains
 
@@ -397,32 +397,6 @@ end do
 Hpsi = dF0dn + Vhq + Venq + Vxc
 end subroutine
 
-subroutine read_pseudo(filename, R, V, Z, Ediff)
-! Reads the pseudopotential from the file 'filename'.
-character(len=*), intent(in) :: filename   ! File to read from, e.g. "H.pseudo"
-real(dp), allocatable, intent(out) :: R(:) ! radial grid [0, Rcut]
-! potential on the radial grid. The potential smoothly changes into -1/R for
-! r > Rcut, where Rcut = R(size(R)) is the cut-off radius
-real(dp), allocatable, intent(out) :: V(:)
-real(dp), intent(out) :: Z     ! Nuclear charge
-real(dp), intent(out) :: Ediff ! The energy correction
-real(dp) :: Rcut
-integer :: N, i, u
-open(newunit=u, file=filename, status="old")
-read(u, *) Z, N, Rcut, Ediff
-allocate(R(N-1), V(N-1))
-! The first potential value is zero in the file, so we skip it
-read(u, *) R(1), V(1)
-do i = 1, N-1
-    read(u, *) R(i), V(i)
-end do
-close(u)
-! The file contains a grid from [0, 1], so we need to rescale it:
-R = R*Rcut
-! We need to add the minus sign to the potential ourselves:
-V = -V
-end subroutine
-
 end module
 
 
@@ -431,7 +405,8 @@ end module
 
 program test_minimization
 use types, only: dp
-use test_minimization_utils, only: free_energy_min, read_pseudo
+use test_minimization_utils, only: free_energy_min
+use ofdft, only: read_pseudo
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, assert
 use splines, only: spline3pars, iixmin, poly3
@@ -449,6 +424,7 @@ real(dp) :: Rcut, L, T_eV, T_au
 !read(u, *) values
 !close(u)
 !call read_pseudo("H.pseudo", R, V, Z, Ediff)
+!V = -V
 allocate(R(1), V(1)); Z=1; Ediff=0
 !call loadtxt("Venr.txt", D)
 !allocate(c(0:4, size(D, 1)-1))
