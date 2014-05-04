@@ -4,6 +4,10 @@
 # the exact answer calculated using mpmath.  The rational approximation was
 # calculated using Mathematica, a sample script is given in the comment below.
 
+import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+
 from numpy import linspace
 from math import exp
 from sympy.mpmath import besseli, besselk
