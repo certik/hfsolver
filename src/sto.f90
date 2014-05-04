@@ -758,15 +758,15 @@ do i = 1, n  ! Only this outer loop is parallelized
                 end do
             end do
         end do
-    end do
-    if (verbose_) then
-        if (omp_get_thread_num() == 0) then
-            ! char(13) is carriage return, so we keep overwriting the
-            ! percentage
-            write (*, "(a1, f5.1,'%')", advance="no") char(13), &
-                100._dp * i / n
+        if (verbose_) then
+            if (omp_get_thread_num() == 0) then
+                ! char(13) is carriage return, so we keep overwriting the
+                ! percentage
+                write (*, "(a1, f5.1,'%')", advance="no") char(13), &
+                    100._dp * (n*(n+1)/2 - (n-i+1)*(n-i+2)/2+j-i+1) / (n*(n+1)/2)
+            end if
         end if
-    end if
+    end do
 end do
 !$omp end do
 !$omp end parallel
