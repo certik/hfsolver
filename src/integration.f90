@@ -23,7 +23,6 @@ end function
 
 real(dp) pure function integrate_trapz_3(Rp, f) result(s)
 real(dp), intent(in) :: Rp(:), f(:)
-
 real(dp) :: g(size(Rp))
 integer :: N
 N = size(Rp)
