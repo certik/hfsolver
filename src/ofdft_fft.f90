@@ -89,7 +89,10 @@ complex(dp), intent(in) :: fF(:, :, :)
 complex(dp) :: s
 s = sum(fF) * L**3
 r = real(s, dp)
-call assert(abs(aimag(s)) < 1e-12_dp)
+if (abs(aimag(s)) > 1e-12_dp) then
+    print *, "aimag(s) =", aimag(s)
+    call stop_error("integralF(): Complex part is not negligible.")
+end if
 end function
 
 real(dp) function integralF_real(fF, L) result(r)
