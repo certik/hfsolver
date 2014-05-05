@@ -114,6 +114,8 @@ real(dp) :: jacx, jacy, jacz
 real(dp), intent(out) :: jac_det
 real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 ! Precalculate basis functions:
+!$omp parallel default(none) shared(p, Nq, phihq, dphihq, phi_v, phi_dx, phi_dy, phi_dz) private(ax, ay, az, iqx, iqy, iqz)
+!$omp do
 do az = 1, p+1
 do ay = 1, p+1
 do ax = 1, p+1
@@ -134,6 +136,8 @@ do ax = 1, p+1
 end do
 end do
 end do
+!$omp end do
+!$omp end parallel
 jacx = lx/2
 jacy = ly/2
 jacz = lz/2
@@ -142,6 +146,8 @@ phi_dx = phi_dx / jacx
 phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
 ! Precalculate element matrix:
+!$omp parallel default(none) shared(p, phi_dx, phi_dy, phi_dz, jac_det, wtq, Am_loc) private(ax, ay, az, bx, by, bz)
+!$omp do
 do bz = 1, p+1
 do by = 1, p+1
 do bx = 1, p+1
@@ -159,6 +165,8 @@ do bx = 1, p+1
 end do
 end do
 end do
+!$omp end do
+!$omp end parallel
 end subroutine
 
 subroutine assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi, matAj, matAx, idx)
