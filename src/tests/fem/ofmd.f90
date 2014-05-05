@@ -67,7 +67,7 @@ logical :: spectral ! Are we using spectral elements
 real(dp) :: background
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 
-energy_eps = 3.6749308286427368e-5_dp
+energy_eps = 1e-9_dp
 brent_eps = 1e-3_dp
 max_iter = 200
 
@@ -84,6 +84,7 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 Nq = p+1
+Nq = 20
 quad_type = quad_lobatto
 
 spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
@@ -231,6 +232,7 @@ do iter = 1, max_iter
     print *, "Norm of psi:", psi_norm
     print *, "mu =", mu
     print *, "|ksi| =", sqrt(gamma_n)
+    print *, "theta =", theta
     print *, "Summary of energies [a.u.]:"
     print "('    Ts   = ', f14.8)", Ts
     print "('    Een  = ', f14.8)", Een
@@ -478,16 +480,16 @@ real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: density_en(:), R2(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
-p = 5
+p = 6
 N = 3
 L = 2.997672536043746_dp
-T_eV = 0.862_dp
+T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 Nx = N
 Ny = N
 Nz = N
 
-call read_pseudo("H.pseudo", R, V, Z, Ediff)
+call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
 
 Nmesh = 10000
 allocate(R2(Nmesh), density_en(Nmesh))
@@ -547,7 +549,7 @@ end function
 
 real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 5, Z_ = 1
+real(dp), parameter :: alpha = 0.5_dp, Z_ = 1
 real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
