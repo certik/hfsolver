@@ -271,7 +271,7 @@ contains
         T_au, &
         nenq_pos, psi_**2, phihq, matAp, matAj, matAx, matd, spectral, &
         phi_v, jac_det, &
-        Eh, Een, Ts, Exc, energy)
+        Eh, Een, Ts, Exc, energy, Hpsi=Hpsi)
     end function
 
 end subroutine
@@ -298,7 +298,7 @@ logical, intent(in), optional :: verbose
 ! density "n". Use the relation
 !     d/dpsi = 2 psi d/dn
 ! to obtain the derivative with respect to psi (i.e. multiply Hpsi by 2*psi).
-real(dp), intent(out), optional :: Hpsi(:, :, :, :)
+real(dp), intent(out) :: Hpsi(:, :, :, :)
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
     Vhq, nq_neutral, Vxc, dF0dn
@@ -379,25 +379,23 @@ end do
 Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
 Etot = Ts + Een + Eh + Exc
 
-if (present(Hpsi)) then
-    ! Calculate the derivative
-    allocate(Vxc(Nq, Nq, Nq, Ne))
-    dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
-    ! F0 = nq_pos / beta * f(y)
-    ! d F0 / d n =
-    dF0dn = 1 / beta * f(y) + nq_pos / beta * f(y, deriv=.true.) * dydn
-    ! Exchange and correlation potential
-    do m = 1, Ne
-    do k = 1, Nq
-    do j = 1, Nq
-    do i = 1, Nq
-        call xc_pz(nq_pos(i, j, k, m), tmp, Vxc(i, j, k, m))
-    end do
-    end do
-    end do
-    end do
-    Hpsi = dF0dn + Vhq + Venq + Vxc
-end if
+! Calculate the derivative
+allocate(Vxc(Nq, Nq, Nq, Ne))
+dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
+! F0 = nq_pos / beta * f(y)
+! d F0 / d n =
+dF0dn = 1 / beta * f(y) + nq_pos / beta * f(y, deriv=.true.) * dydn
+! Exchange and correlation potential
+do m = 1, Ne
+do k = 1, Nq
+do j = 1, Nq
+do i = 1, Nq
+    call xc_pz(nq_pos(i, j, k, m), tmp, Vxc(i, j, k, m))
+end do
+end do
+end do
+end do
+Hpsi = dF0dn + Vhq + Venq + Vxc
 end subroutine
 
 subroutine radial_density_fourier(R, V, L, Z, Ng, Rnew, density)
