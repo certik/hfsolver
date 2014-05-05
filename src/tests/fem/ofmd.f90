@@ -396,6 +396,7 @@ end do
 end do
 end do
 Hpsi = dF0dn + Vhq + Venq + Vxc
+Hpsi = Hpsi * Lx*Ly*Lz
 end subroutine
 
 subroutine radial_density_fourier(R, V, L, Z, Ng, Rnew, density)
