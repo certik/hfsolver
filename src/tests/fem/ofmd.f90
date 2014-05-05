@@ -188,7 +188,7 @@ print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
+    Venq, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
     phi_v, jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
@@ -223,7 +223,7 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
+        Venq, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
         phi_v, jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
     print *, "Iteration:", iter
@@ -269,7 +269,7 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
         T_au, &
-        nenq_pos, psi_**2, phihq, matAp, matAj, matAx, matd, spectral, &
+        Venq, psi_**2, phihq, matAp, matAj, matAx, matd, spectral, &
         phi_v, jac_det, &
         Eh, Een, Ts, Exc, energy, Hpsi=Hpsi)
     end function
