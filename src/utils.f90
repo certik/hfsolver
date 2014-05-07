@@ -403,7 +403,7 @@ integer :: i
 real(dp) :: alpha, beta
 if (a < 0) then
     call stop_error("mesh_exp: a > 0 required")
-else if (a == 1) then
+else if (abs(a - 1) < 1e-16_dp) then
     alpha = (r_max - r_min) / N
     do i = 1, N+1
         mesh(i) = alpha * (i-1.0_dp) + r_min

@@ -98,7 +98,7 @@ if (info/=0) then
     call stop_error('DGGEV ERROR')
 end if
 allocate(lambda(n), sel(n))
-where (beta /= 0) lambda = alphar / beta
+where (abs(beta) > 1e-16_dp) lambda = alphar / beta
 j = 0
 do i = 1, n
     sel(i) = 0
