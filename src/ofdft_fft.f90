@@ -100,6 +100,80 @@ real(dp), intent(in) :: L, fF(:, :, :)
 r = sum(fF) * L**3
 end function
 
+subroutine calc_dFdtheta(L, T_au, Ven, C1, C2, C3, psi, eta, theta, dFdtheta)
+! Calculates dF[psi(theta)]/dtheta efficiently (no FFT needed, just integrals)
+! See the function find_theta() for an example how to prepare the C1, C2 and C3
+! constants and how to use this subroutine.
+real(dp), intent(in) :: L, T_au, psi(:, :, :), eta(:, :, :)
+real(dp), intent(in) :: C1(:, :, :), C2(:, :, :), C3(:, :, :)
+real(dp), intent(in) :: theta
+real(dp), intent(in) :: Ven(:, :, :)
+real(dp), intent(out) :: dFdtheta
+real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, dFdn, &
+    ne
+
+real(dp), dimension(size(Ven,1), size(Ven,2), size(Ven,3)) :: y, &
+    exc_density, Vee, Vxc, dF0dn
+real(dp) :: beta, dydn
+integer :: i, j, k, Ng
+psi_ = psi*cos(theta)+eta*sin(theta)
+ne = psi_**2
+
+Ng = size(Ven, 1)
+do k = 1, Ng
+do j = 1, Ng
+do i = 1, Ng
+    call xc_pz(ne(i, j, k), exc_density(i, j, k), Vxc(i, j, k))
+end do
+end do
+end do
+beta = 1/T_au
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
+if (any(y < 0)) call stop_error("Density must be positive")
+dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
+dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
+Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
+dFdn = dF0dn + Vee + Ven + Vxc
+dFdn = dFdn * L**3
+
+dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * dFdn * psi_)
+end subroutine
+
+subroutine find_theta(L, G2, T_au, VenF, psi, eta)
+! It prints the values of dF/dtheta using efficient evaluation
+real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
+complex(dp), intent(in) :: VenF(:, :, :)
+real(dp) :: theta, dFdtheta
+real(dp), dimension(size(VenF,1), size(VenF,2), size(VenF,3)) :: Ven, C1, C2, C3
+complex(dp), dimension(size(VenF,1), size(VenF,2), size(VenF,3)) :: &
+    neF, VeeF
+integer :: i
+real(dp) :: t1, t2
+call fourier2real(VenF, Ven)
+call real2fourier(psi**2, neF)
+VeeF = 4*pi*neF / G2
+VeeF(1, 1, 1) = 0
+call fourier2real(VeeF, C1)
+call real2fourier(psi*eta, neF)
+VeeF = 4*pi*neF / G2
+VeeF(1, 1, 1) = 0
+call fourier2real(VeeF, C2)
+call real2fourier(eta**2, neF)
+VeeF = 4*pi*neF / G2
+VeeF(1, 1, 1) = 0
+call fourier2real(VeeF, C3)
+print *, "dFdtheta:"
+theta = 0
+call cpu_time(t1)
+do i = 1, 100
+    call calc_dFdtheta(L, T_au, Ven, C1, C2, C3, psi, eta, theta, dFdtheta)
+    print *, theta, dFdtheta
+    theta = theta + pi/2/100
+end do
+call cpu_time(t2)
+print *, "time: ", t2-t1
+end subroutine
+
 subroutine free_energy(L, G2, T_au, VenF, ne, Eee, Een, Ts, Exc, Etot, dFdn)
 real(dp), intent(in) :: L, G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenF(:, :, :)
