@@ -92,7 +92,7 @@ subroutine print_int2()
 integer :: i, u
 open(newunit=u, file="int2", status="replace")
 do i = 1, size(int2)
-    if (int2(i) /= 0) write(u,"(e25.13)") int2(i)
+    if (abs(int2(i)) > tiny(1._dp)) write(u,"(e25.13)") int2(i)
 end do
 close(u)
 end subroutine

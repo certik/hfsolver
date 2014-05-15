@@ -41,7 +41,7 @@ integer :: n, l, i, j
 P = 0
 do l = 0, ubound(nbfl, 1)
     do n = 1, numocc(focc(:, l))
-        call assert(focc(n, l) == 2*(2*l+1))
+        call assert(abs(focc(n, l) - 2*(2*l+1)) < tiny(1._dp))
         do j = 1, nbfl(l)
             do i = 1, j
                 P(i, j, l) = P(i, j, l) + 2 * C(i, n, l) * C(j, n, l)
@@ -79,7 +79,7 @@ do l = 0, ubound(nbfl, 1)
                 q(beta, lp), q(alpha, lp)), 0)
             do k = abs(l-lp), abs(l+lp), 2
                 wig = wigner3j_(l, k, lp)
-                if (wig == 0) cycle
+                if (abs(wig) < tiny(1._dp)) cycle
                 TT(alpha, beta) = TT(alpha, beta) - 0.5_dp * wig**2 &
                     * slater(ijkl2intindex(q(mu, l), q(alpha, lp), &
                         q(beta, lp), q(nu, l)), k)
@@ -159,7 +159,7 @@ do l = 0, ubound(nbfl, 1)
                 slater(ijkl2intindex(mu, nu, beta, alpha), 0)
             do k = abs(l-lp), abs(l+lp), 2
                 wig = wigner3j_(l, k, lp)
-                if (wig == 0) cycle
+                if (abs(wig) < tiny(1._dp)) cycle
                 TT(alpha, beta, lp, mu, nu, l) = TT(alpha, beta, lp, mu, nu, l)&
                     - 0.5_dp * wig**2 &
                     * slater(ijkl2intindex(mu, alpha, beta, nu), k)
@@ -192,7 +192,7 @@ do l = 0, ubound(nbfl, 1)
             TT(alpha, beta) = slater(ijkl2intindex(mu, nu, beta, alpha), 0)
             do k = abs(l-lp), abs(l+lp), 2
                 wig = wigner3j_(l, k, lp)
-                if (wig == 0) cycle
+                if (abs(wig) < tiny(1._dp)) cycle
                 TT(alpha, beta) = TT(alpha, beta) - 0.5_dp * wig**2 &
                     * slater(ijkl2intindex(mu, alpha, beta, nu), k)
             end do
@@ -390,7 +390,7 @@ do a = 1, size(nlist)
                         fac = fac + gr(la, ma, k_, q_, lc, mc) &
                                   * gr(lb, mb, k_, q_, ld, md)
                     end do
-                    if (fac == 0) cycle
+                    if (abs(fac) < tiny(1._dp)) cycle
                     r = r + fac * slater(ijkl2intindex(q(na, la), q(nc, lc), &
                             q(nb, lb), q(nd, ld)), k_)
                 end do
@@ -448,7 +448,7 @@ do a = 1, size(nlist)
                 r = 0
                 do k_ = max(abs(la-lc), abs(lb-ld)), min(la+lc, lb+ld)
                     fac = ck(k_, la, ma, lc, mc) * ck(k_, ld, md, lb, mb)
-                    if (fac == 0) cycle
+                    if (abs(fac) < tiny(1._dp)) cycle
                     r = r + fac * slater(ijkl2intindex(q(na, la), q(nc, lc), &
                             q(nb, lb), q(nd, ld)), k_)
                 end do
@@ -505,7 +505,7 @@ do a = 1, size(nlist)
                 r = 0
                 do k_ = max(abs(la-lc), abs(lb-ld)), min(la+lc, lb+ld)
                     fac = ck(k_, la, ma, lc, mc) * ck(k_, ld, md, lb, mb)
-                    if (fac == 0) cycle
+                    if (abs(fac) < tiny(1._dp)) cycle
                     r = r + fac * slater(ijkl2intindex(q(na, la), q(nc, lc), &
                             q(nb, lb), q(nd, ld)), k_)
                 end do

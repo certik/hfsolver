@@ -147,7 +147,7 @@ integer function f(k, a) result(r)
 integer, intent(in) :: k
 real(dp), intent(in) :: a
 real(dp) :: rr
-if (a == 0) then
+if (abs(a) < tiny(1._dp)) then
     r = 0
 else
     rr = abs(a) / a  * a**2 * Dk(k, l, lp)
@@ -160,7 +160,7 @@ end function
 
 integer pure function round(x) result(i)
 real(dp), intent(in) :: x
-if (x == 0) then
+if (abs(x) < tiny(1._dp)) then
     i = 0
 else
     i = int(x + abs(x)/x * 0.5)

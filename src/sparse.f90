@@ -23,7 +23,7 @@ integer :: i, j, idx
 idx = 1
 do j = 1, size(B, 2)
     do i = 1, size(B, 1)
-        if (B(i, j) == 0) cycle
+        if (abs(B(i, j)) < tiny(1._dp)) cycle
         Ai(idx) = i
         Aj(idx) = j
         Ax(idx) = B(i, j)
@@ -38,7 +38,7 @@ integer :: i, j
 nnz = 0
 do j = 1, size(B, 2)
     do i = 1, size(B, 1)
-        if (B(i, j) == 0) cycle
+        if (abs(B(i, j)) < tiny(1._dp)) cycle
         nnz = nnz + 1
     end do
 end do

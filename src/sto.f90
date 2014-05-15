@@ -196,7 +196,7 @@ do i = 1, size(nlist)
                 r = 0
                 do k_ = max(abs(l1-l1p), abs(l2-l2p)), min(l1+l1p, l2+l2p)
                     fac = ck(k_, l1, m1, l1p, m1p) * ck(k_, l2p, m2p, l2, m2)
-                    if (fac == 0) cycle
+                    if (abs(fac) < tiny(1._dp)) cycle
                     r = r + fac * slater(nlist, zetalist, k_, i, k, j, l)
                 end do
                 int2(ijkl2intindex(i, j, k, l)) = r
@@ -347,7 +347,7 @@ do k = lbound(ck, 1), ubound(ck, 1)
         do m1 = lbound(ck, 3), ubound(ck, 3)
             do j = lbound(ck, 4), ubound(ck, 4)
                 do m2 = lbound(ck, 5), ubound(ck, 5)
-                    if (ck(k, i, m1, j, m2) == 0) cycle
+                    if (abs(ck(k, i, m1, j, m2)) < tiny(1._dp)) cycle
                     print "('   ', i3, i3, i3, i3, i3, es24.16)", k, i, &
                         m1, j, m2, ck(k, i, m1, j, m2)
                 end do

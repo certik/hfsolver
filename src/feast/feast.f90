@@ -712,7 +712,7 @@ info=4
           trace=sum(lambda(m_min:m_max))
           if (loop>0) then
              epsout=(abs(trace-epsout)/abs(epsout))
-             if (epsout/=DZERO) then
+             if (abs(epsout) > tiny(DZERO)) then
                 if (log10(epsout)<(-fpm(3))) testconv=.true.
              else
                 testconv=.true.
@@ -1354,7 +1354,7 @@ info=4
 
           if (loop>0) then
              epsout=(abs(trace-epsout)/abs(epsout))
-             if (epsout/=DZERO) then
+             if (abs(epsout) > tiny(DZERO)) then
                 if (log10(epsout)<(-fpm(3))) testconv=.true.
              else
                 testconv=.true.
@@ -1966,7 +1966,7 @@ info=4
 
           if (loop>0) then
              epsout=(abs(trace-epsout)/abs(epsout))
-             if (epsout/=SZERO) then
+             if (abs(epsout) > tiny(SZERO)) then
                 if (log10(epsout)<(-fpm(7))) testconv=.true.
              else
                 testconv=.true.
@@ -2608,7 +2608,7 @@ info=4
 
           if (loop>0) then
              epsout=(abs(trace-epsout)/abs(epsout))
-             if (epsout/=SZERO) then
+             if (abs(epsout) > tiny(SZERO)) then
                 if (log10(epsout)<(-fpm(7))) testconv=.true.
              else
                 testconv=.true.

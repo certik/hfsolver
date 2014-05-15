@@ -32,7 +32,7 @@ end if
 do while (b_ - a_ > tol)
     c = (a_ + b_) / 2
     fc = f(c)
-    if (fc == 0) return   ! We need to make sure f(c) is not zero below
+    if (abs(fc) < tiny(1._dp)) return   ! We need to make sure f(c) is not zero below
     if (fa * fc < 0) then
         b_ = c
         fb = fc
@@ -140,9 +140,9 @@ do iter = 1, maxiter
         else
             b = u
         end if
-        if ((fu <= fw) .or. (w == x)) then
+        if ((fu <= fw) .or. abs(w - x) < tiny(1._dp)) then
             v = w; w = u; fv = fw; fw = fu
-        else if ((fu <= fv) .or. (v == x) .or. (v == w)) then
+        else if ((fu <= fv) .or. abs(v - x) < tiny(1._dp) .or. abs(v - w) < tiny(1._dp)) then
             v = u; fv = fu
         end if
     else
