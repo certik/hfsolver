@@ -102,8 +102,8 @@ where (abs(beta) > 1e-16_dp) lambda = alphar / beta
 j = 0
 do i = 1, n
     sel(i) = 0
-    if (alphai(i) == 0) then
-        if (beta(i) == 0) then
+    if (abs(alphai(i)) < tiny(1._dp)) then
+        if (abs(beta(i)) < tiny(1._dp)) then
             ! Maybe we can just ignore the beta==0 cases
             call stop_error("Got beta==0")
         end if
