@@ -4,8 +4,8 @@ module ofdft_fft
 ! done using FFT.
 !
 ! We use 3D reciprocal grid (:, :, :). Variables in reciprocal (Fourier) space
-! have F appended to them. E.g. Ven is the electron-nucleus potential in real
-! space, VenF is the same potential in reciprocal space.
+! have G appended to them. E.g. Ven is the electron-nucleus potential in real
+! space, VenG is the same potential in reciprocal space.
 
 use types, only: dp
 use constants, only: pi
@@ -24,8 +24,8 @@ public reciprocal_space_vectors, free_energy, free_energy_min, &
 integer, parameter :: update_fletcher_reeves = 1
 integer, parameter :: update_polak_ribiere   = 2
 
-interface integralF
-    module procedure integralF_complex, integralF_real
+interface integralG
+    module procedure integralG_complex, integralG_real
 end interface
 
 contains
@@ -48,30 +48,30 @@ G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
-subroutine real2fourier(x, xF)
+subroutine real2fourier(x, xG)
 ! Calculates Discrete Fourier Transform, with the same normalization as the
 ! Fourier Transform for periodic systems (which is Fourier Series).
 real(dp), intent(in) :: x(:, :, :)
-complex(dp), intent(out) :: xF(:, :, :)
+complex(dp), intent(out) :: xG(:, :, :)
 integer :: Ng
 Ng = size(x, 1)
-xF = x
-call fft3_inplace(xF) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
-xF = xF / size(x)     ! The proper normalization is to divide by N
+xG = x
+call fft3_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+xG = xG / size(x)     ! The proper normalization is to divide by N
 end subroutine
 
-subroutine fourier2real(xF, x)
-! Calculates Inverse Discrete Fourier Transform. xF must follow the same
+subroutine fourier2real(xG, x)
+! Calculates Inverse Discrete Fourier Transform. xG must follow the same
 ! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
 ! will be equal to 'x':
-! call real2fourier(x, xF)
-! call fourier2real(xF, x2)
-complex(dp), intent(in) :: xF(:, :, :)
+! call real2fourier(x, xG)
+! call fourier2real(xG, x2)
+complex(dp), intent(in) :: xG(:, :, :)
 real(dp), intent(out) :: x(:, :, :)
-complex(dp) :: tmp(size(xF,1), size(xF,2), size(xF,3))
+complex(dp) :: tmp(size(xG,1), size(xG,2), size(xG,3))
 integer :: Ng
 Ng = size(x, 1)
-tmp = xF
+tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized
 ! TODO: make this strict:
@@ -83,21 +83,21 @@ real(dp), intent(in) :: L, f(:, :, :)
 r = sum(f) * L**3 / size(f)
 end function
 
-real(dp) function integralF_complex(L, fF) result(r)
+real(dp) function integralG_complex(L, fG) result(r)
 real(dp), intent(in) :: L
-complex(dp), intent(in) :: fF(:, :, :)
+complex(dp), intent(in) :: fG(:, :, :)
 complex(dp) :: s
-s = sum(fF) * L**3
+s = sum(fG) * L**3
 r = real(s, dp)
 if (abs(aimag(s)) > 1e-12_dp) then
     print *, "aimag(s) =", aimag(s)
-    call stop_error("integralF(): Complex part is not negligible.")
+    call stop_error("integralG(): Complex part is not negligible.")
 end if
 end function
 
-real(dp) function integralF_real(fF, L) result(r)
-real(dp), intent(in) :: L, fF(:, :, :)
-r = sum(fF) * L**3
+real(dp) function integralG_real(fG, L) result(r)
+real(dp), intent(in) :: L, fG(:, :, :)
+r = sum(fG) * L**3
 end function
 
 subroutine calc_dFdtheta(L, T_au, Ven, C1, C2, C3, psi, eta, theta, dFdtheta)
@@ -139,29 +139,29 @@ dFdn = dFdn * L**3
 dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * dFdn * psi_)
 end subroutine
 
-subroutine find_theta(L, G2, T_au, VenF, psi, eta)
+subroutine find_theta(L, G2, T_au, VenG, psi, eta)
 ! It prints the values of dF/dtheta using efficient evaluation
 real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
-complex(dp), intent(in) :: VenF(:, :, :)
+complex(dp), intent(in) :: VenG(:, :, :)
 real(dp) :: theta, dFdtheta
-real(dp), dimension(size(VenF,1), size(VenF,2), size(VenF,3)) :: Ven, C1, C2, C3
-complex(dp), dimension(size(VenF,1), size(VenF,2), size(VenF,3)) :: &
-    neF, VeeF
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
+complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
+    neG, VeeG
 integer :: i
 real(dp) :: t1, t2
-call fourier2real(VenF, Ven)
-call real2fourier(psi**2, neF)
-VeeF = 4*pi*neF / G2
-VeeF(1, 1, 1) = 0
-call fourier2real(VeeF, C1)
-call real2fourier(psi*eta, neF)
-VeeF = 4*pi*neF / G2
-VeeF(1, 1, 1) = 0
-call fourier2real(VeeF, C2)
-call real2fourier(eta**2, neF)
-VeeF = 4*pi*neF / G2
-VeeF(1, 1, 1) = 0
-call fourier2real(VeeF, C3)
+call fourier2real(VenG, Ven)
+call real2fourier(psi**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C1)
+call real2fourier(psi*eta, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C2)
+call real2fourier(eta**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C3)
 print *, "dFdtheta:"
 theta = 0
 call cpu_time(t1)
@@ -174,9 +174,9 @@ call cpu_time(t2)
 print *, "time: ", t2-t1
 end subroutine
 
-subroutine free_energy(L, G2, T_au, VenF, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
 real(dp), intent(in) :: L, G2(:, :, :), T_au, ne(:, :, :)
-complex(dp), intent(in) :: VenF(:, :, :)
+complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 
 ! dFdn returns "delta F / delta n", the functional derivative with respect to
@@ -185,25 +185,25 @@ real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 ! to obtain the derivative with respect to psi (i.e. multiply Hpsi by 2*psi).
 real(dp), intent(out) :: dFdn(:, :, :)
 
-real(dp), dimension(size(VenF,1), size(VenF,2), size(VenF,3)) :: y, F0, &
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
     exc_density, Vee, Ven, Vxc, dF0dn
-complex(dp), dimension(size(VenF,1), size(VenF,2), size(VenF,3)) :: &
-    neF, VeeF
+complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
+    neG, VeeG
 real(dp) :: beta, dydn
 integer :: i, j, k, Ng
-Ng = size(VenF, 1)
+Ng = size(VenG, 1)
 
-call real2fourier(ne, neF)
+call real2fourier(ne, neG)
 
-VeeF = 4*pi*neF / G2
-VeeF(1, 1, 1) = 0
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
 
 ! Hartree energy
-!Eee = integralF2(L, real(VeeF)*real(neF)+aimag(VeeF)*aimag(neF)) / 2
-Eee = integralF(L, VeeF*conjg(neF)) / 2
+!Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
+Eee = integralG(L, VeeG*conjg(neG)) / 2
 ! Electron-nucleus energy
-!Een = integralF2(L, real(VenF)*real(neF)+aimag(VenF)*aimag(neF))
-Een = integralF(L, VenF*conjg(neF))
+!Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
+Een = integralG(L, VenG*conjg(neG))
 
 ! Kinetic energy using Perrot parametrization
 beta = 1/T_au
@@ -230,8 +230,8 @@ dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
 ! d F0 / d n =
 dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
 
-call fourier2real(VenF, Ven)
-call fourier2real(VeeF, Vee)
+call fourier2real(VenG, Ven)
+call fourier2real(VeeG, Vee)
 
 !print *, dF0dn
 !print *, Vee
@@ -242,18 +242,18 @@ dFdn = dF0dn + Vee + Ven + Vxc
 dFdn = dFdn * L**3
 end subroutine
 
-subroutine radial_density_fourier(R, V, L, Z, VenF)
+subroutine radial_density_fourier(R, V, L, Z, VenG)
 real(dp), intent(in) :: R(:), V(:), L, Z
-complex(dp), intent(out) :: VenF(:, :, :)
+complex(dp), intent(out) :: VenG(:, :, :)
 integer :: Ng, i, j, k, idx
-real(dp) :: Rp(size(R)), dk, Rc, w, Vk(0:3*(size(VenF, 1)/2+1)**2)
+real(dp) :: Rp(size(R)), dk, Rc, w, Vk(0:3*(size(VenG, 1)/2+1)**2)
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
 Rp = (R(size(R)) - R(1)) / (size(R)-1)
 Rc = R(size(R))
-Ng = size(VenF, 1)
-call assert(size(VenF, 2) == Ng)
-call assert(size(VenF, 3) == Ng)
+Ng = size(VenG, 1)
+call assert(size(VenG, 2) == Ng)
+call assert(size(VenG, 3) == Ng)
 dk = 2*pi/L
 ! We prepare the values of the radial Fourier transform on a 3D grid
 Vk(0) = 0
@@ -268,7 +268,7 @@ do j = 1, Ng
 do k = 1, Ng
     idx = (i-1-Ng*nint((i-1.5_dp)/Ng))**2 + (j-1-Ng*nint((j-1.5_dp)/Ng))**2 &
             + (k-1-Ng*nint((k-1.5_dp)/Ng))**2
-    VenF(i, j, k) = Vk(idx) * Z
+    VenG(i, j, k) = Vk(idx) * Z
 end do
 end do
 end do
@@ -279,10 +279,10 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine free_energy_min(L, G2, T_au, VenF, ne, Eee, Een, Ts, Exc, Etot)
+subroutine free_energy_min(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
 real(dp), intent(in) :: L, G2(:, :, :), T_au
 real(dp), intent(inout) :: ne(:, :, :)
-complex(dp), intent(in) :: VenF(:, :, :)
+complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 
 integer :: Ng
@@ -325,7 +325,7 @@ psi_norm = integral(L, psi**2)
 print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(L, G2, T_au, VenF, psi**2, Eee, Een, Ts, Exc, free_energy_, Hpsi)
+call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * integral(L, 0.5_dp * psi * Hpsi)
@@ -361,7 +361,7 @@ do iter = 1, max_iter
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
-    call free_energy(L, G2, T_au, VenF, psi**2, Eee, Een, Ts, Exc, &
+    call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi)
     print *, "Iteration:", iter
     psi_norm = integral(L, psi**2)
@@ -411,7 +411,7 @@ contains
     real(dp), intent(in) :: theta
     energy = theta
     psi_ = cos(theta) * psi + sin(theta) * eta
-    call free_energy(L, G2, T_au, VenF, psi_**2, Eee, Een, Ts, Exc, &
+    call free_energy(L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi)
     end function
 
