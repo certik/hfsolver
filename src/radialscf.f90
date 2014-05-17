@@ -279,6 +279,8 @@ if (l_indep .and. useTT) then
     print *, "Calculating TT"
     call calcTT_indep(nbfl, slater, TT)
     print *, "Done"
+else
+    allocate(TT(1, 1, 1, 1, 1, 1)) ! To fix compiler warning
 end if
 P = 0
 do i = 1, Nscf
