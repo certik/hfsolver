@@ -6,7 +6,7 @@ use types, only: dp
 use utils, only: stop_error
 implicit none
 private
-public bisect, brent, bracket, parabola_vertex
+public bisect, brent, bracket, parabola_vertex, linregress
 
 interface
     real(dp) function func(x)
@@ -240,6 +240,48 @@ C     = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + &
             x1 * x2 * (x1 - x2) * y3) / denom
 xv = -B / (2*A)
 yv = C - B**2 / (4*A)
+end subroutine
+
+subroutine linregress(x, y, slope, intercept, r, stderr_slope, stderr_intercept)
+! Calculates simple linear regression of (x, y)
+real(dp), intent(in) :: x(:), y(:)
+real(dp), intent(out) :: slope ! y = intercept + slope*x
+real(dp), intent(out) :: intercept ! y = intercept + slope*x
+real(dp), intent(out) :: r ! correlation coefficient (the coefficient of
+                           ! determination is r^2)
+real(dp), intent(out) :: stderr_slope ! standard error of the slope
+real(dp), intent(out) :: stderr_intercept ! standard error of the intercept
+real(dp) :: xmean, ymean, varx, covxy, vary, r_den, mse
+integer :: N
+N = size(x)
+xmean = sum(x)/N
+ymean = sum(y)/N
+varx = dot_product(x-xmean, x-xmean)
+covxy = dot_product(x-xmean, y-ymean)
+vary = dot_product(y-ymean, y-ymean)
+
+slope = covxy / varx
+intercept = ymean - slope*xmean
+
+r_den = sqrt(varx * vary)
+if (abs(r_den) < tiny(1._dp)) then
+    r = 0
+else
+    r = covxy / r_den
+    ! Normalize to [-1, 1] in case of numerical error propagation
+    if (r > 1) then
+        r = 1
+    else if (r < -1) then
+        r = -1
+    end if
+endif
+! 'mse' is a mean square error (the sum of squared residuals divided by number
+! of model parameters), which can be calculated directly as:
+!   mse = sum((y-(slope*x+intercept))**2) / (N-2)
+! But equivalently it can also be calculated in a faster way as:
+mse = (1-r**2) * vary / (N-2)
+stderr_slope = sqrt(mse / varx)
+stderr_intercept = sqrt(mse * (1._dp/N + xmean**2/varx))
 end subroutine
 
 end module

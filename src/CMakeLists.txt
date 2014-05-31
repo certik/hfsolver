@@ -52,6 +52,7 @@ set(SRC
     integration.f90
     ofdft.f90
     ofdft_fft.f90
+    md.f90
 )
 
 # LIBINT
