@@ -59,6 +59,10 @@ ADDTEST(test_random)
 
 ADDTEST(test_linregress)
 
+ADDTEST(test_md)
+ADDTEST(analyze_md)
+set_tests_properties(analyze_md PROPERTIES DEPENDS test_md)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
