@@ -692,24 +692,24 @@ contains
 end function
 
 subroutine slater_sto_screen(nbfl, nlist, zetalist, slater_, D, &
-        verbose)
+        verbose, cr)
 ! Just like stoints2, but only the slater integral and uses the Gaussian
 ! integration to do it. Uses Debye screening.
 integer, intent(in) :: nbfl(0:), nlist(:, 0:)
 real(dp), intent(in) :: zetalist(:, 0:)
 real(dp), allocatable, intent(out) :: slater_(:, :)
 real(dp), intent(in) :: D ! Debye screening length
-logical, intent(in), optional :: verbose ! show progress if .true.
+logical, intent(in), optional :: verbose ! show progress (default .false.)
+logical, intent(in), optional :: cr ! use '\n' in progress (default .false.)
 integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: n, i, j, k, l, k_, ijkl, Lmax, ndof, m
 integer, allocatable :: intindex(:, :, :, :)
-logical :: verbose_
-if (present(verbose)) then
-    verbose_ = verbose
-else
-    verbose_ = .false.
-end if
+logical :: verbose_, cr_
+verbose_ = .false.
+cr_ = .false.
+if (present(verbose)) verbose_ = verbose
+if (present(cr)) cr_ = cr
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
 call calc_factorials(maxval(nlist)*4-1, fact)
 print *, "Calculating Slater integrals with screening..."
@@ -739,7 +739,7 @@ end if
 n = size(nl)
 allocate(intindex(n, n, n, n))
 call create_index(intindex)
-!$omp parallel default(none) shared(n, nbfl, nl, zl, slater_, D, intindex, verbose_) private(i, j, k, l, k_, ijkl)
+!$omp parallel default(none) shared(n, nbfl, nl, zl, slater_, D, intindex, verbose_, cr_) private(i, j, k, l, k_, ijkl)
 !$omp do schedule(dynamic)
 do i = 1, n  ! Only this outer loop is parallelized
     do j = i, n
@@ -760,10 +760,14 @@ do i = 1, n  ! Only this outer loop is parallelized
         end do
         if (verbose_) then
             if (omp_get_thread_num() == 0) then
-                ! char(13) is carriage return, so we keep overwriting the
-                ! percentage
-                write (*, "(a1, f5.1,'%')", advance="no") char(13), &
-                    100._dp * (n*(n+1)/2 - (n-i+1)*(n-i+2)/2+j-i+1) / (n*(n+1)/2)
+                if (cr_) then
+                    write (*, "(f5.1,'%')") 100._dp * (n*(n+1)/2 - (n-i+1)*(n-i+2)/2+j-i+1) / (n*(n+1)/2)
+                else
+                    ! char(13) is carriage return, so we keep overwriting the
+                    ! percentage
+                    write (*, "(a1, f5.1,'%')", advance="no") char(13), &
+                        100._dp * (n*(n+1)/2 - (n-i+1)*(n-i+2)/2+j-i+1) / (n*(n+1)/2)
+                end if
             end if
         end if
     end do
