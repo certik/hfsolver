@@ -8,7 +8,7 @@ module ofdft_fft
 ! space, VenG is the same potential in reciprocal space.
 
 use types, only: dp
-use constants, only: pi
+use constants, only: pi, i_
 use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz
@@ -415,6 +415,24 @@ contains
         energy, Hpsi)
     end function
 
+end subroutine
+
+subroutine forces(L, G, nG, Ven0G)
+real(dp), intent(in) :: L, G(:, :, :, :)
+complex(dp), intent(in) :: nG(:, :, :), Ven0G(:, :, :)
+! Ven0G .... the potential returned from:
+! radial_density_fourier(R, V, L, Z, Ven0G)
+! x, y, z ... the ion position
+real(dp) :: x, y, z, Fx, Fy, Fz
+complex(dp) :: tmp(size(Ven0G, 1), size(Ven0G, 2), size(Ven0G, 3))
+x = 1
+y = 0
+z = 0
+tmp = i_ * nG * Ven0G * exp(-i_*(G(:,:,:,1)*x+G(:,:,:,2)*y+G(:,:,:,3)*z))
+! Force: only take the real component of this:
+Fx = real(sum(G(:,:,:,1) * L**3 * tmp), dp)
+Fy = real(sum(G(:,:,:,2) * L**3 * tmp), dp)
+Fz = real(sum(G(:,:,:,3) * L**3 * tmp), dp)
 end subroutine
 
 end module
