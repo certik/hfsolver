@@ -57,6 +57,8 @@ ADDTEST(test_brent)
 
 ADDTEST(test_random)
 
+ADDTEST(test_linregress)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
