@@ -3,7 +3,7 @@ use types, only: dp
 implicit none
 private
 public pi, e_, i_, bohr2ang, ang2bohr, Ha2eV, kB, K2au, density2gcm3, u2au, &
-    s2au
+    s2au, kJmol2Ha
 
 ! Constants contain more digits than double precision, so that
 ! they are rounded correctly. Single letter constants contain underscore so
