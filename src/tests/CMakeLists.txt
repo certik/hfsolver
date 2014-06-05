@@ -65,6 +65,8 @@ set_tests_properties(analyze_md PROPERTIES DEPENDS test_md)
 
 ADDTEST(test_ewald)
 
+ADDTEST(test_ofmd_fft)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
