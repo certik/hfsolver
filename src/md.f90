@@ -1,8 +1,10 @@
 module md
 use types, only: dp
+use utils, only: stop_error
 implicit none
 private
-public velocity_verlet, minimize_energy, unfold_positions
+public velocity_verlet, minimize_energy, unfold_positions, &
+    calc_min_distance, random_positions
 
 interface
     subroutine forces_func(X, f)
@@ -94,6 +96,51 @@ do i = 2, size(X, 3)
         d = [L/2, L/2, L/2] - Xj
         Xu(:, j, i) = Xu(:, j, i-1) + d
     end do
+end do
+end subroutine
+
+real(dp) function calc_min_distance(X, L, X0) result(dmin)
+! Calculates the minimum distance between X0 and all the points in X
+real(dp), intent(in) :: X(:, :) ! positions
+real(dp), intent(in) :: L ! length of the box
+real(dp), intent(in) :: X0(:) ! position to calculate the nearest distance
+real(dp) :: r, d(3), Xi(3)
+integer :: N, i
+N = size(X, 2)
+! Just something larger than any length in the box:
+dmin = L * sqrt(3._dp) + 1
+do i = 1, N
+    Xi = X(:, i)-X0+[L/2, L/2, L/2]
+    Xi = Xi - L*floor(Xi/L)
+    d = [L/2, L/2, L/2] - Xi
+    r = sqrt(sum(d**2))
+    if (r < dmin) dmin = r
+end do
+end function
+
+subroutine random_positions(X, L, min_distance, max_iter)
+! Initializes X with random positions of nuclei, such that the minimum distance
+! between any two is at least 'min_distance'. If the random position fails to
+! satisfy this criteria 'max_iter' times, it stops with an error.
+real(dp), intent(out) :: X(:, :)
+real(dp), intent(in) :: L, min_distance
+integer, intent(in) :: max_iter
+integer :: N, i, j
+N = size(X, 2)
+do i = 1, N
+    call random_number(X(:, i))
+    X(:, i) = L*X(:, i)
+    if (i > 1) then
+        j = 0
+        do while (calc_min_distance(X(:, :i-1), L, X(:, i)) < min_distance)
+            j = j + 1
+            if (j > max_iter) then
+                call stop_error("Cannot find position for new nucleus.")
+            end if
+            call random_number(X(:, i))
+            X(:, i) = L*X(:, i)
+        end do
+    end if
 end do
 end subroutine
 
