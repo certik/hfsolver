@@ -43,12 +43,13 @@ zion = [-1._dp, +1._dp]
 
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
-    ucvol = L**3
+    ucvol = L**3 ! = sqrt(det(rmet))
 
     rmet = 0
     rmet(1, 1) = L**2
     rmet(2, 2) = L**2
     rmet(3, 3) = L**2
+    ! gmet = inv(rmet)
     gmet = 0
     gmet(1, 1) = 1/L**2
     gmet(2, 2) = 1/L**2
@@ -81,12 +82,13 @@ zion = [-1._dp, +1._dp]
 
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
-    ucvol = L**3/4
+    ucvol = L**3/4 ! = sqrt(det(rmet))
 
     rmet(1, :) = [2._dp, 1._dp, 1._dp]
     rmet(2, :) = [1._dp, 2._dp, 1._dp]
     rmet(3, :) = [1._dp, 1._dp, 2._dp]
     rmet = rmet * L**2 / 4
+    ! gmet = inv(rmet)
     gmet(1, :) = [3._dp, -1._dp, -1._dp]
     gmet(2, :) = [-1._dp, 3._dp, -1._dp]
     gmet(3, :) = [-1._dp, -1._dp, 3._dp]
