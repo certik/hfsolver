@@ -83,10 +83,10 @@ do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
     ucvol = L**3/4
 
-    rmet(1, :) = [1._dp/2, 1._dp/4, 1._dp/4]
-    rmet(2, :) = [1._dp/4, 1._dp/2, 1._dp/4]
-    rmet(3, :) = [1._dp/4, 1._dp/4, 1._dp/2]
-    rmet = rmet * L**2
+    rmet(1, :) = [2._dp, 1._dp, 1._dp]
+    rmet(2, :) = [1._dp, 2._dp, 1._dp]
+    rmet(3, :) = [1._dp, 1._dp, 2._dp]
+    rmet = rmet * L**2 / 4
     gmet(1, :) = [3._dp, -1._dp, -1._dp]
     gmet(2, :) = [-1._dp, 3._dp, -1._dp]
     gmet(3, :) = [-1._dp, -1._dp, 3._dp]
