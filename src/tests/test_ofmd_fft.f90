@@ -41,7 +41,6 @@ print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
 end do
-stop "OK"
 print *, "Distances:"
 do i = 2, N
     print *, i, calc_min_distance(X(:, :i-1), L, X(:, i))
@@ -116,6 +115,8 @@ contains
     ucvol = L**3
 
     call ewald(eew,gmet,grewtn,N,ntypat,rmet,typat,ucvol,xred,zion)
+    print *, eew
+    stop "OK"
 
     f = 0
     do i = 1, N
