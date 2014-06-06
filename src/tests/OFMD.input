@@ -1,0 +1,12 @@
+10.0 1.0 1 4 ! T(eV), density(g/cm^3), Number of Species, Number of nuclei
+3 -1 -1 -1   ! start
+1 4 64 -1 -1 .001 -1   ! Dynamics, Functional, FFT
+10 1.60   1  ! Number of time steps , time step (a.u)
+H 1 1 4
+
+
+! Only the numbers corresponding to documented fields are read, the rest is
+! ignored.
+! Dynamics: 1=velocity Verlet
+! Functional: 4=Thomas-Fermi-Dirac PZ LDA
+! start: 0=pos, 1=po-vel, 2=restart, 3=fcc, 4=bcc, 5=random
