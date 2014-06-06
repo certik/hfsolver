@@ -1,6 +1,6 @@
 program test_ofmd_fft
 use types, only: dp
-use constants, only: ang2bohr, K2au, density2gcm3, u2au, s2au, Ha2eV
+use constants, only: K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald
