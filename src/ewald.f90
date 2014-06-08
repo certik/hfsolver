@@ -3,7 +3,7 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public ewald
+public ewald, direct_sum
 
 contains
 
@@ -309,5 +309,34 @@ subroutine ewald(eew,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 !& ' ewald : nr and ng are ',nr,' and ',ng
 ! call wrtout(std_out,message,'COLL')
 end subroutine ewald
+
+subroutine direct_sum(q, r, L, ncut, E)
+! Calculates the Coulombic energy E as a direc sum. It is very slow, but simple
+! to implement, so it is used for testing correctness of more advanced methods.
+real(dp), intent(in) :: q(:) ! q(i) is charge of i-th particle
+real(dp), intent(in) :: r(:, :) ! r(:, i) is (x, y, z) coordinates of i-th par.
+real(dp), intent(in) :: L ! length of the unit cell (box)
+integer, intent(in) :: ncut ! cutoff
+real(dp), intent(out) :: E ! Calculated energy
+integer :: N, i, j, nx, ny, nz
+real(dp) :: d
+N = size(q)
+E = 0
+do i = 1, N
+    do j = 1, N
+        do nx = -ncut, ncut
+        do ny = -ncut, ncut
+        do nz = -ncut, ncut
+            if (nx == 0 .and. ny == 0 .and. nz == 0 .and. i == j) cycle
+            if (sqrt(real(nx**2+ny**2+nz**2, dp)) > ncut) cycle
+            d = sqrt(sum((r(:, i)-r(:, j) + [nx, ny, nz]*L)**2))
+            E = E + q(i)*q(j) / d
+        end do
+        end do
+        end do
+    end do
+end do
+E = E / 2
+end subroutine
 
 end module
