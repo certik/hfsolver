@@ -310,7 +310,7 @@ subroutine ewald(eew,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 ! call wrtout(std_out,message,'COLL')
 end subroutine ewald
 
-subroutine direct_sum(q, r, L, ncut, E)
+subroutine direct_sum(q, r, L, ncut, E, forces)
 ! Calculates the Coulombic energy E as a direc sum. It is very slow, but simple
 ! to implement, so it is used for testing correctness of more advanced methods.
 real(dp), intent(in) :: q(:) ! q(i) is charge of i-th particle
@@ -318,10 +318,12 @@ real(dp), intent(in) :: r(:, :) ! r(:, i) is (x, y, z) coordinates of i-th par.
 real(dp), intent(in) :: L ! length of the unit cell (box)
 integer, intent(in) :: ncut ! cutoff
 real(dp), intent(out) :: E ! Calculated energy
+real(dp), intent(out) :: forces(:, :) ! forces(:, i) is a force on i-th particle
 integer :: N, i, j, nx, ny, nz
-real(dp) :: d
+real(dp) :: dvec(3), d
 N = size(q)
 E = 0
+forces = 0
 do i = 1, N
     do j = 1, N
         do nx = -ncut, ncut
@@ -329,8 +331,10 @@ do i = 1, N
         do nz = -ncut, ncut
             if (nx == 0 .and. ny == 0 .and. nz == 0 .and. i == j) cycle
             if (sqrt(real(nx**2+ny**2+nz**2, dp)) > ncut) cycle
-            d = sqrt(sum((r(:, i)-r(:, j) + [nx, ny, nz]*L)**2))
+            dvec = r(:, i)-r(:, j) + [nx, ny, nz]*L
+            d = sqrt(sum(dvec**2))
             E = E + q(i)*q(j) / d
+            forces(:, i) = forces(:, i) - q(i)*q(j)*dvec/d**3
         end do
         end do
         end do
