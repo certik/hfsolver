@@ -6,7 +6,7 @@ program test_ewald
 
 use types, only: dp
 use constants, only: ang2bohr, kJmol2Ha
-use ewald_sums, only: ewald
+use ewald_sums, only: ewald, fred2fcart, direct_sum
 use utils, only: assert, init_random
 implicit none
 
@@ -19,8 +19,8 @@ real(dp) :: gmet(3, 3), rmet(3, 3), gprim(3, 3)
 real(dp) :: eew
 real(dp), allocatable :: xred(:, :), zion(:), grewtn(:, :), fcart(:, :)
 
-real(dp) :: L, alpha, E_ewald, E_madelung
-integer :: i
+real(dp) :: L, alpha, E_ewald, E_madelung, E_direct
+integer :: i, ncut
 
 alpha = 1.74756459463318219064_dp ! Madelung constant for NaCl
 
@@ -69,13 +69,22 @@ do i = 1, size(Llist)
     call ewald(eew,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 
     E_ewald = eew / (natom/ntypat)
+
+    ncut = 20
+    call direct_sum([-1, -1, -1, -1, 1, 1, 1, 1]*1._dp, xred*L, L, ncut, eew, &
+        fcart)
+    E_direct = eew / (natom/ntypat)
+
     E_madelung = -2*alpha/L
     print *, "a =", L/ang2bohr*100, "pm"
-    print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
-    print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
-    print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Madelung:    ", E_madelung / kJmol2Ha, "kJ/mol"
+    print *, "Ewald:       ", E_ewald / kJmol2Ha, "kJ/mol"
+    print *, "Direct:      ", E_direct / kJmol2Ha, "kJ/mol"
+    print *, "Ewald error: ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Direct error:", abs(E_direct - E_madelung), "a.u."
     call fred2fcart(fcart, grewtn, gprim)
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
+    call assert(abs(E_direct - E_madelung) < 1e-8_dp)
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
 
@@ -129,26 +138,4 @@ do i = 1, size(Llist)
     call fred2fcart(fcart, grewtn, gprim)
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
-
-contains
-
-    subroutine fred2fcart(fcart, fred, gprim)
-    real(dp), intent(in) :: gprim(3, 3) ! gprim(:, i) = G_i (reciprocal vectors)
-    ! fred(:, i) = F_i (force on i-th atom in gprim coordinates)
-    real(dp), intent(in) :: fred(:, :)
-    ! fcart(:, i) = F_i (force on i-th atom in cartesian coordinates)
-    real(dp), intent(out) :: fcart(:, :)
-    integer :: i, n
-    real(dp) :: favg(3)
-    n = size(fred, 2)
-    do i = 1, n
-        fcart(:, i) = gprim(:, 1)*fred(1, i) + gprim(:, 2)*fred(2, i) &
-            + gprim(:, 3)*fred(3, i)
-    end do
-    favg = sum(fcart, dim=2)
-    print *, "favg:", favg
-    ! TODO: remove this, as it makes little difference:
-    fcart = fcart - spread(favg, 2, n)
-    end subroutine
-
 end program

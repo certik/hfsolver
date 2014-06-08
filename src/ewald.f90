@@ -3,7 +3,7 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public ewald, ewald2, direct_sum
+public ewald, ewald2, direct_sum, fred2fcart
 
 contains
 
@@ -579,6 +579,21 @@ subroutine ewald2(gmet,natom,ntypat,rmet,rprimd,gprimd,stress,typat,ucvol, &
 
 end subroutine ewald2
 
+
+subroutine fred2fcart(fcart, fred, gprim)
+! Convert forces from rprim reduced coordinates to cartesian coordinates
+real(dp), intent(in) :: gprim(3, 3) ! gprim(:, i) = G_i (reciprocal vectors)
+! fred(:, i) = F_i (force on i-th atom in gprim coordinates)
+real(dp), intent(in) :: fred(:, :)
+! fcart(:, i) = F_i (force on i-th atom in cartesian coordinates)
+real(dp), intent(out) :: fcart(:, :)
+integer :: i, n
+n = size(fred, 2)
+do i = 1, n
+    fcart(:, i) = gprim(:, 1)*fred(1, i) + gprim(:, 2)*fred(2, i) &
+        + gprim(:, 3)*fred(3, i)
+end do
+end subroutine
 
 subroutine direct_sum(q, r, L, ncut, E, forces)
 ! Calculates the Coulombic energy E as a direc sum. It is very slow, but simple
