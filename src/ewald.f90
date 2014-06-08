@@ -320,7 +320,7 @@ integer, intent(in) :: ncut ! cutoff
 real(dp), intent(out) :: E ! Calculated energy
 real(dp), intent(out) :: forces(:, :) ! forces(:, i) is a force on i-th particle
 integer :: N, i, j, nx, ny, nz
-real(dp) :: dvec(3), d
+real(dp) :: d_ji(3), d
 N = size(q)
 E = 0
 forces = 0
@@ -331,10 +331,11 @@ do i = 1, N
         do nz = -ncut, ncut
             if (nx == 0 .and. ny == 0 .and. nz == 0 .and. i == j) cycle
             if (sqrt(real(nx**2+ny**2+nz**2, dp)) > ncut) cycle
-            dvec = r(:, i)-r(:, j) + [nx, ny, nz]*L
-            d = sqrt(sum(dvec**2))
+            ! Vector pointing from particle j -> i: d_ji = r_i - r_j
+            d_ji = r(:, i)-r(:, j) + [nx, ny, nz]*L
+            d = sqrt(sum(d_ji**2)) ! |r_i - r_j|
             E = E + q(i)*q(j) / d
-            forces(:, i) = forces(:, i) - q(i)*q(j)*dvec/d**3
+            forces(:, i) = forces(:, i) + q(i)*q(j)*d_ji/d**3
         end do
         end do
         end do
