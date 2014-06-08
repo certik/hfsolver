@@ -15,9 +15,9 @@ integer :: natom, ntypat
 real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
 real(dp) :: ucvol
 integer, allocatable :: typat(:)
-real(dp) :: gmet(3, 3), rmet(3, 3)
+real(dp) :: gmet(3, 3), rmet(3, 3), gprim(3, 3)
 real(dp) :: eew
-real(dp), allocatable :: xred(:, :), zion(:), grewtn(:, :)
+real(dp), allocatable :: xred(:, :), zion(:), grewtn(:, :), fcart(:, :)
 
 real(dp) :: L, alpha, E_ewald, E_madelung
 integer :: i
@@ -27,7 +27,8 @@ alpha = 1.74756459463318219064_dp ! Madelung constant for NaCl
 ! Conventional cell:
 natom = 8
 ntypat = 2
-allocate(xred(3, natom), zion(ntypat), grewtn(3, natom), typat(natom))
+allocate(xred(3, natom), zion(ntypat), grewtn(3, natom), typat(natom), &
+    fcart(3, natom))
 ! Cl^-
 xred(:, 1) = [0._dp, 0._dp, 0._dp]
 xred(:, 2) = [1._dp/2, 1._dp/2, 0._dp]
@@ -58,6 +59,13 @@ do i = 1, size(Llist)
     ! ucvol = sqrt(det(rmet))
     ucvol = L**3
 
+    ! Reciprocal primitive vectors (without 2*pi) in cartesian coordinates.
+    ! gmet = matmul(transpose(gprim), gprim)
+    gprim = 0
+    gprim(1, 1) = 1 / L
+    gprim(2, 2) = 1 / L
+    gprim(3, 3) = 1 / L
+
     call ewald(eew,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 
     E_ewald = eew / (natom/ntypat)
@@ -66,16 +74,18 @@ do i = 1, size(Llist)
     print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
     print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
+    call fred2fcart(fcart, grewtn, gprim)
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
 end do
-deallocate(xred, zion, grewtn, typat)
+deallocate(xred, zion, grewtn, typat, fcart)
 
 print *, "--------"
 
 ! Primitive cell (FCC lattice)
 natom = 2
 ntypat = 2
-allocate(xred(3, natom), zion(ntypat), grewtn(3, natom), typat(natom))
+allocate(xred(3, natom), zion(ntypat), grewtn(3, natom), typat(natom), &
+    fcart(3, natom))
 ! Cl^-
 xred(:, 1) = [0._dp, 0._dp, 0._dp]
 ! Na^+
@@ -100,6 +110,12 @@ do i = 1, size(Llist)
     ! ucvol = sqrt(det(rmet))
     ucvol = L**3 / 4
 
+    ! Reciprocal primitive vectors (without 2*pi) in cartesian coordinates.
+    ! gmet = matmul(transpose(gprim), gprim)
+    gprim(:, 1) = [1, 1, -1] / L
+    gprim(:, 2) = [-1, 1, 1] / L
+    gprim(:, 3) = [1, -1, 1] / L
+
     call ewald(eew,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 
     E_ewald = eew / (natom/ntypat)
@@ -109,7 +125,30 @@ do i = 1, size(Llist)
     print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
+
+    call fred2fcart(fcart, grewtn, gprim)
 end do
-deallocate(xred, zion, grewtn, typat)
+deallocate(xred, zion, grewtn, typat, fcart)
+
+contains
+
+    subroutine fred2fcart(fcart, fred, gprim)
+    real(dp), intent(in) :: gprim(3, 3) ! gprim(:, i) = G_i (reciprocal vectors)
+    ! fred(:, i) = F_i (force on i-th atom in gprim coordinates)
+    real(dp), intent(in) :: fred(:, :)
+    ! fcart(:, i) = F_i (force on i-th atom in cartesian coordinates)
+    real(dp), intent(out) :: fcart(:, :)
+    integer :: i, n
+    real(dp) :: favg(3)
+    n = size(fred, 2)
+    do i = 1, n
+        fcart(:, i) = gprim(:, 1)*fred(1, i) + gprim(:, 2)*fred(2, i) &
+            + gprim(:, 3)*fred(3, i)
+    end do
+    favg = sum(fcart, dim=2)
+    print *, "favg:", favg
+    ! TODO: remove this, as it makes little difference:
+    fcart = fcart - spread(favg, 2, n)
+    end subroutine
 
 end program
