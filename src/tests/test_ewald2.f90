@@ -180,7 +180,10 @@ do i = 1, size(Llist)
         [-fcorrect(i), -fcorrect(i), -fcorrect(i)]) < 1e-10_dp))
     call assert(all(abs(fcart(:, 2) - &
         [fcorrect(i), fcorrect(i), fcorrect(i)]) < 1e-10_dp))
-    stress = -stress * ucvol
+    stress = -stress * L**3
+    call assert(all(abs(stress - [stress1_correct(i), stress1_correct(i), &
+        stress1_correct(i), stress2_correct(i), stress2_correct(i), &
+        stress2_correct(i)]) < 1e-10_dp))
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
 end program
