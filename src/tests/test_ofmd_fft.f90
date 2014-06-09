@@ -3,7 +3,7 @@ use types, only: dp
 use constants, only: K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
-use ewald_sums, only: ewald
+use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error
 implicit none
@@ -87,35 +87,22 @@ contains
     real(dp) :: r2, d(3), force(3), Xj(3)
     integer :: N, i, j
     integer :: ntypat
-    real(dp) :: ucvol
-    integer, allocatable :: typat(:)
-    real(dp) :: gmet(3, 3), rmet(3, 3)
-    real(dp) :: eew
-    real(dp), allocatable :: xred(:, :), zion(:), grewtn(:, :)
+    real(dp) :: stress(6)
+    real(dp) :: E_ewald
+    real(dp), allocatable :: fewald(:, :), q(:)
     N = size(X, 2)
     ntypat = 1
     ! TODO: this can be done in the main program
-    allocate(xred(3, N), zion(ntypat), grewtn(3, N), typat(N))
-    xred = X / L
-    typat = 1
-    zion = [1._dp]
-
-    rmet = 0
-    rmet(1, 1) = L**2
-    rmet(2, 2) = L**2
-    rmet(3, 3) = L**2
-
-    ! gmet = inv(rmet)
-    gmet = 0
-    gmet(1, 1) = 1/L**2
-    gmet(2, 2) = 1/L**2
-    gmet(3, 3) = 1/L**2
-
-    ! ucvol = sqrt(det(rmet))
-    ucvol = L**3
-
-    call ewald(eew,gmet,grewtn,N,ntypat,rmet,typat,ucvol,xred,zion)
-    print *, eew
+    allocate(fewald(3, N), q(N))
+    q = 1
+    call ewald_box(L, X, q, E_ewald, fewald, stress)
+    print *, "EWALD", E_ewald
+    print *, fewald(:, 1)
+    print *, fewald(:, 2)
+    print *, fewald(:, 3)
+    print *, fewald(:, 4)
+    print *
+    print *, stress
     stop "OK"
 
     f = 0
