@@ -158,10 +158,18 @@ do i = 1, size(Llist)
     gprim(:, 2) = [-1,  1,  1] / L
     gprim(:, 3) = [ 1, -1,  1] / L
 
+    rprim(:, 1) = [1, 0, 1] * L / 2
+    rprim(:, 2) = [1, 1, 0] * L / 2
+    rprim(:, 3) = [0, 1, 1] * L / 2
+
     call ewald(eew,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 
     E_ewald = eew / (natom/ntypat)
     E_madelung = -2*alpha/L
+
+    call ewald2(gmet,natom,ntypat,rmet,rprim,gprim,stress,typat,ucvol, &
+                xred,zion)
+
     print *, "a =", L/ang2bohr*100, "pm"
     print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
     print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
@@ -172,6 +180,7 @@ do i = 1, size(Llist)
         [-fcorrect(i), -fcorrect(i), -fcorrect(i)]) < 1e-10_dp))
     call assert(all(abs(fcart(:, 2) - &
         [fcorrect(i), fcorrect(i), fcorrect(i)]) < 1e-10_dp))
+    stress = -stress * ucvol
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
 end program
