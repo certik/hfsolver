@@ -26,15 +26,16 @@ real(dp), parameter :: stress1_correct(*) = [-0.62770548707869611_dp, &
 real(dp), parameter :: stress2_correct(*) = [-0.54226581445122812_dp, &
     -0.55608866303051230_dp, -0.67966392148173749_dp, &
     -0.47053656102581831_dp, -0.30584876466678168_dp]
+real(dp), parameter :: stress3_correct(*) = [-0.43722866784288522_dp, &
+    -0.44837402406680815_dp, -0.54801269608165426_dp, &
+    -0.37939340497960677_dp, -0.24660571323674413_dp]
 
 real(dp) :: stress(6)
 real(dp), allocatable :: xred(:, :), forces(:, :), q(:)
 real(dp) :: L, alpha, E_ewald, E_madelung
 integer :: i, j
 
-! Madelung constant for NaCl, where the diagonal Na atom is moved by 3/8
-! towards the Cl atom
-alpha = 2.5088837163575413_dp
+alpha = 1.74756459463318219064_dp ! Madelung constant for NaCl
 
 ! Conventional cell:
 natom = 8
@@ -50,9 +51,43 @@ xred(:, 5) = [1, 1, 1] / 2._dp
 xred(:, 6) = [1, 0, 0] / 2._dp
 xred(:, 7) = [0, 1, 0] / 2._dp
 xred(:, 8) = [0, 0, 1] / 2._dp
+q = [-1, -1, -1, -1, 1, 1, 1, 1]
+
+do i = 1, size(Llist)
+    L = Llist(i) * ang2bohr
+    call ewald_box(L, xred*L, q, E_ewald, forces, stress)
+
+    E_ewald = E_ewald / (natom/ntypat)
+    E_madelung = -2*alpha/L
+
+    print *, "a =", L/ang2bohr*100, "pm"
+    print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
+    print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
+    print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
+    call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
+    call assert(all(abs(forces) < 1e-17_dp))
+    call assert(all(abs(stress - [stress3_correct(i), stress3_correct(i), &
+        stress3_correct(i), 0._dp, 0._dp, 0._dp]) < 1e-10_dp))
+end do
+
+print *, "--------"
+
+! Madelung constant for NaCl, where the diagonal Na atom is moved by 3/8
+! towards the Cl atom
+alpha = 2.5088837163575413_dp
+
+! Cl^-
+xred(:, 1) = [0, 0, 0]
+xred(:, 2) = [1, 1, 0] / 2._dp
+xred(:, 3) = [1, 0, 1] / 2._dp
+xred(:, 4) = [0, 1, 1] / 2._dp
+! Na^+
+xred(:, 5) = [1, 1, 1] / 2._dp
+xred(:, 6) = [1, 0, 0] / 2._dp
+xred(:, 7) = [0, 1, 0] / 2._dp
+xred(:, 8) = [0, 0, 1] / 2._dp
 xred(:, 5:8) = xred(:, 5:8) - spread([3, 3, 3] / 8._dp, 2, 4)
 xred(:, 6:8) = xred(:, 6:8) - floor(xred(:, 6:8))
-q = [-1, -1, -1, -1, 1, 1, 1, 1]
 
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
