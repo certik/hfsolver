@@ -3,7 +3,7 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public ewald, ewald2, direct_sum, fred2fcart
+public ewald, ewald2, direct_sum, fred2fcart, sred2scart
 
 contains
 
@@ -593,6 +593,31 @@ do i = 1, n
     fcart(:, i) = gprim(:, 1)*fred(1, i) + gprim(:, 2)*fred(2, i) &
         + gprim(:, 3)*fred(3, i)
 end do
+end subroutine
+
+subroutine sred2scart(scart, sred, gprim)
+! Convert stress tensor from rprim reduced coordinates to cartesian coordinates
+! Symmetric storage mode for a 3x3 tensor is a 6 element array with elements
+! 11, 22, 33, 32, 31 and 21.
+real(dp), intent(in) :: gprim(3, 3) ! gprim(:, i) = G_i (reciprocal vectors)
+! sred(6) stress tensor in reduced coordinates
+real(dp), intent(in) :: sred(:)
+! scart(6) stress tensor in cartesian coordinates
+real(dp), intent(out) :: scart(:)
+real(dp) :: w(3, 3)
+w(1, 1) = sred(1)
+w(2, 2) = sred(2)
+w(3, 3) = sred(3)
+w(3, 2) = sred(4); w(2, 3) = sred(4)
+w(3, 1) = sred(5); w(1, 3) = sred(5)
+w(2, 1) = sred(6); w(1, 2) = sred(6)
+w = matmul(matmul(gprim, w), transpose(gprim))
+scart(1) = w(1, 1)
+scart(2) = w(2, 2)
+scart(3) = w(3, 3)
+scart(4) = w(2, 3)
+scart(5) = w(1, 3)
+scart(6) = w(1, 2)
 end subroutine
 
 subroutine direct_sum(q, r, L, ncut, E, forces)
