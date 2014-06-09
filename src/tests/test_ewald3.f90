@@ -106,11 +106,11 @@ do i = 1, size(Llist)
         stress2_correct(i)]) < 1e-10_dp))
     do j = 1, 4
         call assert(all(abs(forces(:, j) - &
-            [-fcorrect(i), -fcorrect(i), -fcorrect(i)]) < 1e-10_dp))
+            [fcorrect(i), fcorrect(i), fcorrect(i)]) < 1e-10_dp))
     end do
     do j = 5, 8
         call assert(all(abs(forces(:, j) - &
-            [fcorrect(i), fcorrect(i), fcorrect(i)]) < 1e-10_dp))
+            [-fcorrect(i), -fcorrect(i), -fcorrect(i)]) < 1e-10_dp))
     end do
 end do
 end program
