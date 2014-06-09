@@ -84,47 +84,33 @@ contains
     subroutine forces(X, f)
     real(dp), intent(in) :: X(:, :) ! positions
     real(dp), intent(out) :: f(:, :) ! forces
-    real(dp) :: r2, d(3), force(3), Xj(3)
-    integer :: N, i, j
-    integer :: ntypat
+    integer :: N
     real(dp) :: stress(6)
     real(dp) :: E_ewald
     real(dp), allocatable :: fewald(:, :), q(:)
     N = size(X, 2)
-    ntypat = 1
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N))
     q = 1
     call ewald_box(L, X, q, E_ewald, fewald, stress)
-    print *, "EWALD", E_ewald
-    print *, fewald(:, 1)
-    print *, fewald(:, 2)
-    print *, fewald(:, 3)
-    print *, fewald(:, 4)
-    print *
-    print *, stress
-    stop "OK"
+    !print *, "EWALD", E_ewald
+    !print *, fewald(:, 1)
+    !print *, fewald(:, 2)
+    !print *, fewald(:, 3)
+    !print *, fewald(:, 4)
+    !print *
+    !print *, stress
 
-    f = 0
-    do i = 1, N
-        do j = 1, i-1
-            Xj = X(:, j)-X(:, i)+[L/2, L/2, L/2]
-            Xj = Xj - L*floor(Xj/L)
-            d = [L/2, L/2, L/2] - Xj
-            r2 = sum(d**2)
-            if (r2 <= Rcut**2) then
-                force = 24*eps*d/r2 * (2*sigma**12/r2**6 - sigma**6/r2**3)
-                f(:, i) = f(:, i) + force
-                f(:, j) = f(:, j) - force
-            end if
-        end do
-    end do
+    ! TODO: calculate the electronic forces here:
+
+    f = fewald
     end subroutine
 
     real(dp) function calc_Epot(X) result(E)
     real(dp), intent(in) :: X(:, :) ! positions
     real(dp) :: r2, d(3), Xj(3)
     integer :: N, i, j
+    ! TODO: this needs to get calculated as part of the force calculation
     N = size(X, 2)
     E = 0
     do i = 1, N
