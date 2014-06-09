@@ -102,6 +102,18 @@ contains
     !print *, stress
 
     ! TODO: calculate the electronic forces here:
+    !ne=1._dp / L**3
+    !call free_energy_min(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
+    !print *, "Ng =", Ng
+    !print *, "Rcut =", Rcut
+    !print *, "T_au =", T_au
+    !print *, "Summary of energies [a.u.]:"
+    !print "('    Ts   = ', f14.8)", Ts
+    !print "('    Een  = ', f14.8)", Een
+    !print "('    Eee  = ', f14.8)", Eee
+    !print "('    Exc  = ', f14.8)", Exc
+    !print *, "   ---------------------"
+    !print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
     f = fewald
     end subroutine
