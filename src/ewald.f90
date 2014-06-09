@@ -3,7 +3,7 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public ewald, ewald2, direct_sum, fred2fcart, sred2scart
+public ewald, ewald2, direct_sum, fred2fcart, sred2scart, ewald_box
 
 contains
 
@@ -652,6 +652,67 @@ do i = 1, N
     end do
 end do
 E = E / 2
+end subroutine
+
+subroutine ewald_box(L, x, q, E, forces, stress)
+! Special case of Ewald summation for a box L^3. This calls ewald() and
+! ewald2() internally. Because of the simplified geometry, it has simpler
+! arguments and it calculates the various geometric quantities automatically
+! before calling ewald(). All quantities are in a.u.
+real(dp), intent(in) :: L ! Length of the box
+real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
+real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
+real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
+real(dp), intent(out) :: forces(:, :) ! forces(:, i) forces on i-th ion
+real(dp), intent(out) :: stress(:) ! stress(6) the stress tensor
+
+real(dp) :: rmet(3, 3), gmet(3, 3), rprim(3, 3), gprim(3, 3), ucvol
+real(dp), dimension(3, size(x, 2)) :: xred, grewtn
+integer :: typat(size(x, 2))
+real(dp) :: zion(size(x, 2))
+integer :: natom, ntypat, i
+natom = size(x, 2)
+ntypat = natom
+do i = 1, ntypat
+    typat(i) = i
+end do
+zion = q
+
+! Setup geometric quantities:
+rmet = 0
+rmet(1, 1) = L**2
+rmet(2, 2) = L**2
+rmet(3, 3) = L**2
+
+! gmet = inv(rmet)
+gmet = 0
+gmet(1, 1) = 1/L**2
+gmet(2, 2) = 1/L**2
+gmet(3, 3) = 1/L**2
+
+! ucvol = sqrt(det(rmet))
+ucvol = L**3
+
+! Reciprocal primitive vectors (without 2*pi) in cartesian coordinates.
+! gmet = matmul(transpose(gprim), gprim) = inv(rprim)
+gprim = 0
+gprim(1, 1) = 1 / L
+gprim(2, 2) = 1 / L
+gprim(3, 3) = 1 / L
+
+! Real space primitive vectors
+! rmet = matmul(transpose(rprim), rprim)
+rprim = 0
+rprim(1, 1) = L
+rprim(2, 2) = L
+rprim(3, 3) = L
+
+xred = x / L
+
+call ewald(E,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
+call ewald2(gmet,natom,ntypat,rmet,rprim,gprim,stress,typat,ucvol,xred,zion)
+call fred2fcart(forces, grewtn, gprim)
+stress = -stress * ucvol
 end subroutine
 
 end module
