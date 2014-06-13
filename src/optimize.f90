@@ -256,9 +256,10 @@ integer :: N
 N = size(x)
 xmean = sum(x)/N
 ymean = sum(y)/N
-varx = dot_product(x-xmean, x-xmean)
-covxy = dot_product(x-xmean, y-ymean)
-vary = dot_product(y-ymean, y-ymean)
+
+varx  = dot_product(x, x) - N*xmean**2    ! = dot_product(x-xmean, x-xmean)
+covxy = dot_product(x, y) - N*xmean*ymean ! = dot_product(x-xmean, y-ymean)
+vary  = dot_product(y, y) - N*ymean**2    ! = dot_product(y-ymean, y-ymean)
 
 slope = covxy / varx
 intercept = ymean - slope*xmean
