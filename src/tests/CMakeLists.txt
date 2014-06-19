@@ -67,6 +67,7 @@ ADDTEST(test_ewald)
 ADDTEST(test_ewald2)
 ADDTEST(test_ewald3)
 ADDTEST(test_ewald4)
+ADDTEST(test_ewald5)
 
 ADDTEST(test_ofmd_fft)
 
