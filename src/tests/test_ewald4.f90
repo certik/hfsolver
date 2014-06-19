@@ -48,8 +48,7 @@ do i = 1, size(Llist)
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 5e-14_dp)
     call assert(all(abs(forces) < 1e-15_dp))
-    call assert(all(abs(stress - [-stress0/L, -stress0/L, -stress0/L, &
-        0._dp, 0._dp, 0._dp]) < 1e-15_dp))
+    call assert(all(abs(stress - (-stress0/L)*[1, 1, 1, 0, 0, 0]) < 1e-15_dp))
 end do
 
 end program
