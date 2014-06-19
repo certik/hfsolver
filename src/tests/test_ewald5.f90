@@ -17,11 +17,11 @@ integer :: natom, ntypat
 ! Various NaCl lattice constants in A
 real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
 ! The components of the correct force and stress tensor (multiplied by L)
-real(dp), parameter :: fcorrect0(3) = [-0.18734923455100549_dp, &
-    3.3701600314233184_dp, -0.48348071944082838_dp]
-real(dp), parameter :: stress0(6) = [-5.6856859265980750_dp, &
-    -6.5100878010640217_dp, -3.2858793534059574_dp, 1.2922453549675024_dp, &
-    0.98191461852291528_dp, 3.5610396513534885_dp]
+real(dp), parameter :: fcorrect0(3) = [3.3701600314233184_dp, &
+    -0.48348071944082838_dp, -0.18734923455100549_dp]
+real(dp), parameter :: stress0(6) = [-7.6571091389140866_dp, &
+    -2.9686706092940662_dp, -4.8558733328598898_dp, 0.35671778132537890_dp, &
+     3.9045478316555458_dp, 1.5739340118629772_dp]
 
 real(dp) :: ucvol
 integer, allocatable :: typat(:)
@@ -51,8 +51,9 @@ xred(:, 6) = [1, 0, 0] / 2._dp
 xred(:, 7) = [0, 1, 0] / 2._dp
 xred(:, 8) = [0, 0, 1] / 2._dp
 
-xred(:, 5:8) = xred(:, 5:8) - spread([2, 3, 1] / 16._dp, 2, 4)
+xred(:, 5:8) = xred(:, 5:8) - spread([3, 1, 2] / 16._dp, 2, 4)
 xred(:, 6:8) = xred(:, 6:8) - floor(xred(:, 6:8))
+call assert(all(abs(xred(:, 5) * 16 - [5, 7, 6]) < 1e-15_dp))
 typat = [1, 1, 1, 1, 2, 2, 2, 2]
 zion = [-1, +1]
 
@@ -100,7 +101,7 @@ do i = 1, size(Llist)
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
     stress = -stress * ucvol
-    !call assert(all(abs(stress - stress0/L) < 1e-15_dp))
+    call assert(all(abs(stress - stress0/L) < 1e-15_dp))
 
     call fred2fcart(fcart, grewtn, gprim)
     do j = 1, 4
@@ -145,10 +146,11 @@ do i = 1, size(Llist)
 
     ! Reciprocal primitive vectors (without 2*pi) in cartesian coordinates.
     ! gmet = matmul(transpose(gprim), gprim)
-    gprim(:, 1) = [ 1,  1, -1] / L
-    gprim(:, 2) = [-1,  1,  1] / L
-    gprim(:, 3) = [ 1, -1,  1] / L
+    gprim(:, 1) = [ 1, -1,  1] / L
+    gprim(:, 2) = [ 1,  1, -1] / L
+    gprim(:, 3) = [-1,  1,  1] / L
 
+    ! gprim = transpose(inv(rprim))
     rprim(:, 1) = [1, 0, 1] * L / 2
     rprim(:, 2) = [1, 1, 0] * L / 2
     rprim(:, 3) = [0, 1, 1] * L / 2
@@ -171,6 +173,11 @@ do i = 1, size(Llist)
     call assert(all(abs(fcart(:, 2) - (+fcorrect0/L**2)) < 1e-15_dp))
     stress = -stress * L**3
     call assert(all(abs(stress - stress0/L) < 1e-15_dp))
+    call fred2fcart(fcart, xred, rprim)
+    call assert(all(abs(fcart(:, 1) / L * 16) < 1e-15_dp))
+    ! Must agree with the xred(:, 5) test in the previous section, i.e. we are
+    ! getting the correct cartesian coordinates.
+    call assert(all(abs(fcart(:, 2) / L * 16 - [5, 7, 6]) < 1e-15_dp))
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
 end program
