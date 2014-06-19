@@ -50,7 +50,8 @@ xred(:, 5) = [1, 1, 1] / 2._dp
 xred(:, 6) = [1, 0, 0] / 2._dp
 xred(:, 7) = [0, 1, 0] / 2._dp
 xred(:, 8) = [0, 0, 1] / 2._dp
-xred(:, 5:8) = xred(:, 5:8) - spread([2, 1, 0] / 8._dp, 2, 4)
+
+xred(:, 5:8) = xred(:, 5:8) - spread([2, 3, 1] / 16._dp, 2, 4)
 xred(:, 6:8) = xred(:, 6:8) - floor(xred(:, 6:8))
 typat = [1, 1, 1, 1, 2, 2, 2, 2]
 zion = [-1, +1]
@@ -97,17 +98,16 @@ do i = 1, size(Llist)
     print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
     print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
-    ! FIXME: Unfortunately the results do not agree yet.
-    !call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
+    call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
     stress = -stress * ucvol
     !call assert(all(abs(stress - stress0/L) < 1e-15_dp))
 
     call fred2fcart(fcart, grewtn, gprim)
     do j = 1, 4
-    !    call assert(all(abs(fcart(:, j) - (-fcorrect0/L**2)) < 1e-15_dp))
+        call assert(all(abs(fcart(:, j) - (-fcorrect0/L**2)) < 1e-15_dp))
     end do
     do j = 5, 8
-    !    call assert(all(abs(fcart(:, j) - (+fcorrect0/L**2)) < 1e-15_dp))
+        call assert(all(abs(fcart(:, j) - (+fcorrect0/L**2)) < 1e-15_dp))
     end do
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
