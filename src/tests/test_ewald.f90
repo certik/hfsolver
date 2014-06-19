@@ -85,6 +85,7 @@ do i = 1, size(Llist)
     call fred2fcart(fcart, grewtn, gprim)
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
     call assert(abs(E_direct - E_madelung) < 1e-8_dp)
+    call assert(all(abs(fcart) < 1e-15_dp))
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
 
@@ -136,6 +137,7 @@ do i = 1, size(Llist)
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
 
     call fred2fcart(fcart, grewtn, gprim)
+    call assert(all(abs(fcart) < 1e-15_dp))
 end do
 deallocate(xred, zion, grewtn, typat, fcart)
 end program
