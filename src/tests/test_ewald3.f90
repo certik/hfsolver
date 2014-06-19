@@ -17,18 +17,11 @@ integer :: natom, ntypat
 ! Various NaCl lattice constants in A
 real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
 ! The component of the correct force for the given L
-real(dp), parameter :: fcorrect(*) = [8.9613425608948444e-2_dp, &
-    9.4240310569359220e-2_dp, 0.14077873554188225_dp, &
-    6.7473831827766034e-2_dp, 2.8507693947231127e-2_dp]
-real(dp), parameter :: stress1_correct(*) = [-0.62770548707869611_dp, &
-    -0.64370627058568419_dp, -0.78675210849361421_dp, &
-    -0.54467453664942533_dp, -0.35403844882212621_dp]
-real(dp), parameter :: stress2_correct(*) = [-0.54226581445122812_dp, &
-    -0.55608866303051230_dp, -0.67966392148173749_dp, &
-    -0.47053656102581831_dp, -0.30584876466678168_dp]
-real(dp), parameter :: stress3_correct(*) = [-0.43722866784288522_dp, &
-    -0.44837402406680815_dp, -0.54801269608165426_dp, &
-    -0.37939340497960677_dp, -0.24660571323674413_dp]
+! The components of the correct force and stress tensor (multiplied by L)
+real(dp), parameter :: fcorrect0 = 10.180280846982683_dp
+real(dp), parameter :: stress0 = -4.6601722523551734_dp
+real(dp), parameter :: stress1 = -6.6903565769534099_dp
+real(dp), parameter :: stress2 = -5.7797035916557675_dp
 
 real(dp) :: stress(6)
 real(dp), allocatable :: xred(:, :), forces(:, :), q(:)
@@ -66,8 +59,7 @@ do i = 1, size(Llist)
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
     call assert(all(abs(forces) < 1e-17_dp))
-    call assert(all(abs(stress - [stress3_correct(i), stress3_correct(i), &
-        stress3_correct(i), 0._dp, 0._dp, 0._dp]) < 1e-10_dp))
+    call assert(all(abs(stress - (stress0/L)*[1, 1, 1, 0, 0, 0]) < 1e-15_dp))
 end do
 
 print *, "--------"
@@ -101,16 +93,13 @@ do i = 1, size(Llist)
     print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
     print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
-    call assert(all(abs(stress - [stress1_correct(i), stress1_correct(i), &
-        stress1_correct(i), stress2_correct(i), stress2_correct(i), &
-        stress2_correct(i)]) < 1e-10_dp))
+    call assert(all(abs(stress - [stress1, stress1, stress1, &
+        stress2, stress2, stress2]/L) < 1e-10_dp))
     do j = 1, 4
-        call assert(all(abs(forces(:, j) - &
-            [fcorrect(i), fcorrect(i), fcorrect(i)]) < 1e-10_dp))
+        call assert(all(abs(forces(:, j) - (+fcorrect0/L**2)) < 1e-10_dp))
     end do
     do j = 5, 8
-        call assert(all(abs(forces(:, j) - &
-            [-fcorrect(i), -fcorrect(i), -fcorrect(i)]) < 1e-10_dp))
+        call assert(all(abs(forces(:, j) - (-fcorrect0/L**2)) < 1e-10_dp))
     end do
 end do
 end program
