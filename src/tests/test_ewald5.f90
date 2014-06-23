@@ -3,8 +3,9 @@ program test_ewald5
 ! This test compares lattice energy 'eew' calculated from the Ewald summation
 ! against the energy calculated using the Madelung constant for various lattice
 ! constants L. The agreement is essentially to machine precision.
+! It also compares forces and stresses.
 
-! Similar to test_ewald, but here we the diagonal Na atom is moved by [2,1,0]/8
+! Similar to test_ewald, but here the diagonal Na atom is moved by [3,1,2] / 16
 ! towards the Cl atom.
 
 use types, only: dp
@@ -16,9 +17,12 @@ implicit none
 integer :: natom, ntypat
 ! Various NaCl lattice constants in A
 real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
-! The components of the correct force and stress tensor (multiplied by L)
+! Madelung constant for this system
+real(dp), parameter :: alpha = 1.9352066351335044_dp
+! Components of the correct force (multiplied by L^2)
 real(dp), parameter :: fcorrect0(3) = [3.3701600314233184_dp, &
     -0.48348071944082838_dp, -0.18734923455100549_dp]
+! Components of the correct stress tensor (multiplied by L)
 real(dp), parameter :: stress0(6) = [-7.6571091389140866_dp, &
     -2.9686706092940662_dp, -4.8558733328598898_dp, 0.35671778132537890_dp, &
      3.9045478316555458_dp, 1.5739340118629772_dp]
@@ -28,12 +32,8 @@ integer, allocatable :: typat(:)
 real(dp) :: gmet(3, 3), rmet(3, 3), rprim(3, 3), gprim(3, 3), stress(6)
 real(dp) :: eew
 real(dp), allocatable :: xred(:, :), zion(:), grewtn(:, :), fcart(:, :)
-real(dp) :: L, alpha, E_ewald, E_madelung
+real(dp) :: L, E_ewald, E_madelung
 integer :: i, j
-
-! Madelung constant for NaCl, where the diagonal Na atom is moved by [2,1,0]/8
-! towards the Cl atom
-alpha = 1.9352066351335044_dp
 
 ! Conventional cell:
 natom = 8
