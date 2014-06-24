@@ -1,8 +1,10 @@
 module md
 use types, only: dp
+use utils, only: stop_error, assert
 implicit none
 private
-public velocity_verlet, minimize_energy, unfold_positions
+public velocity_verlet, minimize_energy, unfold_positions, &
+    calc_min_distance, positions_random, positions_fcc
 
 interface
     subroutine forces_func(X, f)
@@ -95,6 +97,80 @@ do i = 2, size(X, 3)
         Xu(:, j, i) = Xu(:, j, i-1) + d
     end do
 end do
+end subroutine
+
+real(dp) function calc_min_distance(X, L, X0) result(dmin)
+! Calculates the minimum distance between X0 and all the points in X
+real(dp), intent(in) :: X(:, :) ! positions
+real(dp), intent(in) :: L ! length of the box
+real(dp), intent(in) :: X0(:) ! position to calculate the nearest distance
+real(dp) :: r, d(3), Xi(3)
+integer :: N, i
+N = size(X, 2)
+! Just something larger than any length in the box:
+dmin = L * sqrt(3._dp) + 1
+do i = 1, N
+    Xi = X(:, i)-X0+[L/2, L/2, L/2]
+    Xi = Xi - L*floor(Xi/L)
+    d = [L/2, L/2, L/2] - Xi
+    r = sqrt(sum(d**2))
+    if (r < dmin) dmin = r
+end do
+end function
+
+subroutine positions_random(X, L, min_distance, max_iter)
+! Initializes X with random positions of nuclei, such that the minimum distance
+! between any two is at least 'min_distance'. If the random position fails to
+! satisfy this criteria 'max_iter' times, it stops with an error.
+real(dp), intent(out) :: X(:, :)
+real(dp), intent(in) :: L, min_distance
+integer, intent(in) :: max_iter
+integer :: N, i, j
+N = size(X, 2)
+do i = 1, N
+    call random_number(X(:, i))
+    X(:, i) = L*X(:, i)
+    if (i > 1) then
+        j = 0
+        do while (calc_min_distance(X(:, :i-1), L, X(:, i)) < min_distance)
+            j = j + 1
+            if (j > max_iter) then
+                call stop_error("Cannot find position for new nucleus.")
+            end if
+            call random_number(X(:, i))
+            X(:, i) = L*X(:, i)
+        end do
+    end if
+end do
+end subroutine
+
+subroutine positions_fcc(X, L)
+! Initializes X with FCC positions of nuclei. If the number of atoms does not
+! fit the FCC lattice, it stops with an error.
+real(dp), intent(out) :: X(:, :)
+real(dp), intent(in) :: L
+real(dp) :: atoms(3, 4), a
+integer :: N, i, j, k, m, idx
+N = nint(L / (4*L**3/size(X, 2))**(1._dp/3))
+if (4*N**3 /= size(X, 2)) call stop_error("Lattice does not match atom count")
+a = L / N
+atoms(:, 1) = 0
+atoms(:, 2) = [0._dp, 0.5_dp, 0.5_dp]
+atoms(:, 3) = [0.5_dp, 0._dp, 0.5_dp]
+atoms(:, 4) = [0.5_dp, 0.5_dp, 0._dp]
+idx = 0
+do i = 1, N
+do j = 1, N
+do k = 1, N
+    do m = 1, 4
+        idx = idx + 1
+        print *, i, j, k, m, idx
+        X(:, idx) = a * (atoms(:, m)+[i, j, k]-0.75_dp)
+    end do
+end do
+end do
+end do
+call assert(idx == size(X, 2))
 end subroutine
 
 end module
