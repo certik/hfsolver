@@ -280,7 +280,9 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine free_energy_min(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
+subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, &
+        Eee, Een, Ts, Exc, Etot)
+integer, intent(in) :: Nelec ! Number of electrons
 real(dp), intent(in) :: L, G2(:, :, :), T_au
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
@@ -294,7 +296,6 @@ integer :: iter, max_iter
 real(dp) :: mu, energy_eps, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
-real(dp) :: Nelec
 real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
@@ -305,7 +306,6 @@ brent_eps = 1e-3_dp
 max_iter = 200
 update_type = update_polak_ribiere
 
-Nelec = 1 ! One electron
 Ng = size(ne, 1)
 
 allocate(Hpsi(Ng, Ng, Ng))
