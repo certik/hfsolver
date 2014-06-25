@@ -242,6 +242,7 @@ dFdn = dF0dn + Vee + Ven + Vxc
 dFdn = dFdn * L**3
 end subroutine
 
+! FIXME: rename this to radial_potential_fourier
 subroutine radial_density_fourier(R, V, L, Z, VenG)
 real(dp), intent(in) :: R(:), V(:), L, Z
 complex(dp), intent(out) :: VenG(:, :, :)
