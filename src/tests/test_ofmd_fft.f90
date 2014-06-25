@@ -159,9 +159,15 @@ contains
     print *, fen(:, 3)
     print *, fen(:, 4)
 
-    stop "OK"
 
-    f = fewald
+    f = fewald + fen
+
+    print *, "total forces:"
+    print *, f(:, 1)
+    print *, f(:, 2)
+    print *, f(:, 3)
+    print *, f(:, 4)
+    stop "OK"
     end subroutine
 
     real(dp) function calc_Epot(X) result(E)
