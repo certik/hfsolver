@@ -128,7 +128,7 @@ contains
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
-    call free_energy_min(L, G2, Temp, VenG, ne, Eee, Een, Ts, Exc, Etot)
+    call free_energy_min(N, L, G2, Temp, VenG, ne, Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
     print *, "T_au =", Temp
