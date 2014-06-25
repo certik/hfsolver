@@ -8,7 +8,7 @@ use random, only: randn
 use utils, only: init_random, stop_error, assert
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_density_fourier, &
-    reciprocal_space_vectors
+    reciprocal_space_vectors, real2fourier
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -142,7 +142,7 @@ contains
     print *, "stress"
     print *, stress
 
-    neG = ne ! FIXME!!
+    call real2fourier(ne, neG)
 
     fen = 0
     do i = 1, N
