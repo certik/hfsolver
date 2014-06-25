@@ -508,6 +508,7 @@ xred = x / L
 call ewald(E,gmet,grewtn,natom,ntypat,rmet,typat,ucvol,xred,zion)
 call ewald2(gmet,natom,ntypat,rmet,rprim,gprim,stress,typat,ucvol,xred,zion)
 call fred2fcart(forces, grewtn, gprim)
+! Make forces out of gradients:
 forces = -forces
 stress = -stress * ucvol
 end subroutine
