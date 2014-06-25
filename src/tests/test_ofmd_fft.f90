@@ -38,6 +38,7 @@ L = (sum(m) / rho)**(1._dp/3)
 print *, "Input:"
 print *, "N =", N
 print *, "Ng =", Ng
+print *, "MD steps =", steps
 print *, "rho = ",  rho, "a.u. =", rho * density2gcm3, "g/cm^3"
 print *, "T =", Temp, "a.u. =", Temp / K2au, "K =", Temp * Ha2eV, "eV"
 print "('dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
@@ -75,6 +76,7 @@ open(newunit=u, file="ofmd_results.txt", status="replace", form="unformatted")
 t = 0
 call cpu_time(t3)
 do i = 1, steps
+    print *, "MD step:", i, Temp, Temp_current
     Ekin = calc_Ekin(V, m)
     Epot = calc_Epot(X)
     Temp_current = 2*Ekin/(3*N)
@@ -107,6 +109,7 @@ contains
     real(dp), allocatable :: fewald(:, :), q(:), fen(:, :)
     real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
+    integer :: i
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N), fen(3, N))
@@ -167,7 +170,6 @@ contains
     print *, f(:, 2)
     print *, f(:, 3)
     print *, f(:, 4)
-    stop "OK"
     end subroutine
 
     real(dp) function calc_Epot(X) result(E)
