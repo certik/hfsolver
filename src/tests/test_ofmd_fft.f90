@@ -1,11 +1,14 @@
 program test_ofmd_fft
 use types, only: dp
-use constants, only: K2au, density2gcm3, u2au, s2au, Ha2eV
+use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error
+use ofdft, only: read_pseudo
+use ofdft_fft, only: free_energy_min, radial_density_fourier, &
+    reciprocal_space_vectors
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -14,17 +17,27 @@ integer :: N = 4
 integer :: i, steps, u
 real(dp) :: dt, L, t, Rcut, eps, sigma, rho
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
+real(dp), allocatable :: R(:), Ven_rad(:), &
+    G(:, :, :, :), G2(:, :, :)
+real(dp), allocatable :: Ven0G(:, :, :)
+complex(dp), allocatable :: VenG(:, :, :)
+real(dp), allocatable :: ne(:, :, :)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
+real(dp) :: Ediff, Z
 integer :: dynamics, functional, Ng, Nspecies, start
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, steps, dt)
+call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
+allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "Input:"
 print *, "N =", N
+print *, "Ng =", Ng
 print *, "rho = ",  rho, "a.u. =", rho * density2gcm3, "g/cm^3"
 print *, "T =", Temp, "a.u. =", Temp / K2au, "K =", Temp * Ha2eV, "eV"
 print "('dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
@@ -33,6 +46,10 @@ print *
 print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
 print *
+
+call radial_density_fourier(R, Ven_rad, L, Z, Ven0G)
+
+call reciprocal_space_vectors(L, G, G2)
 
 call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
@@ -88,32 +105,40 @@ contains
     real(dp) :: stress(6)
     real(dp) :: E_ewald
     real(dp), allocatable :: fewald(:, :), q(:)
+    real(dp) :: Eee, Een, Ts, Exc, Etot
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N))
     q = 1
+    ! Calculate nuclear forces
     call ewald_box(L, X, q, E_ewald, fewald, stress)
-    !print *, "EWALD", E_ewald
-    !print *, fewald(:, 1)
-    !print *, fewald(:, 2)
-    !print *, fewald(:, 3)
-    !print *, fewald(:, 4)
-    !print *
-    !print *, stress
+    print *, "EWALD", E_ewald
+    print *, fewald(:, 1)
+    print *, fewald(:, 2)
+    print *, fewald(:, 3)
+    print *, fewald(:, 4)
+    print *, "stress"
+    print *, stress
 
-    ! TODO: calculate the electronic forces here:
-    !ne=1._dp / L**3
-    !call free_energy_min(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
-    !print *, "Ng =", Ng
-    !print *, "Rcut =", Rcut
-    !print *, "T_au =", T_au
-    !print *, "Summary of energies [a.u.]:"
-    !print "('    Ts   = ', f14.8)", Ts
-    !print "('    Een  = ', f14.8)", Een
-    !print "('    Eee  = ', f14.8)", Eee
-    !print "('    Exc  = ', f14.8)", Exc
-    !print *, "   ---------------------"
-    !print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+    ! Calculate the electronic forces
+    ne=1._dp / L**3
+    VenG = 0
+    do i = 1, N
+        VenG = VenG - Ven0G * exp(i_ * &
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
+    end do
+    call free_energy_min(L, G2, Temp, VenG, ne, Eee, Een, Ts, Exc, Etot)
+    print *, "Ng =", Ng
+    print *, "Rcut =", Rcut
+    print *, "T_au =", Temp
+    print *, "Summary of energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+    stop "OK"
 
     f = fewald
     end subroutine
