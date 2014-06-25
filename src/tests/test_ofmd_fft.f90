@@ -20,7 +20,7 @@ real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
-complex(dp), allocatable :: VenG(:, :, :)
+complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: ne(:, :, :)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
@@ -30,7 +30,7 @@ call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, steps, dt)
 call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
-allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng))
+allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
@@ -104,21 +104,15 @@ contains
     integer :: N
     real(dp) :: stress(6)
     real(dp) :: E_ewald
-    real(dp), allocatable :: fewald(:, :), q(:)
+    real(dp), allocatable :: fewald(:, :), q(:), fen(:, :)
+    real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
     N = size(X, 2)
     ! TODO: this can be done in the main program
-    allocate(fewald(3, N), q(N))
+    allocate(fewald(3, N), q(N), fen(3, N))
     q = 1
     ! Calculate nuclear forces
     call ewald_box(L, X, q, E_ewald, fewald, stress)
-    print *, "EWALD", E_ewald
-    print *, fewald(:, 1)
-    print *, fewald(:, 2)
-    print *, fewald(:, 3)
-    print *, fewald(:, 4)
-    print *, "stress"
-    print *, stress
 
     ! Calculate the electronic forces
     ne=1._dp / L**3
@@ -139,6 +133,32 @@ contains
     print "('    Exc  = ', f14.8)", Exc
     print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+    print *, "EWALD", E_ewald
+    print *, fewald(:, 1)
+    print *, fewald(:, 2)
+    print *, fewald(:, 3)
+    print *, fewald(:, 4)
+    print *, "stress"
+    print *, stress
+
+    neG = ne ! FIXME!!
+
+    fen = 0
+    do i = 1, N
+        fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+        fen(1, i) = sum(G(:,:,:,1)*fac)
+        fen(2, i) = sum(G(:,:,:,2)*fac)
+        fen(3, i) = sum(G(:,:,:,3)*fac)
+    end do
+
+    print *, "forces:"
+    print *, fen(:, 1)
+    print *, fen(:, 2)
+    print *, fen(:, 3)
+    print *, fen(:, 4)
+
     stop "OK"
 
     f = fewald
