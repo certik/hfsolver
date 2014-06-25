@@ -5,7 +5,7 @@ use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
 use random, only: randn
-use utils, only: init_random, stop_error
+use utils, only: init_random, stop_error, assert
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_density_fourier, &
     reciprocal_space_vectors
@@ -127,6 +127,7 @@ contains
         VenG = VenG - Ven0G * exp(i_ * &
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
+    call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
     call free_energy_min(L, G2, Temp, VenG, ne, Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
