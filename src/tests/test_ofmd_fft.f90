@@ -70,9 +70,10 @@ V = V * sqrt(Temp / spread(m, 1, 3))
 
 print *, "MD start:"
 
+t = 0
+open(newunit=u, file="ofmd_results.txt", status="replace")
 call forces(X, f)
 
-open(newunit=u, file="ofmd_results.txt", status="replace", form="unformatted")
 t = 0
 call cpu_time(t3)
 do i = 1, steps
@@ -82,7 +83,6 @@ do i = 1, steps
     Temp_current = 2*Ekin/(3*N)
     print "(i5, ': E=', f10.4, ' a.u.; Epot=', f10.4, ' a.u.; T=',f10.4,' K')",&
         i, Ekin + Epot, Epot, Temp_current / K2au
-    write(u) t/s2au, f, V, X, Ekin, Epot, Temp_current / K2au
     call velocity_verlet(dt, m, forces, f, V, X)
     if (any(abs(X/L) > 2)) then
         print *, "max n = X/L =", maxval(abs(X/L))
@@ -136,6 +136,8 @@ contains
     print "('    Exc  = ', f14.8)", Exc
     print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, Temp_current / K2au
 
     print *, "EWALD", E_ewald
     print *, fewald(:, 1)

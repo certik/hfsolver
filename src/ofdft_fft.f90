@@ -74,6 +74,9 @@ Ng = size(x, 1)
 tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized
+if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
+    print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+end if
 ! TODO: make this strict:
 call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
 end subroutine
@@ -90,6 +93,9 @@ complex(dp) :: s
 s = sum(fG) * L**3
 r = real(s, dp)
 if (abs(aimag(s)) > 1e-12_dp) then
+    print *, "INFO: integralG() imaginary part:", aimag(s)
+end if
+if (abs(aimag(s)) > 1e-5_dp) then
     print *, "aimag(s) =", aimag(s)
     call stop_error("integralG(): Complex part is not negligible.")
 end if
@@ -300,8 +306,8 @@ real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
 
-!energy_eps = 3.6749308286427368e-5_dp
-energy_eps = 1e-9_dp
+energy_eps = 3.6749308286427368e-5_dp
+!energy_eps = 1e-9_dp
 brent_eps = 1e-3_dp
 max_iter = 200
 update_type = update_polak_ribiere
@@ -335,13 +341,13 @@ phi = ksi
 phi_prime = phi - 1._dp / Nelec *  integral(L, phi * psi) * psi
 eta = sqrt(Nelec / integral(L, phi_prime**2)) * phi_prime
 theta = pi/2
-print *, "Summary of energies [a.u.]:"
-print "('    Ts   = ', f14.8)", Ts
-print "('    Een  = ', f14.8)", Een
-print "('    Eee  = ', f14.8)", Eee
-print "('    Exc  = ', f14.8)", Exc
-print *, "   ---------------------"
-print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+!print *, "Summary of energies [a.u.]:"
+!print "('    Ts   = ', f14.8)", Ts
+!print "('    Een  = ', f14.8)", Een
+!print "('    Eee  = ', f14.8)", Eee
+!print "('    Exc  = ', f14.8)", Exc
+!print *, "   ---------------------"
+!print "('    Etot = ', f14.8, ' a.u.')", free_energy_
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
@@ -355,7 +361,7 @@ do iter = 1, max_iter
     call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
     if (iter < 2) then
         call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
-            free_energy_, verbose=.true.)
+            free_energy_, verbose=.false.)
     else
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
     end if
@@ -364,18 +370,18 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi)
-    print *, "Iteration:", iter
+!    print *, "Iteration:", iter
     psi_norm = integral(L, psi**2)
-    print *, "Norm of psi:", psi_norm
-    print *, "mu =", mu
-    print *, "|ksi| =", sqrt(gamma_n)
-    print *, "theta =", theta
-    print *, "Summary of energies [a.u.]:"
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eee
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
+!    print *, "Norm of psi:", psi_norm
+!    print *, "mu =", mu
+!    print *, "|ksi| =", sqrt(gamma_n)
+!    print *, "theta =", theta
+!    print *, "Summary of energies [a.u.]:"
+!    print "('    Ts   = ', f14.8)", Ts
+!    print "('    Een  = ', f14.8)", Een
+!    print "('    Eee  = ', f14.8)", Eee
+!    print "('    Exc  = ', f14.8)", Exc
+!    print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u.')", free_energy_
     free_energies(iter) = free_energy_
     if (iter > 3) then

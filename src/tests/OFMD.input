@@ -1,7 +1,7 @@
 10.0 1.0 1 4 ! T(eV), density(g/cm^3), Number of Species, Number of nuclei
 3 -1 -1 -1   ! start
 1 4 64 -1 -1 .001 -1   ! Dynamics, Functional, FFT
-10 1.60   1  ! Number of time steps , time step (a.u)
+2 1.60   1  ! Number of time steps , time step (a.u)
 H 1 1 4
 
 
