@@ -286,10 +286,10 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, &
+subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, energy_eps, &
         Eee, Een, Ts, Exc, Etot)
 integer, intent(in) :: Nelec ! Number of electrons
-real(dp), intent(in) :: L, G2(:, :, :), T_au
+real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
@@ -299,15 +299,13 @@ real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
     psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
 integer :: iter, max_iter
-real(dp) :: mu, energy_eps, last3, brent_eps, free_energy_, &
+real(dp) :: mu, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
 real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
 
-energy_eps = 3.6749308286427368e-5_dp
-!energy_eps = 1e-9_dp
 brent_eps = 1e-3_dp
 max_iter = 200
 update_type = update_polak_ribiere
