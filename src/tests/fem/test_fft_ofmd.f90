@@ -26,7 +26,7 @@ L = 2.997672536043746_dp
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 
-call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
+call read_pseudo("H.pseudo.gaussian2", R, V, Z, Ediff)
 Rcut = R(size(R))
 
 allocate(VenG0(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
