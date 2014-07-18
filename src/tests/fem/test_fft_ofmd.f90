@@ -14,6 +14,7 @@ integer :: Ng
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), dFdn(:, :, :)
+real(dp), allocatable :: VenG0(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :)
 real(dp) :: Rcut, L, T_eV, T_au
 integer :: i, j, k
@@ -28,9 +29,9 @@ T_au = T_ev / Ha2eV
 call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
 Rcut = R(size(R))
 
-allocate(VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
+allocate(VenG0(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-call radial_density_fourier(R, V, L, Z, VenG)
+call radial_density_fourier(R, V, L, Z, VenG0)
 
 call reciprocal_space_vectors(L, G, G2)
 ne = 1
@@ -50,7 +51,7 @@ end do
 x = L/2 + L/64
 y = L/2
 z_ = L/2
-VenG = -VenG * exp(i_*(G(:,:,:,1)*x+G(:,:,:,2)*y+G(:,:,:,3)*z_))
+VenG = -VenG0 * exp(i_*(G(:,:,:,1)*x+G(:,:,:,2)*y+G(:,:,:,3)*z_))
 call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
@@ -65,7 +66,7 @@ call assert(abs(Eee - (0.73653527)) < 5e-8)
 call assert(abs(Exc - (-0.88363737)) < 5e-8)
 call assert(abs(Etot - (1.34447026)) < 1e-8)
 ne=1._dp / L**3
-call free_energy_min(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
+call free_energy_min(1, L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
 print *, "Ng =", Ng
 print *, "Rcut =", Rcut
 print *, "T_au =", T_au
