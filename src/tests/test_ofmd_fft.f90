@@ -72,6 +72,7 @@ print *, "MD start:"
 
 t = 0
 open(newunit=u, file="ofmd_results.txt", status="replace")
+ne=1._dp / L**3
 call forces(X, f)
 
 t = 0
@@ -118,7 +119,6 @@ contains
     call ewald_box(L, X, q, E_ewald, fewald, stress)
 
     ! Calculate the electronic forces
-    ne=1._dp / L**3
     VenG = 0
     do i = 1, N
         VenG = VenG - Ven0G * exp(i_ * &
