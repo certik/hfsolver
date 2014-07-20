@@ -48,7 +48,7 @@ real(dp) :: Nelec, jac_det
 real(dp) :: psi_norm
 real(dp) :: fa, fb, fc
 
-energy_eps = 3.6749308286427368e-5_dp
+energy_eps = 1e-9_dp
 brent_eps = 1e-3_dp
 max_iter = 200
 
@@ -449,12 +449,14 @@ print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
-! These values are specific to the given Nq, p, Nx, Ny, Nz above:
-call assert(abs(Ts-1.5301_dp) < 1e-4_dp)
-call assert(abs(Een-(-1.4601_dp)) < 1e-4_dp)
-call assert(abs(Eh-0.0987_dp) < 1e-4_dp)
-call assert(abs(Exc-(-0.5488_dp)) < 1e-4_dp)
-call assert(abs(Etot-(-0.3801_dp)) < 1e-4_dp)
+! These values are specific to the given Nq, p, Nx, Ny, Nz above, and
+! self-consistency 1e-9. The energy components (Ts, Een, Eh, Exc) have lower
+! accuracy than the total energy.
+call assert(abs(Ts-1.5262_dp) < 1e-4_dp)
+call assert(abs(Een-(-1.4563_dp)) < 1e-4_dp)
+call assert(abs(Eh-0.0981_dp) < 1e-4_dp)
+call assert(abs(Exc-(-0.5481_dp)) < 1e-4_dp)
+call assert(abs(Etot-(-0.38016292_dp)) < 1e-8_dp)
 
 contains
 
