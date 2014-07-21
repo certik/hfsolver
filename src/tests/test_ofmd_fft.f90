@@ -6,10 +6,13 @@ use md, only: velocity_verlet, minimize_energy, positions_random, &
 use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error, assert, linspace
+use feutils, only: quad_lobatto
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
-    reciprocal_space_vectors, real2fourier
-use ofdft_fe, only: radial_density_fourier
+    reciprocal_space_vectors, real2fourier, fourier2real
+use ofdft_fe, only: radial_density_fourier, &
+    free_energy_min_fe => free_energy_min
+use interp3d, only: trilinear
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -22,6 +25,7 @@ real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
+real(dp), allocatable :: Ven(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
@@ -33,6 +37,7 @@ call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+allocate(Ven(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
@@ -120,7 +125,9 @@ contains
     real(dp), allocatable :: fewald(:, :), q(:), fen(:, :)
     real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
-    integer :: i
+    real(dp) :: Eee_fe, Een_fe, Ts_fe, Exc_fe, Etot_fe
+    integer :: i, Nx, Ny, Nz
+    integer :: DOF, p
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N), fen(3, N))
@@ -148,7 +155,20 @@ contains
     print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
-    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, Temp_current / K2au
+
+    ! TODO: The Ven should rather be calculated directly using nen0
+    call fourier2real(VenG, Ven)
+    Nx = 3
+    Ny = 3
+    Nz = 3
+    p = 6
+    ! TODO: pass in the number of electrons N
+    call free_energy_min_fe(L, Nx, Ny, Nz, p, Temp, nen_fn, ne_fn, &
+            p+1, quad_lobatto, 1e-9_dp, &
+            Eee_fe, Een_fe, Ts_fe, Exc_fe, DOF)
+    Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe
+    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
+        Temp_current / K2au, Etot_fe*Ha2eV/N
 
     print *, "EWALD", E_ewald
     print *, fewald(:, 1)
@@ -184,6 +204,17 @@ contains
     print *, f(:, 3)
     print *, f(:, 4)
     end subroutine
+
+    real(dp) function nen_fn(x, y, z) result(n)
+    real(dp), intent(in) :: x, y, z
+    n = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], Ven)
+    end function
+
+    real(dp) function ne_fn(x, y, z) result(n)
+    real(dp), intent(in) :: x, y, z
+    n = x+y+z ! Silence compiler warning
+    n = 1
+    end function
 
     real(dp) function calc_Epot(X) result(E)
     real(dp), intent(in) :: X(:, :) ! positions
