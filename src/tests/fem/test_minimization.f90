@@ -31,7 +31,7 @@ p = 2
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy_min(L, 2, 2, 2, p, T_au, nen, ne, &
+call free_energy_min(1._dp, L, 2, 2, 2, p, T_au, nen, ne, &
     5, quad_gauss, 1e-9_dp, &
     Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc

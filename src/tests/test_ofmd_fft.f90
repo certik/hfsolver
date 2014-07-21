@@ -162,8 +162,8 @@ contains
     Ny = 3
     Nz = 3
     p = 6
-    ! TODO: pass in the number of electrons N
-    call free_energy_min_fe(L, Nx, Ny, Nz, p, Temp, nen_fn, ne_fn, &
+    call free_energy_min_fe(real(N, dp), L, Nx, Ny, Nz, p, Temp, &
+            nen_fn, ne_fn, &
             p+1, quad_lobatto, 1e-9_dp, &
             Eee_fe, Een_fe, Ts_fe, Exc_fe, DOF)
     Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe

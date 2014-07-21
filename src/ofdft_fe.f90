@@ -28,9 +28,10 @@ logical, parameter :: WITH_UMFPACK=.false.
 
 contains
 
-subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
+subroutine free_energy_min(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
         Nq, quad_type, energy_eps, &
         Eh, Een, Ts, Exc, Nb)
+real(dp), intent(in) :: Nelec
 integer, intent(in) :: p
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
 procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
@@ -56,7 +57,7 @@ integer, intent(in) :: Nex, Ney, Nez
 real(dp) :: Lx, Ly, Lz, mu, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
-real(dp) :: Nelec, jac_det
+real(dp) :: jac_det
 real(dp) :: psi_norm
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
@@ -71,8 +72,6 @@ real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 
 brent_eps = 1e-3_dp
 max_iter = 200
-
-Nelec = 1 ! One electron
 
 ibc = 3 ! Periodic boundary condition
 
