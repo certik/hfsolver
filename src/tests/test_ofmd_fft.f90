@@ -6,7 +6,7 @@ use md, only: velocity_verlet, minimize_energy, positions_random, &
 use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error, assert, linspace
-use feutils, only: quad_lobatto
+use feutils, only: quad_lobatto, quad_gauss
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real
