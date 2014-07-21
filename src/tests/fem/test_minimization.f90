@@ -11,7 +11,7 @@ implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF !, Nx, Ny, Nz, u
 real(dp) :: Z, Ediff
-real(dp), allocatable :: R(:), V(:), D(:, :), c(:, :), values(:, :, :)
+real(dp), allocatable :: R(:), V(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
 !open(newunit=u, file="plots/Ven_reg128.txt", status="old")
@@ -67,24 +67,6 @@ r = sqrt((x-L/2)**2+(y-L/2)**2+(z_-L/2)**2)
 n = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 ! Corresponds to the potential:
 !V = -Z*erf(alpha*R)/R
-end function
-
-real(dp) function Ven_splines(x_, y_, z_) result(V)
-real(dp), intent(in) :: x_, y_, z_
-real(dp) :: r
-integer :: ip
-! One atom in the center:
-r = sqrt(x_**2+y_**2+z_**2)
-if (r >= 1) r = 1
-ip = 0
-ip = iixmin(r, D(:, 1), ip)
-V = poly3(r, c(:, ip))
-end function
-
-real(dp) function Ven_interp3d(x, y, z) result(V)
-real(dp), intent(in) :: x, y, z
-V = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], &
-        values)
 end function
 
 real(dp) function ne(x, y, z) result(n)
