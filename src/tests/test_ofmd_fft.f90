@@ -1,6 +1,6 @@
 program test_ofmd_fft
 use types, only: dp
-use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
+use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV, pi
 use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
@@ -25,7 +25,7 @@ real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
-real(dp), allocatable :: Ven(:, :, :)
+real(dp), allocatable :: nen(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
@@ -37,7 +37,7 @@ call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-allocate(Ven(Ng, Ng, Ng))
+allocate(nen(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
@@ -156,8 +156,8 @@ contains
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 
-    ! TODO: The Ven should rather be calculated directly using nen0
-    call fourier2real(VenG, Ven)
+    ! TODO: The nen should rather be calculated directly using nen0
+    call fourier2real(VenG*G2/(4*pi), nen)
     Nx = 3
     Ny = 3
     Nz = 3
@@ -207,7 +207,7 @@ contains
 
     real(dp) function nen_fn(x, y, z) result(n)
     real(dp), intent(in) :: x, y, z
-    n = trilinear([x, y, z], [0, 0, 0]*1._dp, [L, L, L], Ven)
+    n = trilinear([x, y, z], [0, 0, 0]*1._dp, [L, L, L], nen)
     end function
 
     real(dp) function ne_fn(x, y, z) result(n)
