@@ -7,7 +7,7 @@ use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error, assert
 use ofdft, only: read_pseudo
-use ofdft_fft, only: free_energy_min, radial_density_fourier, &
+use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier
 implicit none
 
@@ -48,7 +48,7 @@ print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
 print *
 
-call radial_density_fourier(R, Ven_rad, L, Z, Ven0G)
+call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
 
 call reciprocal_space_vectors(L, G, G2)
 

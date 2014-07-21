@@ -2,7 +2,7 @@ program test_fft_ofmd
 use types, only: dp
 use constants, only: i_
 use ofdft, only: read_pseudo
-use ofdft_fft, only: free_energy, radial_density_fourier, &
+use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error, assert
@@ -31,7 +31,7 @@ Rcut = R(size(R))
 
 allocate(VenG0(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-call radial_density_fourier(R, V, L, Z, VenG0)
+call radial_potential_fourier(R, V, L, Z, VenG0)
 
 call reciprocal_space_vectors(L, G, G2)
 ne = 1

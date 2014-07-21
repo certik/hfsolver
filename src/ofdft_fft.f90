@@ -18,7 +18,7 @@ use integration, only: integrate_trapz_1
 implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
-    radial_density_fourier, real2fourier, fourier2real
+    radial_potential_fourier, real2fourier, fourier2real
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
@@ -249,7 +249,7 @@ dFdn = dFdn * L**3
 end subroutine
 
 ! FIXME: rename this to radial_potential_fourier
-subroutine radial_density_fourier(R, V, L, Z, VenG)
+subroutine radial_potential_fourier(R, V, L, Z, VenG)
 real(dp), intent(in) :: R(:), V(:), L, Z
 real(dp), intent(out) :: VenG(:, :, :)
 integer :: Ng, i, j, k, idx
