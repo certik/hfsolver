@@ -33,7 +33,7 @@ integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, steps, dt)
-call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
+call read_pseudo("fem/H.pseudo.gaussian2", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
@@ -164,7 +164,7 @@ contains
     p = 6
     call free_energy_min_fe(real(N, dp), L, Nx, Ny, Nz, p, Temp, &
             nen_fn, ne_fn, &
-            p+1, quad_lobatto, 1e-9_dp, &
+            30, quad_gauss, 1e-9_dp, &
             Eee_fe, Een_fe, Ts_fe, Exc_fe, DOF)
     Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
