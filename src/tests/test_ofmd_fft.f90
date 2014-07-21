@@ -5,10 +5,11 @@ use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
 use random, only: randn
-use utils, only: init_random, stop_error, assert
+use utils, only: init_random, stop_error, assert, linspace
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier
+use ofdft_fe, only: radial_density_fourier
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -21,10 +22,10 @@ real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
-real(dp), allocatable :: ne(:, :, :)
+real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
-integer :: dynamics, functional, Ng, Nspecies, start
+integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, steps, dt)
@@ -49,6 +50,15 @@ print *, "L =", L, "a.u."
 print *
 
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
+Nmesh = 10000
+allocate(R2(Nmesh), nen0(Nmesh))
+R2 = linspace(0._dp, L/2, Nmesh)
+call radial_density_fourier(R, Ven_rad, L, Z, Ng, R2, nen0)
+open(newunit=u, file="H.pseudo.density", status="replace")
+write(u, "(a)") "# Density. The lines are: r, nen(r)"
+write(u, *) R2
+write(u, *) nen0
+close(u)
 
 call reciprocal_space_vectors(L, G, G2)
 
