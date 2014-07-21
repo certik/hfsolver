@@ -62,7 +62,7 @@ real(dp) function nen(x, y, z_) result(n)
 real(dp), intent(in) :: x, y, z_
 real(dp), parameter :: alpha = 12
 real(dp) :: r
-r = sqrt(x**2+y**2+z_**2)
+r = sqrt((x-L/2)**2+(y-L/2)**2+(z_-L/2)**2)
 ! This density:
 n = -Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 ! Corresponds to the potential:
@@ -91,7 +91,7 @@ real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
 real(dp), parameter :: alpha = 1, Z_ = 1
 real(dp) :: r
-r = sqrt(x**2+y**2+z**2)
+r = sqrt((x-L/2)**2+(y-L/2)**2+(z-L/2)**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 n = 1
 end function

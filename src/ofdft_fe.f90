@@ -80,7 +80,7 @@ Ly = L
 Lz = L
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
-    [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
+    [0, 0, 0]*1._dp, [Lx, Ly, Lz], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
 

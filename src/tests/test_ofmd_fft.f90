@@ -207,7 +207,7 @@ contains
 
     real(dp) function nen_fn(x, y, z) result(n)
     real(dp), intent(in) :: x, y, z
-    n = trilinear([x, y, z], [-L/2, -L/2, -L/2], [L/2, L/2, L/2], Ven)
+    n = trilinear([x, y, z], [0, 0, 0]*1._dp, [L, L, L], Ven)
     end function
 
     real(dp) function ne_fn(x, y, z) result(n)
