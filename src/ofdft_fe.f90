@@ -28,12 +28,15 @@ logical, parameter :: WITH_UMFPACK=.false.
 
 contains
 
-subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, &
-    Ts, Exc, Nb)
+subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
+        Nq, quad_type, energy_eps, &
+        Eh, Een, Ts, Exc, Nb)
 integer, intent(in) :: p
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
 procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
 real(dp), intent(in) :: L, T_au
+integer, intent(in) :: Nq, quad_type
+real(dp), intent(in) :: energy_eps
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
 
@@ -41,7 +44,6 @@ integer :: Nn, Ne, ibc
 ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
-integer :: Nq
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
         wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
@@ -51,7 +53,7 @@ real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k, iter, max_iter
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: Lx, Ly, Lz, mu, energy_eps, last3, brent_eps, free_energy_, &
+real(dp) :: Lx, Ly, Lz, mu, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
 real(dp) :: Nelec, jac_det
@@ -62,12 +64,11 @@ real(dp), allocatable :: matAx_coo(:)
 integer, allocatable :: matAp(:), matAj(:)
 real(dp), allocatable :: matAx(:)
 type(umfpack_numeric) :: matd
-integer :: idx, quad_type
+integer :: idx
 logical :: spectral ! Are we using spectral elements
 real(dp) :: background
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 
-energy_eps = 1e-9_dp
 brent_eps = 1e-3_dp
 max_iter = 200
 
@@ -83,9 +84,6 @@ call cartesian_mesh_3d(Nex, Ney, Nez, &
     [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-Nq = p+1
-Nq = 20
-quad_type = quad_lobatto
 
 spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
 

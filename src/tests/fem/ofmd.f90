@@ -7,6 +7,7 @@ use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use utils, only: linspace
+use feutils, only: quad_lobatto
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF, u, Nmesh, N, Nx, Ny, Nz, i
@@ -48,7 +49,8 @@ write(u, *) (nen_splines(R2(i), 0._dp, 0._dp), i=1, size(R2))
 close(u)
 
 call free_energy_min(L, Nx, Ny, Nz, p, T_au, nen_splines, ne, &
-    Eh, Een, Ts, Exc, DOF)
+        p+1, quad_lobatto, 1e-9_dp, &
+        Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 print *, "p =", p
 print *, "DOF =", DOF
