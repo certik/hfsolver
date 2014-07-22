@@ -46,19 +46,14 @@ integer :: Nn, Ne, ibc
 real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
-        wtq3(:, :, :), phihq(:, :), dphihq(:, :), free_energies(:)
-real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
-    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta, Venq, &
-    nenq_neutral
+        wtq3(:, :, :), phihq(:, :), dphihq(:, :)
+real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
 real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
 integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
-integer :: i, j, k, iter, max_iter
+integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: Lx, Ly, Lz, mu, last3, brent_eps, free_energy_, &
-    gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
-real(dp) :: f2
+real(dp) :: Lx, Ly, Lz
 real(dp) :: jac_det
-real(dp) :: psi_norm
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
 real(dp), allocatable :: matAx_coo(:)
@@ -67,11 +62,6 @@ real(dp), allocatable :: matAx(:)
 type(umfpack_numeric) :: matd
 integer :: idx
 logical :: spectral ! Are we using spectral elements
-real(dp) :: background
-real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
-
-brent_eps = 1e-3_dp
-max_iter = 200
 
 ibc = 3 ! Periodic boundary condition
 
@@ -134,8 +124,60 @@ if (WITH_UMFPACK) then
 end if
 
 allocate(nenq_pos(Nq, Nq, Nq, Ne))
-allocate(nenq_neutral(Nq, Nq, Nq, Ne))
 allocate(nq_pos(Nq, Nq, Nq, Ne))
+
+nenq_pos = func2quad(nodes, elems, xiq, fnen)
+nq_pos = func2quad(nodes, elems, xiq, fn_pos)
+
+call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
+        Lx, Ly, Lz, p, Nq, spectral, Ne, Nb, matAp, matAj, matAx, &
+        nodes, elems, wtq3, xin, xiq, phihq, phi_v, in, ib, jac_det, &
+        Eh, Een, Ts, Exc)
+end subroutine
+
+subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps,&
+        ! Geometry, finite element specification and internal datastructures
+        Lx, Ly, Lz, p, Nq, spectral, Ne, Nb, matAp, matAj, matAx, &
+        nodes, elems, wtq3, xin, xiq, phihq, phi_v, in, ib, jac_det, &
+        ! Output arguments
+        Eh, Een, Ts, Exc)
+real(dp), intent(in) :: Nelec
+integer, intent(in) :: p
+real(dp), intent(in) :: nenq_pos(:, :, :, :)
+real(dp), intent(inout) :: nq_pos(:, :, :, :)
+real(dp), intent(in) :: Lx, Ly, Lz, T_au
+integer, intent(in) :: Nb
+real(dp), intent(in) :: energy_eps
+integer, intent(in) :: Nq, Ne
+integer, intent(in) :: matAp(:), matAj(:)
+real(dp), intent(in) :: matAx(:)
+logical, intent(in) :: spectral ! Are we using spectral elements
+! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
+real(dp), intent(in) :: nodes(:, :)
+integer, intent(in) :: elems(:, :) ! elems(:, i) are nodes of the i-th element
+real(dp), intent(in) :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+integer, intent(in) :: in(:, :, :, :), ib(:, :, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(out) :: Eh, Een, Ts, Exc
+
+real(dp), allocatable :: free_energies(:)
+real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
+    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta, Venq, &
+    nenq_neutral
+integer :: iter, max_iter
+real(dp) :: mu, last3, brent_eps, free_energy_, &
+    gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
+real(dp) :: f2
+real(dp) :: psi_norm
+type(umfpack_numeric) :: matd
+real(dp) :: background
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
+
+brent_eps = 1e-3_dp
+max_iter = 200
+
+allocate(nenq_neutral(Nq, Nq, Nq, Ne))
 allocate(Venq(Nq, Nq, Nq, Ne))
 allocate(Hpsi(Nq, Nq, Nq, Ne))
 allocate(psi(Nq, Nq, Nq, Ne))
@@ -147,8 +189,6 @@ allocate(ksi(Nq, Nq, Nq, Ne))
 allocate(ksi_prev(Nq, Nq, Nq, Ne))
 allocate(eta(Nq, Nq, Nq, Ne))
 
-nenq_pos = func2quad(nodes, elems, xiq, fnen)
-nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 
 ! Calculate Venq
 allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)))
