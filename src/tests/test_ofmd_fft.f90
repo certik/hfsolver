@@ -80,6 +80,7 @@ quad_type = quad_gauss
 call initialize_fe(L, Nx, Ny, Nz, p, Nq, quad_type, fed)
 allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, ne_fn)
 
 call reciprocal_space_vectors(L, G, G2)
 
@@ -157,6 +158,8 @@ contains
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
+
+    ! Energy calculation
     call free_energy_min(N, L, G2, Temp, VenG, ne, 3.6749308286427368e-5_dp, &
             Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
@@ -174,7 +177,6 @@ contains
     ! TODO: The nen should rather be calculated directly using nen0
     call fourier2real(VenG*G2/(4*pi), nen)
     nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, nen_fn)
-    nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, ne_fn)
 
     call free_energy_min_low_level(real(N, dp), Temp, nenq_pos, nq_pos, &
         1e-9_dp, fed, Eee_fe, Een_fe, Ts_fe, Exc_fe)
@@ -190,6 +192,7 @@ contains
     print *, "stress"
     print *, stress
 
+    ! Forces calculation
     call real2fourier(ne, neG)
 
     fen = 0
