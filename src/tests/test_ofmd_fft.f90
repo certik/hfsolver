@@ -11,9 +11,10 @@ use feutils, only: quad_gauss
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real
-use ofdft_fe, only: radial_density_fourier, &
-    free_energy_min_fe => free_energy_min
+use ofdft_fe, only: radial_density_fourier, initialize_fe, &
+    free_energy_min_low_level, fe_data
 use interp3d, only: trilinear
+use poisson3d_assembly, only: func2quad
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -31,6 +32,10 @@ real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
+integer :: Nx, Ny, Nz, p, Nq, quad_type
+type(fe_data) :: fed
+real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
+
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, steps, dt)
@@ -65,6 +70,16 @@ write(u, "(a)") "# Density. The lines are: r, nen(r)"
 write(u, *) R2
 write(u, *) nen0
 close(u)
+
+Nx = 3
+Ny = 3
+Nz = 3
+p = 6
+Nq = 30
+quad_type = quad_gauss
+call initialize_fe(L, Nx, Ny, Nz, p, Nq, quad_type, fed)
+allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 
 call reciprocal_space_vectors(L, G, G2)
 
@@ -127,8 +142,7 @@ contains
     real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
     real(dp) :: Eee_fe, Een_fe, Ts_fe, Exc_fe, Etot_fe
-    integer :: i, Nx, Ny, Nz
-    integer :: DOF, p
+    integer :: i
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N), fen(3, N))
@@ -159,14 +173,11 @@ contains
 
     ! TODO: The nen should rather be calculated directly using nen0
     call fourier2real(VenG*G2/(4*pi), nen)
-    Nx = 3
-    Ny = 3
-    Nz = 3
-    p = 6
-    call free_energy_min_fe(real(N, dp), L, Nx, Ny, Nz, p, Temp, &
-            nen_fn, ne_fn, &
-            30, quad_gauss, 1e-9_dp, &
-            Eee_fe, Een_fe, Ts_fe, Exc_fe, DOF)
+    nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, nen_fn)
+    nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, ne_fn)
+
+    call free_energy_min_low_level(real(N, dp), Temp, nenq_pos, nq_pos, &
+        1e-9_dp, fed, Eee_fe, Een_fe, Ts_fe, Exc_fe)
     Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
         Temp_current / K2au, Etot_fe*Ha2eV/N

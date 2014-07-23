@@ -22,7 +22,8 @@ use umfpack, only: factorize, solve, free_data, umfpack_numeric
 use integration, only: integrate_trapz_1
 implicit none
 private
-public free_energy_min, radial_density_fourier
+public free_energy_min, radial_density_fourier, fe_data, initialize_fe, &
+    free_energy_min_low_level
 
 logical, parameter :: WITH_UMFPACK=.false.
 
@@ -63,7 +64,7 @@ integer, intent(out) :: Nb
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
 type(fe_data) :: fed
 
-call initalize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
 
 allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
@@ -76,14 +77,14 @@ call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
 Nb = fed%Nb
 end subroutine
 
-subroutine initalize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+subroutine initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
 ! Initializes the FE datastructures (returned in 'fed').
 ! The 'fed' derived type can be assumed to be read-only after this function
 ! returns it.
 real(dp), intent(in) :: L ! Length of the box, assumed to be [0, L]^3
 integer, intent(in) :: Nex, Ney, Nez ! # of finite elements in each direction
 integer, intent(in) :: p ! polynomial order
-! Order (1..64) and quadrature type (quad_lobatto or quad_gauss)
+! Quadrature order (1..64) and quadrature type (quad_lobatto or quad_gauss)
 integer, intent(in) :: Nq, quad_type
 type(fe_data), intent(out) :: fed ! FE datastructures
 
