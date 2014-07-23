@@ -31,7 +31,9 @@ type fe_data
     integer :: p, Nb, Nq, Ne
     integer, allocatable :: matAp(:), matAj(:)
     real(dp), allocatable :: matAx(:)
-    logical :: spectral ! Are we using spectral elements
+    ! spetral==.true. if we using spectral elements (happens if and only if
+    ! Nq=p+1 and quad_type==quad_lobatto)
+    logical :: spectral
     ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
     real(dp), allocatable :: nodes(:, :)
     ! elems(:, i) are nodes of the i-th element
@@ -39,6 +41,8 @@ type fe_data
     real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
     real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
+    ! If WITH_UMFPACK==.true., then 'matd' contains the factorized matrix A
+    ! (Ap, Aj, Ax). Otherwise it is unused.
     type(umfpack_numeric) :: matd
 end type
 
@@ -47,26 +51,47 @@ contains
 subroutine free_energy_min(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
         Nq, quad_type, energy_eps, &
         Eh, Een, Ts, Exc, Nb)
-real(dp), intent(in) :: Nelec
-integer, intent(in) :: p
+real(dp), intent(in) :: Nelec, L, T_au
+integer, intent(in) :: p, Nq, quad_type, Nex, Ney, Nez
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
 procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
-real(dp), intent(in) :: L, T_au
-integer, intent(in) :: Nq, quad_type
 real(dp), intent(in) :: energy_eps
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
 
-integer :: Nn, ibc
-! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
+type(fe_data) :: fed
+
+call initalize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+
+allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fnen)
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fn_pos)
+
+call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
+        fed, Eh, Een, Ts, Exc)
+
+Nb = fed%Nb
+end subroutine
+
+subroutine initalize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+! Initializes the FE datastructures (returned in 'fed').
+! The 'fed' derived type can be assumed to be read-only after this function
+! returns it.
+real(dp), intent(in) :: L ! Length of the box, assumed to be [0, L]^3
+integer, intent(in) :: Nex, Ney, Nez ! # of finite elements in each direction
+integer, intent(in) :: p ! polynomial order
+! Order (1..64) and quadrature type (quad_lobatto or quad_gauss)
+integer, intent(in) :: Nq, quad_type
+type(fe_data), intent(out) :: fed ! FE datastructures
+
+integer :: Nn, ibc
 integer :: i, j, k
-integer, intent(in) :: Nex, Ney, Nez
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
 real(dp), allocatable :: matAx_coo(:), wtq(:), Am_loc(:, :, :, :, :, :)
 integer :: idx
-type(fe_data) :: fed
 
 ibc = 3 ! Periodic boundary condition
 
@@ -131,17 +156,6 @@ if (WITH_UMFPACK) then
     call factorize(fed%Nb, fed%matAp, fed%matAj, fed%matAx, fed%matd)
     print *, "done"
 end if
-
-Nb = fed%Nb
-
-allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
-allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
-
-nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fnen)
-nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fn_pos)
-
-call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
-        fed, Eh, Een, Ts, Exc)
 end subroutine
 
 subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps,&
