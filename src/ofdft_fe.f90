@@ -26,6 +26,22 @@ public free_energy_min, radial_density_fourier
 
 logical, parameter :: WITH_UMFPACK=.false.
 
+type fe_data
+    real(dp) :: Lx, Ly, Lz, jac_det
+    integer :: p, Nb, Nq, Ne
+    integer, allocatable :: matAp(:), matAj(:)
+    real(dp), allocatable :: matAx(:)
+    logical :: spectral ! Are we using spectral elements
+    ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
+    real(dp), allocatable :: nodes(:, :)
+    ! elems(:, i) are nodes of the i-th element
+    integer, allocatable :: elems(:, :)
+    real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
+    real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
+    integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
+    type(umfpack_numeric) :: matd
+end type
+
 contains
 
 subroutine free_energy_min(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
@@ -41,124 +57,104 @@ real(dp), intent(in) :: energy_eps
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
 
-integer :: Nn, Ne, ibc
+integer :: Nn, ibc
 ! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
-real(dp), allocatable :: nodes(:, :)
-integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
-real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
-        wtq3(:, :, :), phihq(:, :), dphihq(:, :)
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
-real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
-integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
 integer :: i, j, k
 integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: Lx, Ly, Lz
-real(dp) :: jac_det
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
-real(dp), allocatable :: matAx_coo(:)
-integer, allocatable :: matAp(:), matAj(:)
-real(dp), allocatable :: matAx(:)
-type(umfpack_numeric) :: matd
+real(dp), allocatable :: matAx_coo(:), wtq(:), Am_loc(:, :, :, :, :, :)
 integer :: idx
-logical :: spectral ! Are we using spectral elements
+type(fe_data) :: fed
 
 ibc = 3 ! Periodic boundary condition
 
-Lx = L
-Ly = L
-Lz = L
+fed%Lx = L
+fed%Ly = L
+fed%Lz = L
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
-    [0, 0, 0]*1._dp, [Lx, Ly, Lz], nodes, elems)
-Nn = size(nodes, 2)
-Ne = size(elems, 2)
-
-spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
+    [0, 0, 0]*1._dp, [fed%Lx, fed%Ly, fed%Lz], fed%nodes, fed%elems)
+Nn = size(fed%nodes, 2)
+fed%Ne = size(fed%elems, 2)
+fed%Nq = Nq
+fed%p = p
+fed%spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
 
 print *, "Number of nodes:", Nn
-print *, "Number of elements:", Ne
+print *, "Number of elements:", fed%Ne
 print *, "Nq =", Nq
 print *, "p =", p
-if (spectral) then
+if (fed%spectral) then
     print *, "Spectral elements: ON"
 else
     print *, "Spectral elements: OFF"
 end if
 
-allocate(xin(p+1))
-call get_parent_nodes(2, p, xin)
-allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(quad_type, Nq, xiq, wtq)
-forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
-allocate(phihq(size(xiq), size(xin)))
-allocate(dphihq(size(xiq), size(xin)))
+allocate(fed%xin(p+1))
+call get_parent_nodes(2, p, fed%xin)
+allocate(fed%xiq(Nq), wtq(Nq), fed%wtq3(Nq, Nq, Nq))
+call get_parent_quad_pts_wts(quad_type, Nq, fed%xiq, wtq)
+forall(i=1:Nq, j=1:Nq, k=1:Nq) fed%wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
+allocate(fed%phihq(size(fed%xiq), size(fed%xin)))
+allocate(fed%dphihq(size(fed%xiq), size(fed%xin)))
 ! Tabulate parent basis at quadrature points
-forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
-forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
+forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
+        fed%phihq(i, j) =  phih(fed%xin, j, fed%xiq(i))
+forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
+        fed%dphihq(i, j) = dphih(fed%xin, j, fed%xiq(i))
 allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
-allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+allocate(fed%phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
 print *, "Precalculating element matrix"
 call assemble_3d_precalc(p, Nq, &
-    nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)), &
-    nodes(2, elems(7, 1)) - nodes(2, elems(1, 1)), &
-    nodes(3, elems(7, 1)) - nodes(3, elems(1, 1)), &
-    wtq3, phihq, dphihq, jac_det, Am_loc, phi_v)
+    fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
+    fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
+    fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
+    fed%wtq3, fed%phihq, fed%dphihq, fed%jac_det, Am_loc, fed%phi_v)
 
 print *, "local to global mapping"
-call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
-call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
-Nb = maxval(ib)
-Ncoo = Ne*(p+1)**6
+call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
+call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, fed%ib)
+fed%Nb = maxval(fed%ib)
+Ncoo = fed%Ne*(p+1)**6
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
-call assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
 print *, "COO -> CSR"
-call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), matAp, matAj, matAx)
-print *, "DOFs =", Nb
-print *, "nnz =", size(matAx)
+call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
+    fed%matAp, fed%matAj, fed%matAx)
+print *, "DOFs =", fed%Nb
+print *, "nnz =", size(fed%matAx)
 if (WITH_UMFPACK) then
     print *, "umfpack factorize"
-    call factorize(Nb, matAp, matAj, matAx, matd)
+    call factorize(fed%Nb, fed%matAp, fed%matAj, fed%matAx, fed%matd)
     print *, "done"
 end if
 
-allocate(nenq_pos(Nq, Nq, Nq, Ne))
-allocate(nq_pos(Nq, Nq, Nq, Ne))
+Nb = fed%Nb
 
-nenq_pos = func2quad(nodes, elems, xiq, fnen)
-nq_pos = func2quad(nodes, elems, xiq, fn_pos)
+allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+
+nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fnen)
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fn_pos)
 
 call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
-        Lx, Ly, Lz, p, Nq, spectral, Ne, Nb, matAp, matAj, matAx, &
-        nodes, elems, wtq3, xin, xiq, phihq, phi_v, in, ib, jac_det, &
-        Eh, Een, Ts, Exc)
+        fed, Eh, Een, Ts, Exc)
 end subroutine
 
 subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps,&
         ! Geometry, finite element specification and internal datastructures
-        Lx, Ly, Lz, p, Nq, spectral, Ne, Nb, matAp, matAj, matAx, &
-        nodes, elems, wtq3, xin, xiq, phihq, phi_v, in, ib, jac_det, &
+        fed, &
         ! Output arguments
         Eh, Een, Ts, Exc)
 real(dp), intent(in) :: Nelec
-integer, intent(in) :: p
 real(dp), intent(in) :: nenq_pos(:, :, :, :)
 real(dp), intent(inout) :: nq_pos(:, :, :, :)
-real(dp), intent(in) :: Lx, Ly, Lz, T_au
-integer, intent(in) :: Nb
+real(dp), intent(in) :: T_au
 real(dp), intent(in) :: energy_eps
-integer, intent(in) :: Nq, Ne
-integer, intent(in) :: matAp(:), matAj(:)
-real(dp), intent(in) :: matAx(:)
-logical, intent(in) :: spectral ! Are we using spectral elements
-! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
-real(dp), intent(in) :: nodes(:, :)
-integer, intent(in) :: elems(:, :) ! elems(:, i) are nodes of the i-th element
-real(dp), intent(in) :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
-real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
-integer, intent(in) :: in(:, :, :, :), ib(:, :, :, :)
-real(dp), intent(in) :: jac_det
+type(fe_data), intent(in) :: fed
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 
 real(dp), allocatable :: free_energies(:)
@@ -177,65 +173,66 @@ real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 brent_eps = 1e-3_dp
 max_iter = 200
 
-allocate(nenq_neutral(Nq, Nq, Nq, Ne))
-allocate(Venq(Nq, Nq, Nq, Ne))
-allocate(Hpsi(Nq, Nq, Nq, Ne))
-allocate(psi(Nq, Nq, Nq, Ne))
-allocate(psi_(Nq, Nq, Nq, Ne))
-allocate(psi_prev(Nq, Nq, Nq, Ne))
-allocate(phi(Nq, Nq, Nq, Ne))
-allocate(phi_prime(Nq, Nq, Nq, Ne))
-allocate(ksi(Nq, Nq, Nq, Ne))
-allocate(ksi_prev(Nq, Nq, Nq, Ne))
-allocate(eta(Nq, Nq, Nq, Ne))
+allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(psi_(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(psi_prev(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(phi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(phi_prime(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(ksi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(ksi_prev(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(eta(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 
 
 ! Calculate Venq
-allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)))
-background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
-print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
+allocate(rhs(fed%Nb), sol(fed%Nb), fullsol(maxval(fed%in)))
+background = integral(fed%nodes, fed%elems, fed%wtq3, nenq_pos) / &
+    (fed%Lx*fed%Ly*fed%Lz)
+print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nenq_neutral = nenq_pos - background
 print *, "Assembling RHS..."
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, phi_v, &
-    rhs)
+call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
+    fed%ib, fed%phi_v, rhs)
 print *, "sum(rhs):    ", sum(rhs)
-print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
+print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
 if (WITH_UMFPACK) then
-    call solve(matAp, matAj, matAx, sol, rhs, matd)
+    call solve(fed%matAp, fed%matAj, fed%matAx, sol, rhs, fed%matd)
 else
-    sol = solve_cg(matAp, matAj, matAx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+    sol = solve_cg(fed%matAp, fed%matAj, fed%matAx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 end if
 print *, "Converting..."
-call c2fullc_3d(in, ib, sol, fullsol)
-if (spectral) then
-    call fe2quad_3d_lobatto(elems, xiq, in, fullsol, Venq)
+call c2fullc_3d(fed%in, fed%ib, sol, fullsol)
+if (fed%spectral) then
+    call fe2quad_3d_lobatto(fed%elems, fed%xiq, fed%in, fullsol, Venq)
 else
-    call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+    call fe2quad_3d(fed%elems, fed%xin, fed%xiq, fed%phihq, fed%in, fullsol, Venq)
 end if
 print *, "Done"
 
 
 psi = sqrt(nq_pos)
-psi_norm = integral(nodes, elems, wtq3, psi**2)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "Initial norm of psi:", psi_norm
 psi = sqrt(Nelec / psi_norm) * psi
-psi_norm = integral(nodes, elems, wtq3, psi**2)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    Venq, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
-    phi_v, jac_det, &
+call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
+    Venq, psi**2, fed%phihq, fed%matAp, fed%matAj, fed%matAx, fed%matd, fed%spectral, &
+    fed%phi_v, fed%jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
-mu = 1._dp / Nelec * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
+mu = 1._dp / Nelec * integral(fed%nodes, fed%elems, fed%wtq3, 0.5_dp * psi * Hpsi)
 ksi = 2*mu*psi - Hpsi
 phi = ksi
-phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
-eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+phi_prime = phi - 1._dp / Nelec *  integral(fed%nodes, fed%elems, fed%wtq3, phi * psi) * psi
+eta = sqrt(Nelec / integral(fed%nodes, fed%elems, fed%wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
@@ -259,13 +256,15 @@ do iter = 1, max_iter
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
-    call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
+    call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, &
+        fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, &
         T_au, &
-        Venq, psi**2, phihq, matAp, matAj, matAx, matd, spectral, &
-        phi_v, jac_det, &
+        Venq, psi**2, fed%phihq, fed%matAp, fed%matAj, fed%matAx, fed%matd, &
+        fed%spectral, &
+        fed%phi_v, fed%jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
     print *, "Iteration:", iter
-    psi_norm = integral(nodes, elems, wtq3, psi**2)
+    psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
     print *, "Norm of psi:", psi_norm
     print *, "mu =", mu
     print *, "|ksi| =", sqrt(gamma_n)
@@ -290,14 +289,14 @@ do iter = 1, max_iter
         end if
     end if
     Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
-    mu = 1._dp / Nelec * integral(nodes, elems, wtq3, 0.5_dp * psi * Hpsi)
+    mu = 1._dp / Nelec * integral(fed%nodes, fed%elems, fed%wtq3, 0.5_dp * psi * Hpsi)
     ksi_prev = ksi
     ksi = 2*mu*psi - Hpsi
-    gamma_n = max(integral(nodes, elems, wtq3, ksi*(ksi-ksi_prev)), 0._dp)
-    gamma_d = integral(nodes, elems, wtq3, ksi_prev**2)
+    gamma_n = max(integral(fed%nodes, fed%elems, fed%wtq3, ksi*(ksi-ksi_prev)), 0._dp)
+    gamma_d = integral(fed%nodes, fed%elems, fed%wtq3, ksi_prev**2)
     phi = ksi + gamma_n / gamma_d * phi
-    phi_prime = phi - 1._dp / Nelec *  integral(nodes, elems, wtq3, phi * psi) * psi
-    eta = sqrt(Nelec / integral(nodes, elems, wtq3, phi_prime**2)) * phi_prime
+    phi_prime = phi - 1._dp / Nelec *  integral(fed%nodes, fed%elems, fed%wtq3, phi * psi) * psi
+    eta = sqrt(Nelec / integral(fed%nodes, fed%elems, fed%wtq3, phi_prime**2)) * phi_prime
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 
@@ -306,10 +305,10 @@ contains
     real(dp) function func(theta) result(energy)
     real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
-    call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
+    call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, &
         T_au, &
-        Venq, psi_**2, phihq, matAp, matAj, matAx, matd, spectral, &
-        phi_v, jac_det, &
+        Venq, psi_**2, fed%phihq, fed%matAp, fed%matAj, fed%matAx, fed%matd, fed%spectral, &
+        fed%phi_v, fed%jac_det, &
         Eh, Een, Ts, Exc, energy, Hpsi=Hpsi)
     end function
 
