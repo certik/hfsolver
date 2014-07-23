@@ -29,8 +29,6 @@ logical, parameter :: WITH_UMFPACK=.false.
 type fe_data
     real(dp) :: Lx, Ly, Lz, jac_det
     integer :: p, Nb, Nq, Ne
-    integer, allocatable :: matAp(:), matAj(:)
-    real(dp), allocatable :: matAx(:)
     ! spetral==.true. if we using spectral elements (happens if and only if
     ! Nq=p+1 and quad_type==quad_lobatto)
     logical :: spectral
@@ -41,6 +39,9 @@ type fe_data
     real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
     real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
+    ! The CSF matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
+    integer, allocatable :: Ap(:), Aj(:)
+    real(dp), allocatable :: Ax(:)
     ! If WITH_UMFPACK==.true., then 'matd' contains the factorized matrix A
     ! (Ap, Aj, Ax). Otherwise it is unused.
     type(umfpack_numeric) :: matd
@@ -148,12 +149,12 @@ print *, "Assembling matrix A"
 call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
-    fed%matAp, fed%matAj, fed%matAx)
+    fed%Ap, fed%Aj, fed%Ax)
 print *, "DOFs =", fed%Nb
-print *, "nnz =", size(fed%matAx)
+print *, "nnz =", size(fed%Ax)
 if (WITH_UMFPACK) then
     print *, "umfpack factorize"
-    call factorize(fed%Nb, fed%matAp, fed%matAj, fed%matAx, fed%matd)
+    call factorize(fed%Nb, fed%Ap, fed%Aj, fed%Ax, fed%matd)
     print *, "done"
 end if
 end subroutine
@@ -214,9 +215,9 @@ print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
 if (WITH_UMFPACK) then
-    call solve(fed%matAp, fed%matAj, fed%matAx, sol, rhs, fed%matd)
+    call solve(fed%Ap, fed%Aj, fed%Ax, sol, rhs, fed%matd)
 else
-    sol = solve_cg(fed%matAp, fed%matAj, fed%matAx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+    sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 end if
 print *, "Converting..."
 call c2fullc_3d(fed%in, fed%ib, sol, fullsol)
@@ -237,7 +238,7 @@ print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
-    Venq, psi**2, fed%phihq, fed%matAp, fed%matAj, fed%matAx, fed%matd, fed%spectral, &
+    Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
@@ -273,7 +274,7 @@ do iter = 1, max_iter
     call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, &
         fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, &
         T_au, &
-        Venq, psi**2, fed%phihq, fed%matAp, fed%matAj, fed%matAx, fed%matd, &
+        Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, &
         fed%spectral, &
         fed%phi_v, fed%jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
@@ -321,7 +322,7 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, &
         T_au, &
-        Venq, psi_**2, fed%phihq, fed%matAp, fed%matAj, fed%matAx, fed%matd, fed%spectral, &
+        Venq, psi_**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
         fed%phi_v, fed%jac_det, &
         Eh, Een, Ts, Exc, energy, Hpsi=Hpsi)
     end function
