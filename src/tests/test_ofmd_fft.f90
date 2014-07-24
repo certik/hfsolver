@@ -160,12 +160,13 @@ contains
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
 
     ! Energy calculation
-    call free_energy_min(N, L, G2, Temp, VenG, ne, 3.6749308286427368e-5_dp, &
+    ! old eps: 3.6749308286427368e-5_dp
+    call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
             Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
     print *, "T_au =", Temp
-    print *, "Summary of energies [a.u.]:"
+    print *, "Summary of FFT energies [a.u.]:"
     print "('    Ts   = ', f14.8)", Ts
     print "('    Een  = ', f14.8)", Een
     print "('    Eee  = ', f14.8)", Eee
@@ -181,6 +182,14 @@ contains
     call free_energy_min_low_level(real(N, dp), Temp, nenq_pos, nq_pos, &
         1e-9_dp, fed, Eee_fe, Een_fe, Ts_fe, Exc_fe)
     Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe
+    print *, "Summary of FE energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts_fe
+    print "('    Een  = ', f14.8)", Een_fe
+    print "('    Eee  = ', f14.8)", Eee_fe
+    print "('    Exc  = ', f14.8)", Exc_fe
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot_fe, &
+        Etot_fe*Ha2eV
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
         Temp_current / K2au, Etot_fe*Ha2eV/N
 
