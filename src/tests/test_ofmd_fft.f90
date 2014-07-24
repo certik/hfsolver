@@ -219,6 +219,27 @@ contains
     print *, fen(:, 3)
     print *, fen(:, 4)
 
+    ! Calculate forces using FE density
+    ! FIXME:
+    !ne = from FE
+    call real2fourier(ne, neG)
+
+    fen = 0
+    do i = 1, N
+        fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+        fen(1, i) = sum(G(:,:,:,1)*fac)
+        fen(2, i) = sum(G(:,:,:,2)*fac)
+        fen(3, i) = sum(G(:,:,:,3)*fac)
+    end do
+
+    print *, "forces FE:"
+    print *, fen(:, 1)
+    print *, fen(:, 2)
+    print *, fen(:, 3)
+    print *, fen(:, 4)
+    stop "OK"
+
 
     f = fewald + fen
 
