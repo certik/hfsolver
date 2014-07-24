@@ -40,7 +40,7 @@ type fe_data
     real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
     real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
-    ! The CSF matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
+    ! The CSR matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
     integer, allocatable :: Ap(:), Aj(:)
     real(dp), allocatable :: Ax(:)
     ! If WITH_UMFPACK==.true., then 'matd' contains the factorized matrix A
