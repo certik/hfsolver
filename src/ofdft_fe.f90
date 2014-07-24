@@ -160,6 +160,13 @@ if (WITH_UMFPACK) then
 end if
 end subroutine
 
+subroutine free_fe_umfpack(fed)
+type(fe_data), intent(inout) :: fed
+if (WITH_UMFPACK) then
+    call free_data(fed%matd)
+end if
+end subroutine
+
 subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps,&
         ! Geometry, finite element specification and internal datastructures
         fed, &
@@ -182,7 +189,6 @@ real(dp) :: mu, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
 real(dp) :: psi_norm
-type(umfpack_numeric) :: matd
 real(dp) :: background
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
 
@@ -298,9 +304,6 @@ do iter = 1, max_iter
             minval(free_energies(iter-3:iter))
         if (last3 < energy_eps) then
             nq_pos = psi**2
-            if (WITH_UMFPACK) then
-                call free_data(matd)
-            end if
             return
         end if
     end if
