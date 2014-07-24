@@ -30,7 +30,8 @@ implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
     define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
-    vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto
+    vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto, &
+    quad2fe_3d
 
 contains
 

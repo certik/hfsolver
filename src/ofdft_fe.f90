@@ -4,7 +4,7 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
-    fe2quad_3d_lobatto
+    fe2quad_3d_lobatto, quad2fe_3d
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
     assemble_3d_coo_rhs, local_overlap_matrix
@@ -202,7 +202,7 @@ real(dp) :: mu, last3, brent_eps, free_energy_, &
 real(dp) :: f2
 real(dp) :: psi_norm
 real(dp) :: background
-real(dp), allocatable :: rhs(:), sol(:), fullsol(:)
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
 
 brent_eps = 1e-3_dp
 max_iter = 200
@@ -222,6 +222,7 @@ allocate(eta(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 
 ! Calculate Venq
 allocate(rhs(fed%Nb), sol(fed%Nb), fullsol(maxval(fed%in)))
+allocate(fullsol2(maxval(fed%in)))
 background = integral(fed%nodes, fed%elems, fed%wtq3, nenq_pos) / &
     (fed%Lx*fed%Ly*fed%Lz)
 print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)

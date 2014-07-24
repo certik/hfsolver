@@ -6,8 +6,8 @@ use md, only: velocity_verlet, minimize_energy, positions_random, &
 use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error, assert, linspace
-!use feutils, only: quad_lobatto
-use feutils, only: quad_gauss
+use feutils, only: quad_lobatto
+!use feutils, only: quad_gauss
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real
@@ -15,6 +15,7 @@ use ofdft_fe, only: radial_density_fourier, initialize_fe, &
     free_energy_min_low_level, fe_data
 use interp3d, only: trilinear
 use poisson3d_assembly, only: func2quad
+use fe_mesh, only: quad2fe_3d
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -28,7 +29,7 @@ real(dp), allocatable :: R(:), Ven_rad(:), &
 real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: nen(:, :, :)
-real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:)
+real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:), fullsol(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
@@ -75,11 +76,12 @@ Nx = 3
 Ny = 3
 Nz = 3
 p = 6
-Nq = 30
-quad_type = quad_gauss
+Nq = 7
+quad_type = quad_lobatto
 call initialize_fe(L, Nx, Ny, Nz, p, Nq, quad_type, fed)
 allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(fullsol(maxval(fed%in)))
 nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, ne_fn)
 
 call reciprocal_space_vectors(L, G, G2)
@@ -161,8 +163,8 @@ contains
 
     ! Energy calculation
     ! old eps: 3.6749308286427368e-5_dp
-    call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
-            Eee, Een, Ts, Exc, Etot)
+    !call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
+    !        Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
     print *, "T_au =", Temp
@@ -220,8 +222,12 @@ contains
     print *, fen(:, 4)
 
     ! Calculate forces using FE density
-    ! FIXME:
-    !ne = from FE
+    call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
+            fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
+            nq_pos, fullsol)
+
+    ! TODO
+    !ne = use fullsol and evaluate on uniform grid using fed%phi_v.
     call real2fourier(ne, neG)
 
     fen = 0

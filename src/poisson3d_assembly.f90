@@ -7,7 +7,8 @@ use sparse, only: coo2csr_canonical
 implicit none
 private
 public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
-    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs, assemble_3d_coo_A
+    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs, assemble_3d_coo_A, &
+    local_overlap_matrix
 
 interface
     real(dp) function func_xyz(x, y, z)
