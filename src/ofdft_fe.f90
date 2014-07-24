@@ -7,7 +7,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     fe2quad_3d_lobatto
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
-    assemble_3d_coo_rhs
+    assemble_3d_coo_rhs, local_overlap_matrix
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
     quad_lobatto
 !use linalg, only: solve
@@ -40,6 +40,9 @@ type fe_data
     real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
     real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
+    ! The CSR matrix S (Sp, Sj, Sx) is the overlap matrix
+    integer, allocatable :: Sp(:), Sj(:)
+    real(dp), allocatable :: Sx(:)
     ! The CSR matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
     integer, allocatable :: Ap(:), Aj(:)
     real(dp), allocatable :: Ax(:)
@@ -158,6 +161,15 @@ if (WITH_UMFPACK) then
     call factorize(fed%Nb, fed%Ap, fed%Aj, fed%Ax, fed%matd)
     print *, "done"
 end if
+
+print *, "Precalculating overlap element matrix"
+call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
+print *, "Assembling matrix S"
+call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+print *, "COO -> CSR"
+call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
+    fed%Sp, fed%Sj, fed%Sx)
+print *, "nnz =", size(fed%Sx)
 end subroutine
 
 subroutine free_fe_umfpack(fed)
