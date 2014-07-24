@@ -250,13 +250,13 @@ phi = ksi
 phi_prime = phi - 1._dp / Nelec *  integral(fed%nodes, fed%elems, fed%wtq3, phi * psi) * psi
 eta = sqrt(Nelec / integral(fed%nodes, fed%elems, fed%wtq3, phi_prime**2)) * phi_prime
 theta = pi/2
-print *, "Summary of energies [a.u.]:"
-print "('    Ts   = ', f14.8)", Ts
-print "('    Een  = ', f14.8)", Een
-print "('    Eee  = ', f14.8)", Eh
-print "('    Exc  = ', f14.8)", Exc
-print *, "   ---------------------"
-print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+!print *, "Summary of energies [a.u.]:"
+!print "('    Ts   = ', f14.8)", Ts
+!print "('    Een  = ', f14.8)", Een
+!print "('    Eee  = ', f14.8)", Eh
+!print "('    Exc  = ', f14.8)", Exc
+!print *, "   ---------------------"
+!print "('    Etot = ', f14.8, ' a.u.')", free_energy_
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
@@ -265,7 +265,7 @@ do iter = 1, max_iter
     call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
     if (iter < 2) then
         call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
-            free_energy_, verbose=.true.)
+            free_energy_, verbose=.false.)
     else
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
     end if
@@ -279,18 +279,18 @@ do iter = 1, max_iter
         fed%spectral, &
         fed%phi_v, fed%jac_det, &
         Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
-    print *, "Iteration:", iter
+!    print *, "Iteration:", iter
     psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
-    print *, "Norm of psi:", psi_norm
-    print *, "mu =", mu
-    print *, "|ksi| =", sqrt(gamma_n)
-    print *, "theta =", theta
-    print *, "Summary of energies [a.u.]:"
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eh
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
+!    print *, "Norm of psi:", psi_norm
+!    print *, "mu =", mu
+!    print *, "|ksi| =", sqrt(gamma_n)
+!    print *, "theta =", theta
+!    print *, "Summary of energies [a.u.]:"
+!    print "('    Ts   = ', f14.8)", Ts
+!    print "('    Een  = ', f14.8)", Een
+!    print "('    Eee  = ', f14.8)", Eh
+!    print "('    Exc  = ', f14.8)", Exc
+!    print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u.')", free_energy_
     free_energies(iter) = free_energy_
     if (iter > 3) then
