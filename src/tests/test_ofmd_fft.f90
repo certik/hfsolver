@@ -15,7 +15,7 @@ use ofdft_fe, only: radial_density_fourier, initialize_fe, &
     free_energy_min_low_level, fe_data
 use interp3d, only: trilinear
 use poisson3d_assembly, only: func2quad
-use fe_mesh, only: quad2fe_3d
+use fe_mesh, only: quad2fe_3d, fe_eval_xyz
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -225,6 +225,8 @@ contains
     call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
             fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
             nq_pos, fullsol)
+    print *, fe_eval_xyz(fed%xin, fed%nodes, fed%elems, fed%in, fullsol, &
+        [0.5_dp, 0.5_dp, 0.5_dp])
 
     ! TODO
     !ne = use fullsol and evaluate on uniform grid using fed%phi_v.
