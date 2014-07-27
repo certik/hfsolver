@@ -21,10 +21,11 @@ module fe_mesh
 !
 
 use types
-use utils, only: stop_error, newunit
+use utils, only: stop_error, newunit, zeros
 use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 use feutils, only: phih
+use isolve, only: solve_cg
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
@@ -400,41 +401,26 @@ do ie = 1, size(elems, 2)
 end do
 end subroutine
 
-subroutine quad2fe_3d(elems, jac_det, wtq, phihq, in, uq, fullu)
+subroutine quad2fe_3d(Ne, Nb, p, jac_det, wtq3, Sp, Sj, Sx, phi_v, in, ib, &
+        uq, fullu)
 ! Transforms quadrature-grid representation to FE-coefficient (fullu).
 ! fullu is a full FE coefficient vector, having values for all nodes in the
 ! mesh, including domain-boundary nodes.
 ! Assumes the same 'jac_det' for each finite element.
-integer, intent(in) :: elems(:, :)
+use poisson3d_assembly, only: assemble_3d_coo_rhs
+integer, intent(in) :: Ne, Nb, p
 real(dp), intent(in) :: jac_det ! |J| for each element (must be constant)
-real(dp), intent(in) :: wtq(:, :, :)
+real(dp), intent(in) :: wtq3(:, :, :)
+integer, intent(in) :: Sp(:), Sj(:)
+real(dp), intent(in) :: Sx(:)
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
 real(dp), intent(in) :: uq(:, :, :, :)
-real(dp), intent(in) :: phihq(:, :)
-integer, intent(in) :: in(:, :, :, :)
+integer, intent(in) :: in(:, :, :, :), ib(:, :, :, :)
 real(dp), intent(out) :: fullu(:)
-integer :: ie, ilnx, ilny, ilnz, iqx, iqy, iqz
-real(dp) :: phi(size(phihq, 1), size(phihq, 1), size(phihq, 1))
-fullu = 0
-do ie = 1, size(elems, 2)
-    do ilnz = 1, size(phihq, 2)
-    do ilny = 1, size(phihq, 2)
-    do ilnx = 1, size(phihq, 2)
-        ! Evaluate the shape function at quad points in element 'ie'
-        do iqz = 1, size(phihq, 1)
-        do iqy = 1, size(phihq, 1)
-        do iqx = 1, size(phihq, 1)
-            phi(iqx, iqy, iqz) = &
-                phihq(iqx, ilnx) * phihq(iqy, ilny) * phihq(iqz, ilnz)
-        end do
-        end do
-        end do
-        ! Calculate the integral and add it to the coefficient
-        fullu(in(ilnx, ilny, ilnz, ie)) = fullu(in(ilnx, ilny, ilnz, ie)) &
-            + sum(uq(:, :, :, ie) * phi * jac_det * wtq)
-    end do
-    end do
-    end do
-end do
+real(dp) :: rhs(Nb), sol(Nb)
+call assemble_3d_coo_rhs(Ne, p, uq, jac_det, wtq3, ib, phi_v, rhs)
+sol = solve_cg(Sp, Sj, Sx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call c2fullc_3d(in, ib, sol, fullu)
 end subroutine
 
 subroutine fe2quad_3d_lobatto(elems, xiq, in, fullu, uq)
