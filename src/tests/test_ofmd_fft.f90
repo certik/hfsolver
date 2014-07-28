@@ -215,7 +215,7 @@ contains
         fen(3, i) = sum(G(:,:,:,3)*fac)
     end do
 
-    print *, "forces:"
+    print *, "forces FFT:"
     print *, fen(:, 1)
     print *, fen(:, 2)
     print *, fen(:, 3)
@@ -228,6 +228,8 @@ contains
             nq_pos, fullsol)
     print *, "ne (FFT) ="
     print *, ne(:3, :3, :3)
+    print *, "neG (FFT) ="
+    print *, neG(:3, :3, :3)
     print *, "eval uniform grid"
     do i = 1, Ng
     do j = 1, Ng
@@ -240,8 +242,12 @@ contains
     print *, "Done"
     print *, "ne (FE) ="
     print *, ne(:3, :3, :3)
+    print *, "neG (FE) ="
+    print *, neG(:3, :3, :3)
 
     call real2fourier(ne, neG)
+
+    f = fewald + fen
 
     fen = 0
     do i = 1, N
@@ -257,10 +263,8 @@ contains
     print *, fen(:, 2)
     print *, fen(:, 3)
     print *, fen(:, 4)
-    stop "OK"
 
 
-    f = fewald + fen
 
     print *, "total forces:"
     print *, f(:, 1)
