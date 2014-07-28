@@ -6,8 +6,8 @@ use md, only: velocity_verlet, minimize_energy, positions_random, &
 use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error, assert, linspace
-use feutils, only: quad_lobatto
-!use feutils, only: quad_gauss
+!use feutils, only: quad_lobatto
+use feutils, only: quad_gauss
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real
@@ -76,8 +76,8 @@ Nx = 3
 Ny = 3
 Nz = 3
 p = 6
-Nq = 7
-quad_type = quad_lobatto
+Nq = 30
+quad_type = quad_gauss
 call initialize_fe(L, Nx, Ny, Nz, p, Nq, quad_type, fed)
 allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
@@ -163,8 +163,8 @@ contains
 
     ! Energy calculation
     ! old eps: 3.6749308286427368e-5_dp
-    !call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
-    !        Eee, Een, Ts, Exc, Etot)
+    call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
+            Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
     print *, "T_au =", Temp
@@ -226,6 +226,8 @@ contains
     call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
             fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
             nq_pos, fullsol)
+    print *, "ne (FFT) ="
+    print *, ne(:3, :3, :3)
     print *, "eval uniform grid"
     do i = 1, Ng
     do j = 1, Ng
@@ -236,6 +238,8 @@ contains
     end do
     end do
     print *, "Done"
+    print *, "ne (FE) ="
+    print *, ne(:3, :3, :3)
 
     call real2fourier(ne, neG)
 
