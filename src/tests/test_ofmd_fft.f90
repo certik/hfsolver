@@ -145,7 +145,7 @@ contains
     real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
     real(dp) :: Eee_fe, Een_fe, Ts_fe, Exc_fe, Etot_fe
-    integer :: i
+    integer :: i, j, k
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N), fen(3, N))
@@ -222,14 +222,21 @@ contains
     print *, fen(:, 4)
 
     ! Calculate forces using FE density
+    print *, "FULLSOL"
     call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
             fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
             nq_pos, fullsol)
-    print *, fe_eval_xyz(fed%xin, fed%nodes, fed%elems, fed%in, fullsol, &
-        [0.5_dp, 0.5_dp, 0.5_dp])
+    print *, "eval uniform grid"
+    do i = 1, Ng
+    do j = 1, Ng
+    do k = 1, Ng
+        ne(i, j, k) = fe_eval_xyz(fed%xin, fed%nodes, fed%elems, fed%in, &
+            fullsol, [L, L, L]/(Ng+1) * [i, j, k])
+    end do
+    end do
+    end do
+    print *, "Done"
 
-    ! TODO
-    !ne = use fullsol and evaluate on uniform grid using fed%phi_v.
     call real2fourier(ne, neG)
 
     fen = 0
