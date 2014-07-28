@@ -236,7 +236,7 @@ contains
     do j = 1, Ng
     do k = 1, Ng
         ne(i, j, k) = fe_eval_xyz(fed%xin, fed%nodes, fed%elems, fed%in, &
-            fullsol, [L, L, L]/(Ng+1) * [i, j, k])
+            fullsol, [L, L, L]/Ng * ([i, j, k]-1))
     end do
     end do
     end do
