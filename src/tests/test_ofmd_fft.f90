@@ -163,6 +163,7 @@ contains
 
     ! Energy calculation
     ! old eps: 3.6749308286427368e-5_dp
+    ne=1._dp / L**3
     call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
             Eee, Een, Ts, Exc, Etot)
     print *, "Ng =", Ng
@@ -239,13 +240,13 @@ contains
     end do
     end do
     end do
+    call real2fourier(ne, neG)
     print *, "Done"
     print *, "ne (FE) ="
     print *, ne(:3, :3, :3)
     print *, "neG (FE) ="
     print *, neG(:3, :3, :3)
 
-    call real2fourier(ne, neG)
 
     f = fewald + fen
 
