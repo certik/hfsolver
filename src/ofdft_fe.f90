@@ -30,6 +30,7 @@ logical, parameter :: WITH_UMFPACK=.false.
 type fe_data
     real(dp) :: Lx, Ly, Lz, jac_det
     integer :: p, Nb, Nq, Ne
+    integer :: Nx, Ny, Nz ! Number of elements in each direction
     ! spetral==.true. if we using spectral elements (happens if and only if
     ! Nq=p+1 and quad_type==quad_lobatto)
     logical :: spectral
@@ -106,6 +107,9 @@ fed%Lz = L
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
     [0, 0, 0]*1._dp, [fed%Lx, fed%Ly, fed%Lz], fed%nodes, fed%elems)
+fed%Nx = Nex
+fed%Ny = Ney
+fed%Nz = Nez
 Nn = size(fed%nodes, 2)
 fed%Ne = size(fed%elems, 2)
 fed%Nq = Nq
