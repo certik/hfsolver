@@ -15,7 +15,7 @@ use ofdft_fe, only: radial_density_fourier, initialize_fe, &
     free_energy_min_low_level, fe_data
 use interp3d, only: trilinear
 use poisson3d_assembly, only: func2quad
-use fe_mesh, only: quad2fe_3d, fe_eval_xyz
+use fe_mesh, only: quad2fe_3d, fe_eval_xyz, vtk_save
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -195,6 +195,9 @@ contains
         Etot_fe*Ha2eV
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
         Temp_current / K2au, Etot_fe*Ha2eV/N
+    print *, "Saving nq_pos to VTK"
+    call vtk_save("nq_pos.vtk", fed%Nx, fed%Ny, fed%Nz, fed%nodes, &
+        fed%elems, fed%xiq, nq_pos)
 
     print *, "EWALD", E_ewald
     print *, fewald(:, 1)
