@@ -6,6 +6,11 @@ macro(ADDTEST name)
     add_test(${name} ${PROJECT_BINARY_DIR}/${name})
 endmacro(ADDTEST)
 
+macro(ADDPROG name)
+    add_executable(${name} ${name}.f90)
+    target_link_libraries(${name} hfsolver ${LIBS})
+endmacro(ADDPROG)
+
 project(tests)
 
 ADDTEST(test_basis)
@@ -69,7 +74,7 @@ ADDTEST(test_ewald3)
 ADDTEST(test_ewald4)
 ADDTEST(test_ewald5)
 
-ADDTEST(test_ofmd_fft)
+ADDPROG(test_ofmd_fft)
 
 
 if(WITH_PETSC)
