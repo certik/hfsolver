@@ -287,8 +287,8 @@ end do
 do J=2,IPPH
     JC = IPP2-J
     do IK=1,IDL1
-        CH2(IK,J ) = C2(IK,J) - aimag(C2(IK,JC)) + i_ * real(C2(IK,JC))
-        CH2(IK,JC) = C2(IK,J) + aimag(C2(IK,JC)) - i_ * real(C2(IK,JC))
+        CH2(IK,J ) = C2(IK,J) - aimag(C2(IK,JC)) + i_ * real(C2(IK,JC), dp)
+        CH2(IK,JC) = C2(IK,J) + aimag(C2(IK,JC)) - i_ * real(C2(IK,JC), dp)
     end do
 end do
 NAC = 1
