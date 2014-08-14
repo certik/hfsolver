@@ -19,11 +19,11 @@ use ofdft_fe, only: fe_data, WITH_UMFPACK, free_energy, initialize_fe
 use umfpack, only: solve
 implicit none
 private
-public free_energy_min
+public free_energy2
 
 contains
 
-subroutine free_energy_min(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
+subroutine free_energy2(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
         Nq, quad_type, &
         Eh, Een, Ts, Exc, Nb)
 ! Higher level subroutine that does FE precalculation inside it, so it is slow,
@@ -45,13 +45,13 @@ allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fnen)
 nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fn_pos)
 
-call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, &
+call free_energy2_low_level(Nelec, T_au, nenq_pos, nq_pos, &
         fed, Eh, Een, Ts, Exc)
 
 Nb = fed%Nb
 end subroutine
 
-subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, &
+subroutine free_energy2_low_level(Nelec, T_au, nenq_pos, nq_pos, &
         ! Geometry, finite element specification and internal datastructures
         fed, &
         ! Output arguments
@@ -144,7 +144,7 @@ end module
 
 program test_free_energy2
 use types, only: dp
-use test_free_energy2_utils, only: free_energy_min
+use test_free_energy2_utils, only: free_energy2
 use ofdft, only: read_pseudo
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error
@@ -170,9 +170,8 @@ p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-!call free_energy_min(L, 4, 4, 4, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
 Nq = 20
-call free_energy_min(1._dp, L, 4, 4, 4, p, T_au, nen_splines, ne, &
+call free_energy2(1._dp, L, 4, 4, 4, p, T_au, nen_splines, ne, &
         Nq, quad_gauss, &
         Eh, Een, Ts, Exc, DOF)
 
