@@ -38,7 +38,7 @@ n = maxval(nbfl)
 Lmax = ubound(nbfl, 1)
 ndof = sum(nbfl)
 print *, "total  DOFs =", ndof
-allocate(S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
+allocate(H(n, n, 0:Lmax), S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
 m = ndof*(ndof+1)/2
 allocate(slater(m*(m+1)/2, 0:2*Lmax))
 call stoints2(Z, nbfl, nl, zl, S, T, V, slater)

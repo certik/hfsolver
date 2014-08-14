@@ -83,7 +83,7 @@ call get_quad_pts(xe, xiq, xq)
 n = maxval(nbfl)
 ndof = sum(nbfl)
 print *, "total  DOFs =", ndof
-allocate(S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
+allocate(H(n, n, 0:Lmax), S(n, n, 0:Lmax), T(n, n, 0:Lmax), V(n, n, 0:Lmax))
 m = n*(n+1)/2
 allocate(slater(m*(m+1)/2, 0:2*Lmax))
 call feints(Z, xin, xe, ib, xiq, wtq, S, T, V, slater)

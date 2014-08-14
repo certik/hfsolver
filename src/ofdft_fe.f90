@@ -458,7 +458,7 @@ Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
 Etot = Ts + Een + Eh + Exc
 
 ! Calculate the derivative
-allocate(Vxc(Nq, Nq, Nq, Ne))
+allocate(Vxc(Nq, Nq, Nq, Ne), dF0dn(Nq, Nq, Nq, Ne))
 dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
 ! F0 = nq_pos / beta * f(y)
 ! d F0 / d n =
