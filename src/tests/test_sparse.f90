@@ -57,7 +57,7 @@ call assert(all(abs(y-matmul(A, x)) < 1e-12_dp))
 deallocate(A, B, Ai, Aj, Ax, Bp, Bj, Bx, x, y)
 
 
-allocate(Ai(5), Aj(5), Ax(5), A(3, 4), B(3, 4))
+allocate(Ai(6), Aj(6), Ax(6), A(3, 4), B(3, 4))
 Ai = [1, 2, 3, 1, 2, 2]
 Aj = [1, 3, 2, 1, 4, 3]
 Ax = [1, 2, 3, 4, 1, 5]

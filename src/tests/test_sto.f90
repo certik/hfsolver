@@ -44,7 +44,7 @@ Nscf = 100
 
 n = size(nl)
 print *, "total  DOFs =", n
-allocate(S(n, n), T(n, n), V(n, n))
+allocate(H(n, n), S(n, n), T(n, n), V(n, n))
 m = n*(n+1)/2
 allocate(int2(m*(m+1)/2))
 call stoints(Z, nl, zl, ll, ml, S, T, V, int2)

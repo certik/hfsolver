@@ -201,7 +201,7 @@ function csr_matvec(Ap, Aj, Ax, x) result(y)
 ! Compute y = A*x for CSR matrix A and dense vectors x, y
 integer, intent(in) :: Ap(:), Aj(:)
 real(dp), intent(in) :: Ax(:), x(:)
-real(dp) :: y(size(x))
+real(dp) :: y(size(Ap)-1)
 integer :: i
 forall (i=1:size(Ap)-1)
     y(i) = dot_product(Ax(Ap(i):Ap(i+1)-1), x(Aj(Ap(i):Ap(i+1)-1)))

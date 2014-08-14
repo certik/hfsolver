@@ -21,15 +21,17 @@ module fe_mesh
 !
 
 use types
-use utils, only: stop_error, newunit
+use utils, only: stop_error, newunit, zeros
 use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 use feutils, only: phih
+use isolve, only: solve_cg
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
     define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
-    vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto
+    vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto, &
+    quad2fe_3d
 
 contains
 
@@ -398,6 +400,28 @@ do ie = 1, size(elems, 2)
     end do
     end do
 end do
+end subroutine
+
+subroutine quad2fe_3d(Ne, Nb, p, jac_det, wtq3, Sp, Sj, Sx, phi_v, in, ib, &
+        uq, fullu)
+! Transforms quadrature-grid representation to FE-coefficient (fullu).
+! fullu is a full FE coefficient vector, having values for all nodes in the
+! mesh, including domain-boundary nodes.
+! Assumes the same 'jac_det' for each finite element.
+use poisson3d_assembly, only: assemble_3d_coo_rhs
+integer, intent(in) :: Ne, Nb, p
+real(dp), intent(in) :: jac_det ! |J| for each element (must be constant)
+real(dp), intent(in) :: wtq3(:, :, :)
+integer, intent(in) :: Sp(:), Sj(:)
+real(dp), intent(in) :: Sx(:)
+real(dp), intent(in) :: phi_v(:, :, :, :, :, :)
+real(dp), intent(in) :: uq(:, :, :, :)
+integer, intent(in) :: in(:, :, :, :), ib(:, :, :, :)
+real(dp), intent(out) :: fullu(:)
+real(dp) :: rhs(Nb), sol(Nb)
+call assemble_3d_coo_rhs(Ne, p, uq, jac_det, wtq3, ib, phi_v, rhs)
+sol = solve_cg(Sp, Sj, Sx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+call c2fullc_3d(in, ib, sol, fullu)
 end subroutine
 
 subroutine fe2quad_3d_lobatto(elems, xiq, in, fullu, uq)

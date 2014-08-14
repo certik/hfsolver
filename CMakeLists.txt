@@ -36,6 +36,12 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # $ ./test_sto_he3
     # $ gprof ./test_sto_he3 | gprof2dot.py -n 0 -e 0 | dot -Tpng -o output.png
 
+    # Workaround for a bug in gfortran 4.9.1
+    # (https://github.com/certik/hfsolver/issues/45)
+    # Note: The '-fno-realloc-lhs' is only supported in gfortran 4.6 and later.
+    set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -fno-realloc-lhs")
+    set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fno-realloc-lhs")
+
     if (WITH_OPENMP)
         set(CMAKE_Fortran_FLAGS_DEBUG
             "${CMAKE_Fortran_FLAGS_DEBUG}   -fopenmp")

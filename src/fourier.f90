@@ -240,16 +240,20 @@ do K = 1, L1
 end do
 end subroutine
 
-subroutine passf(NAC, IDO, IP, L1, IDL1, CC, C1, C2, CH, CH2, WA)
+subroutine passf(NAC, IDO, IP, L1, IDL1, C, CH_, WA)
 ! Works for any odd IP
 integer, intent(out) :: NAC
 integer, intent(in) :: IDO, IP, L1, IDL1
-complex(dp), intent(inout) :: CC(IDO,IP,L1)
-complex(dp), intent(in) ::  WA(:)
-complex(dp), intent(out) :: CH(IDO,L1,IP), C1(IDO,L1,IP), C2(IDL1,IP), &
-          CH2(IDL1,IP)
+complex(dp), intent(in) :: WA(:)
+complex(dp), intent(inout), target :: C(:), CH_(:)
+complex(dp), pointer :: CC(:,:,:), C1(:, :, :), C2(:, :), CH(:, :, :), CH2(:, :)
 integer :: I, K, idij, idj, idl, idlj, idp, ik, inc, ipp2, &
     ipph, j, jc, l, lc, nt
+CC(1:IDO,1:IP,1:L1) => C
+C1(1:IDO,1:L1,1:IP) => C
+C2(1:IDL1,1:IP) => C
+CH(1:IDO,1:L1,1:IP) => CH_
+CH2(1:IDL1,1:IP) => CH_
 NT = IP*IDL1
 IPP2 = IP+2
 IPPH = (IP+1)/2
@@ -287,8 +291,8 @@ end do
 do J=2,IPPH
     JC = IPP2-J
     do IK=1,IDL1
-        CH2(IK,J ) = C2(IK,J) - aimag(C2(IK,JC)) + i_ * real(C2(IK,JC))
-        CH2(IK,JC) = C2(IK,J) + aimag(C2(IK,JC)) - i_ * real(C2(IK,JC))
+        CH2(IK,J ) = C2(IK,J) - aimag(C2(IK,JC)) + i_ * real(C2(IK,JC), dp)
+        CH2(IK,JC) = C2(IK,J) + aimag(C2(IK,JC)) - i_ * real(C2(IK,JC), dp)
     end do
 end do
 NAC = 1
@@ -410,11 +414,9 @@ do K1 = 1, size(ifac)
     case default
         IDL1 = IDO*L1
         if (NA == 0) then
-            call passf(NAC, IDO, IP, L1, IDL1, C, C, C, CH, CH, &
-                WA(IW:IW+(IP-1)*IDO-1))
+            call passf(NAC, IDO, IP, L1, IDL1, C, CH, WA(IW:IW+(IP-1)*IDO-1))
         else
-            call passf(NAC, IDO, IP, L1, IDL1, CH, CH, CH, C, C, &
-                WA(IW:IW+(IP-1)*IDO-1))
+            call passf(NAC, IDO, IP, L1, IDL1, CH, C, WA(IW:IW+(IP-1)*IDO-1))
         end if
         if (NAC == 0) NA = 1-NA
     end select

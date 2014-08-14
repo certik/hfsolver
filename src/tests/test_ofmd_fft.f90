@@ -1,11 +1,21 @@
 program test_ofmd_fft
 use types, only: dp
-use constants, only: K2au, density2gcm3, u2au, s2au, Ha2eV
+use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV, pi
 use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
 use random, only: randn
-use utils, only: init_random, stop_error
+use utils, only: init_random, stop_error, assert, linspace
+!use feutils, only: quad_lobatto
+use feutils, only: quad_gauss
+use ofdft, only: read_pseudo
+use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
+    reciprocal_space_vectors, real2fourier, fourier2real
+use ofdft_fe, only: radial_density_fourier, initialize_fe, &
+    free_energy_min_low_level, fe_data
+use interp3d, only: trilinear
+use poisson3d_assembly, only: func2quad
+use fe_mesh, only: quad2fe_3d, fe_eval_xyz, vtk_save
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -14,17 +24,34 @@ integer :: N = 4
 integer :: i, steps, u
 real(dp) :: dt, L, t, Rcut, eps, sigma, rho
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
+real(dp), allocatable :: R(:), Ven_rad(:), &
+    G(:, :, :, :), G2(:, :, :)
+real(dp), allocatable :: Ven0G(:, :, :)
+complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
+real(dp), allocatable :: nen(:, :, :)
+real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:), fullsol(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
-integer :: dynamics, functional, Ng, Nspecies, start
+real(dp) :: Ediff, Z
+integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
+integer :: Nx, Ny, Nz, p, Nq, quad_type
+type(fe_data) :: fed
+real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
+
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, steps, dt)
+call read_pseudo("fem/H.pseudo.gaussian2", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
+allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+allocate(nen(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "Input:"
 print *, "N =", N
+print *, "Ng =", Ng
+print *, "MD steps =", steps
 print *, "rho = ",  rho, "a.u. =", rho * density2gcm3, "g/cm^3"
 print *, "T =", Temp, "a.u. =", Temp / K2au, "K =", Temp * Ha2eV, "eV"
 print "('dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
@@ -33,6 +60,31 @@ print *
 print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
 print *
+
+call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
+Nmesh = 10000
+allocate(R2(Nmesh), nen0(Nmesh))
+R2 = linspace(0._dp, L/2, Nmesh)
+call radial_density_fourier(R, Ven_rad, L, Z, Ng, R2, nen0)
+open(newunit=u, file="H.pseudo.density", status="replace")
+write(u, "(a)") "# Density. The lines are: r, nen(r)"
+write(u, *) R2
+write(u, *) nen0
+close(u)
+
+Nx = 3
+Ny = 3
+Nz = 3
+p = 6
+Nq = 30
+quad_type = quad_gauss
+call initialize_fe(L, Nx, Ny, Nz, p, Nq, quad_type, fed)
+allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(fullsol(maxval(fed%in)))
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, ne_fn)
+
+call reciprocal_space_vectors(L, G, G2)
 
 call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
@@ -52,18 +104,20 @@ V = V * sqrt(Temp / spread(m, 1, 3))
 
 print *, "MD start:"
 
+t = 0
+open(newunit=u, file="ofmd_results.txt", status="replace")
+ne=1._dp / L**3
 call forces(X, f)
 
-open(newunit=u, file="ofmd_results.txt", status="replace", form="unformatted")
 t = 0
 call cpu_time(t3)
 do i = 1, steps
+    print *, "MD step:", i, Temp, Temp_current
     Ekin = calc_Ekin(V, m)
     Epot = calc_Epot(X)
     Temp_current = 2*Ekin/(3*N)
     print "(i5, ': E=', f10.4, ' a.u.; Epot=', f10.4, ' a.u.; T=',f10.4,' K')",&
         i, Ekin + Epot, Epot, Temp_current / K2au
-    write(u) t/s2au, f, V, X, Ekin, Epot, Temp_current / K2au
     call velocity_verlet(dt, m, forces, f, V, X)
     if (any(abs(X/L) > 2)) then
         print *, "max n = X/L =", maxval(abs(X/L))
@@ -87,36 +141,152 @@ contains
     integer :: N
     real(dp) :: stress(6)
     real(dp) :: E_ewald
-    real(dp), allocatable :: fewald(:, :), q(:)
+    real(dp), allocatable :: fewald(:, :), q(:), fen(:, :)
+    real(dp) :: fac(Ng, Ng, Ng)
+    real(dp) :: Eee, Een, Ts, Exc, Etot
+    real(dp) :: Eee_fe, Een_fe, Ts_fe, Exc_fe, Etot_fe
+    integer :: i, j, k
     N = size(X, 2)
     ! TODO: this can be done in the main program
-    allocate(fewald(3, N), q(N))
+    allocate(fewald(3, N), q(N), fen(3, N))
     q = 1
+    ! Calculate nuclear forces
     call ewald_box(L, X, q, E_ewald, fewald, stress)
-    !print *, "EWALD", E_ewald
-    !print *, fewald(:, 1)
-    !print *, fewald(:, 2)
-    !print *, fewald(:, 3)
-    !print *, fewald(:, 4)
-    !print *
-    !print *, stress
 
-    ! TODO: calculate the electronic forces here:
-    !ne=1._dp / L**3
-    !call free_energy_min(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot)
-    !print *, "Ng =", Ng
-    !print *, "Rcut =", Rcut
-    !print *, "T_au =", T_au
-    !print *, "Summary of energies [a.u.]:"
-    !print "('    Ts   = ', f14.8)", Ts
-    !print "('    Een  = ', f14.8)", Een
-    !print "('    Eee  = ', f14.8)", Eee
-    !print "('    Exc  = ', f14.8)", Exc
-    !print *, "   ---------------------"
-    !print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+    ! Calculate the electronic forces
+    VenG = 0
+    do i = 1, N
+        VenG = VenG - Ven0G * exp(i_ * &
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
+    end do
+    call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
 
-    f = fewald
+    ! Energy calculation
+    ! old eps: 3.6749308286427368e-5_dp
+    ne=1._dp / L**3
+    call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
+            Eee, Een, Ts, Exc, Etot)
+    print *, "Ng =", Ng
+    print *, "Rcut =", Rcut
+    print *, "T_au =", Temp
+    print *, "Summary of FFT energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+
+    ! TODO: The nen should rather be calculated directly using nen0
+    call fourier2real(VenG*G2/(4*pi), nen)
+    nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, nen_fn)
+
+    call free_energy_min_low_level(real(N, dp), Temp, nenq_pos, nq_pos, &
+        1e-9_dp, fed, Eee_fe, Een_fe, Ts_fe, Exc_fe)
+    Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe
+    print *, "Summary of FE energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts_fe
+    print "('    Een  = ', f14.8)", Een_fe
+    print "('    Eee  = ', f14.8)", Eee_fe
+    print "('    Exc  = ', f14.8)", Exc_fe
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot_fe, &
+        Etot_fe*Ha2eV
+    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
+        Temp_current / K2au, Etot_fe*Ha2eV/N
+    print *, "Saving nq_pos to VTK"
+    call vtk_save("nq_pos.vtk", fed%Nx, fed%Ny, fed%Nz, fed%nodes, &
+        fed%elems, fed%xiq, nq_pos)
+
+    print *, "EWALD", E_ewald
+    print *, fewald(:, 1)
+    print *, fewald(:, 2)
+    print *, fewald(:, 3)
+    print *, fewald(:, 4)
+    print *, "stress"
+    print *, stress
+
+    ! Forces calculation
+    call real2fourier(ne, neG)
+
+    fen = 0
+    do i = 1, N
+        fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+        fen(1, i) = sum(G(:,:,:,1)*fac)
+        fen(2, i) = sum(G(:,:,:,2)*fac)
+        fen(3, i) = sum(G(:,:,:,3)*fac)
+    end do
+
+    print *, "forces FFT:"
+    print *, fen(:, 1)
+    print *, fen(:, 2)
+    print *, fen(:, 3)
+    print *, fen(:, 4)
+
+    ! Calculate forces using FE density
+    print *, "FULLSOL"
+    call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
+            fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
+            nq_pos, fullsol)
+    print *, "ne (FFT) ="
+    print *, ne(:3, :3, :3)
+    print *, "neG (FFT) ="
+    print *, neG(:3, :3, :3)
+    print *, "eval uniform grid"
+    do i = 1, Ng
+    do j = 1, Ng
+    do k = 1, Ng
+        ne(i, j, k) = fe_eval_xyz(fed%xin, fed%nodes, fed%elems, fed%in, &
+            fullsol, [L, L, L]/Ng * ([i, j, k]-1))
+    end do
+    end do
+    end do
+    call real2fourier(ne, neG)
+    print *, "Done"
+    print *, "ne (FE) ="
+    print *, ne(:3, :3, :3)
+    print *, "neG (FE) ="
+    print *, neG(:3, :3, :3)
+
+
+    f = fewald + fen
+
+    fen = 0
+    do i = 1, N
+        fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+        fen(1, i) = sum(G(:,:,:,1)*fac)
+        fen(2, i) = sum(G(:,:,:,2)*fac)
+        fen(3, i) = sum(G(:,:,:,3)*fac)
+    end do
+
+    print *, "forces FE:"
+    print *, fen(:, 1)
+    print *, fen(:, 2)
+    print *, fen(:, 3)
+    print *, fen(:, 4)
+
+
+
+    print *, "total forces:"
+    print *, f(:, 1)
+    print *, f(:, 2)
+    print *, f(:, 3)
+    print *, f(:, 4)
     end subroutine
+
+    real(dp) function nen_fn(x, y, z) result(n)
+    real(dp), intent(in) :: x, y, z
+    n = trilinear([x, y, z], [0, 0, 0]*1._dp, [L, L, L], nen)
+    end function
+
+    real(dp) function ne_fn(x, y, z) result(n)
+    real(dp), intent(in) :: x, y, z
+    n = x+y+z ! Silence compiler warning
+    n = 1
+    end function
 
     real(dp) function calc_Epot(X) result(E)
     real(dp), intent(in) :: X(:, :) ! positions

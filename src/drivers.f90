@@ -28,7 +28,7 @@ integer :: Nelec
 
 call gaussints(atno, xyz, S, T, V, int2)
 n = size(S, 1)
-allocate(P(n, n), C(n, n), lam(n))
+allocate(H(n, n), P(n, n), C(n, n), lam(n))
 
 Nelec = sum(atno)
 

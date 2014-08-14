@@ -7,7 +7,8 @@ use sparse, only: coo2csr_canonical
 implicit none
 private
 public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
-    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs, assemble_3d_coo_A
+    assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs, assemble_3d_coo_A, &
+    local_overlap_matrix
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -158,6 +159,35 @@ do bx = 1, p+1
             phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
             phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
             phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
+            * jac_det * wtq)
+    end do
+    end do
+    end do
+end do
+end do
+end do
+!$omp end do
+!$omp end parallel
+end subroutine
+
+subroutine local_overlap_matrix(wtq, jac_det, phi_v, Am_loc)
+real(dp), intent(in):: wtq(:, :, :)
+real(dp), intent(in) :: jac_det
+real(dp), intent(in), dimension(:, :, :, :, :, :) :: phi_v
+real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc
+integer :: p, ax, ay, az, bx, by, bz
+p = size(phi_v, 6)-1
+! Precalculate element matrix:
+!$omp parallel default(none) shared(p, jac_det, wtq, Am_loc, phi_v) private(ax, ay, az, bx, by, bz)
+!$omp do
+do bz = 1, p+1
+do by = 1, p+1
+do bx = 1, p+1
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        Am_loc(ax, ay, az, bx, by, bz) = sum( &
+            phi_v(:, :, :, ax, ay, az) * phi_v(:, :, :, bx, by, bz) &
             * jac_det * wtq)
     end do
     end do
