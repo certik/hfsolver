@@ -431,7 +431,7 @@ real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
 real(dp) :: Rcut, L, T_eV, T_au
 
-call read_pseudo("H.pseudo.gaussian", R, V, Z, Ediff)
+call read_pseudo("H.pseudo.gaussian2", R, V, Z, Ediff)
 allocate(tmp(size(R)), Vd(size(R)), Vdd(size(R)), density_en(size(R)))
 call spline3ders(R, V, R, tmp, Vd, Vdd)
 density_en = -(Vdd+2*Vd/R)/(4*pi)
