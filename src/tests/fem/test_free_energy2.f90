@@ -3,117 +3,126 @@ module test_free_energy2_utils
 use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
-    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save
+    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
+    fe2quad_3d_lobatto
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc, assemble_3d_csr
+    assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_rhs
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
-use linalg, only: solve
+!use linalg, only: solve
 use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use constants, only: pi
 use xc, only: xc_pz
 use optimize, only: bracket, brent
 use ofdft, only: f
+use ofdft_fe, only: fe_data, WITH_UMFPACK, free_energy, initialize_fe
+use umfpack, only: solve
 implicit none
 private
 public free_energy_min
 
 contains
 
-subroutine free_energy_min(L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, Eh, Een, &
-    Ts, Exc, Nb)
-integer, intent(in) :: p
+subroutine free_energy_min(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
+        Nq, quad_type, &
+        Eh, Een, Ts, Exc, Nb)
+! Higher level subroutine that does FE precalculation inside it, so it is slow,
+! but the interface is simpler.
+real(dp), intent(in) :: Nelec, L, T_au
+integer, intent(in) :: p, Nq, quad_type, Nex, Ney, Nez
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
 procedure(func_xyz) :: fn_pos ! (positive) electronic particle density
-real(dp), intent(in) :: L, T_au
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 integer, intent(out) :: Nb
 
-integer :: Nn, Ne, ibc
-! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
-real(dp), allocatable :: nodes(:, :)
-integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
-integer :: Nq
-real(dp), allocatable :: xin(:), xiq(:), wtq(:), &
-        wtq3(:, :, :), phihq(:, :), dphihq(:, :)
-real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos, Hpsi, &
-    psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
-real(dp), allocatable, dimension(:, :, :, :, :, :) :: Am_loc, phi_v
-integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
-integer :: i, j, k, max_iter
-integer, intent(in) :: Nex, Ney, Nez
-real(dp) :: Lx, Ly, Lz, energy_eps, brent_eps, free_energy_
-real(dp) :: Nelec, jac_det
-real(dp) :: psi_norm
+real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
+type(fe_data) :: fed
 
-energy_eps = 3.6749308286427368e-5_dp
+call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+
+allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fnen)
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fn_pos)
+
+call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, &
+        fed, Eh, Een, Ts, Exc)
+
+Nb = fed%Nb
+end subroutine
+
+subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, &
+        ! Geometry, finite element specification and internal datastructures
+        fed, &
+        ! Output arguments
+        Eh, Een, Ts, Exc)
+! Lower level subroutine that doesn't do any FE precalculation, so it is fast.
+real(dp), intent(in) :: Nelec
+real(dp), intent(in) :: nenq_pos(:, :, :, :)
+real(dp), intent(inout) :: nq_pos(:, :, :, :)
+real(dp), intent(in) :: T_au
+type(fe_data), intent(in) :: fed
+real(dp), intent(out) :: Eh, Een, Ts, Exc
+
+real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
+    psi, Venq, &
+    nenq_neutral
+integer :: max_iter
+real(dp) :: brent_eps, free_energy_
+real(dp) :: psi_norm
+real(dp) :: background
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
+
 brent_eps = 1e-3_dp
 max_iter = 200
 
-Nelec = 1 ! One electron
+allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 
-ibc = 3 ! Periodic boundary condition
 
-Lx = L
-Ly = L
-Lz = L
+! Calculate Venq
+allocate(rhs(fed%Nb), sol(fed%Nb), fullsol(maxval(fed%in)))
+allocate(fullsol2(maxval(fed%in)))
+background = integral(fed%nodes, fed%elems, fed%wtq3, nenq_pos) / &
+    (fed%Lx*fed%Ly*fed%Lz)
+print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nenq_neutral = nenq_pos - background
+print *, "Assembling RHS..."
+call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
+    fed%ib, fed%phi_v, rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
+print *, "Solving..."
+if (WITH_UMFPACK) then
+    call solve(fed%Ap, fed%Aj, fed%Ax, sol, rhs, fed%matd)
+else
+    sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
+end if
+print *, "Converting..."
+call c2fullc_3d(fed%in, fed%ib, sol, fullsol)
+if (fed%spectral) then
+    call fe2quad_3d_lobatto(fed%elems, fed%xiq, fed%in, fullsol, Venq)
+else
+    call fe2quad_3d(fed%elems, fed%xin, fed%xiq, fed%phihq, fed%in, fullsol, Venq)
+end if
+print *, "Done"
 
-call cartesian_mesh_3d(Nex, Ney, Nez, &
-    [-Lx/2, -Ly/2, -Lz/2], [Lx/2, Ly/2, Lz/2], nodes, elems)
-Nn = size(nodes, 2)
-Ne = size(elems, 2)
-Nq = 20
-
-print *, "Number of nodes:", Nn
-print *, "Number of elements:", Ne
-print *, "Nq =", Nq
-print *, "p =", p
-allocate(xin(p+1))
-call get_parent_nodes(2, p, xin)
-allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
-forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
-allocate(phihq(size(xiq), size(xin)))
-allocate(dphihq(size(xiq), size(xin)))
-! Tabulate parent basis at quadrature points
-forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
-forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
-allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
-allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
-call assemble_3d_precalc(p, Nq, &
-    nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)), &
-    nodes(2, elems(7, 1)) - nodes(2, elems(1, 1)), &
-    nodes(3, elems(7, 1)) - nodes(3, elems(1, 1)), &
-    wtq3, phihq, dphihq, jac_det, Am_loc, phi_v)
-
-call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
-call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, ib)
-Nb = maxval(ib)
-print *, "DOFs =", Nb
-allocate(nenq_pos(Nq, Nq, Nq, Ne))
-allocate(nq_pos(Nq, Nq, Nq, Ne))
-allocate(Hpsi(Nq, Nq, Nq, Ne))
-allocate(psi(Nq, Nq, Nq, Ne))
-allocate(psi_(Nq, Nq, Nq, Ne))
-allocate(psi_prev(Nq, Nq, Nq, Ne))
-allocate(phi(Nq, Nq, Nq, Ne))
-allocate(phi_prime(Nq, Nq, Nq, Ne))
-allocate(ksi(Nq, Nq, Nq, Ne))
-allocate(ksi_prev(Nq, Nq, Nq, Ne))
-allocate(eta(Nq, Nq, Nq, Ne))
-
-nenq_pos = func2quad(nodes, elems, xiq, fnen)
-nq_pos = func2quad(nodes, elems, xiq, fn_pos)
 
 psi = sqrt(nq_pos)
-psi_norm = integral(nodes, elems, wtq3, psi**2)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "Initial norm of psi:", psi_norm
 psi = sqrt(Nelec / psi_norm) * psi
-psi_norm = integral(nodes, elems, wtq3, psi**2)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "norm of psi:", psi_norm
-call free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, T_au, &
-    nenq_pos, psi**2, phihq, Am_loc, phi_v, jac_det, &
-    Eh, Een, Ts, Exc, free_energy_)
+! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
+! save space:
+call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
+    Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
+    fed%phi_v, fed%jac_det, &
+    Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
@@ -125,118 +134,6 @@ call assert(abs(Ts - 10.61904507_dp) < 1e-8_dp)
 call assert(abs(Een - (-3.77207363_dp)) < 3e-3_dp)
 call assert(abs(Eh - 1.30109486_dp) < 3e-4_dp)
 call assert(abs(Exc - (-1.43805889_dp)) < 1e-8_dp)
-
-end subroutine
-
-
-
-subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
-    T_au, nenq_pos, nq_pos, phihq, Am_loc, phi_v, jac_det, &
-    Eh, Een, Ts, Exc, Etot, verbose)
-real(dp), intent(in) :: nodes(:, :)
-integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
-real(dp), intent(in) :: Lx, Ly, Lz, T_au
-real(dp), intent(in) :: nenq_pos(:, :, :, :), nq_pos(:, :, :, :), phihq(:, :), &
-    xin(:), xiq(:), wtq3(:, :, :), Am_loc(:, :, :, :, :, :), &
-    phi_v(:, :, :, :, :, :), jac_det
-real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
-logical, intent(in), optional :: verbose
-
-real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
-    nq_neutral, Venq, Vhq, nenq_neutral
-integer, allocatable :: Ap(:), Aj(:)
-real(dp), allocatable :: Ax(:), rhs(:), sol(:), fullsol(:)
-real(dp) :: background, beta, tmp
-integer :: p, i, j, k, m, Nn, Ne, Nq
-logical :: verbose_
-verbose_ = .false.
-if (present(verbose)) verbose_ = verbose
-Nn = size(nodes, 2)
-Ne = size(elems, 2)
-Nq = size(xiq)
-p = size(xin) - 1
-allocate(rhs(Nb), sol(Nb), fullsol(maxval(in)), Vhq(Nq, Nq, Nq, Ne))
-allocate(y(Nq, Nq, Nq, Ne))
-allocate(F0(Nq, Nq, Nq, Ne))
-allocate(exc_density(Nq, Nq, Nq, Ne))
-allocate(nq_neutral(Nq, Nq, Nq, Ne))
-allocate(Venq(Nq, Nq, Nq, Ne))
-! Make the charge density net neutral (zero integral):
-background = integral(nodes, elems, wtq3, nq_pos) / (Lx*Ly*Lz)
-if (verbose_) then
-    print *, "Total (positive) electronic charge: ", background * (Lx*Ly*Lz)
-    print *, "Subtracting constant background (Q/V): ", background
-end if
-nq_neutral = nq_pos - background
-if (verbose_) then
-    print *, "Assembling..."
-end if
-!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-!    4*pi*nq_neutral, Ap, Aj, Ax, rhs)
-call assemble_3d_csr(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, Am_loc, phi_v, &
-        Ap, Aj, Ax, rhs)
-if (verbose_) then
-    print *, "sum(rhs):    ", sum(rhs)
-    print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
-    print *, "Solving..."
-end if
-!sol = solve(A, rhs)
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-if (verbose_) then
-    print *, "Converting..."
-end if
-call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
-
-background = integral(nodes, elems, wtq3, nenq_pos) / (Lx*Ly*Lz)
-if (verbose_) then
-    print *, "Total (negative) ionic charge: ", background * (Lx*Ly*Lz)
-    print *, "Subtracting constant background (Q/V): ", background
-end if
-nenq_neutral = nenq_pos - background
-if (verbose_) then
-    print *, "Assembling..."
-end if
-!call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, &
-!    4*pi*nenq_neutral, Ap, Aj, Ax, rhs)
-call assemble_3d_csr(Ne, p, 4*pi*nenq_neutral, jac_det, wtq3, ib, Am_loc, &
-    phi_v, Ap, Aj, Ax, rhs)
-if (verbose_) then
-    print *, "sum(rhs):    ", sum(rhs)
-    print *, "integral rhs:", integral(nodes, elems, wtq3, nenq_neutral)
-    print *, "Solving..."
-end if
-sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 400)
-if (verbose_) then
-    print *, "Converting..."
-end if
-call c2fullc_3d(in, ib, sol, fullsol)
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
-
-! Hartree energy
-Eh = integral(nodes, elems, wtq3, Vhq*nq_neutral) / 2
-! Electron-nucleus energy
-Een = integral(nodes, elems, wtq3, Venq*nq_neutral)
-! Kinetic energy using Perrot parametrization
-beta = 1/T_au
-! The density must be positive, the f(y) fails for negative "y". Thus we use
-! nq_pos.
-y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * nq_pos
-if (any(y < 0)) call stop_error("Density must be positive")
-F0 = nq_pos / beta * f(y)
-Ts = integral(nodes, elems, wtq3, F0)
-! Exchange and correlation energy
-do m = 1, Ne
-do k = 1, Nq
-do j = 1, Nq
-do i = 1, Nq
-    call xc_pz(nq_pos(i, j, k, m), exc_density(i, j, k, m), tmp)
-end do
-end do
-end do
-end do
-Exc = integral(nodes, elems, wtq3, exc_density * nq_pos)
-Etot = Ts + Een + Eh + Exc
 end subroutine
 
 end module
@@ -253,9 +150,10 @@ use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
+use feutils, only: quad_gauss
 implicit none
 real(dp) :: Eh, Een, Ts, Exc
-integer :: p, DOF
+integer :: p, DOF, Nq
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), c(:, :)
 real(dp), allocatable :: tmp(:), Vd(:), Vdd(:), density_en(:)
@@ -272,7 +170,11 @@ p = 5
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy_min(L, 4, 4, 4, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
+!call free_energy_min(L, 4, 4, 4, p, T_au, nen_splines, ne, Eh, Een, Ts, Exc, DOF)
+Nq = 20
+call free_energy_min(1._dp, L, 4, 4, 4, p, T_au, nen_splines, ne, &
+        Nq, quad_gauss, &
+        Eh, Een, Ts, Exc, DOF)
 
 contains
 
@@ -281,7 +183,7 @@ real(dp), intent(in) :: x_, y_, z_
 real(dp) :: r_
 integer :: ip
 ! One atom in the center:
-r_ = sqrt((x_+L/64)**2+y_**2+z_**2)
+r_ = sqrt((x_+L/64-L/2)**2+(y_-L/2)**2+(z_-L/2)**2)
 if (r_ >= Rcut) then
     n = 0
     return
@@ -298,7 +200,7 @@ real(dp) function ne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
 real(dp), parameter :: alpha = 5, Z_ = 1
 real(dp) :: r
-r = sqrt(x**2+y**2+z**2)
+r = sqrt((x-L/2)**2+(y-L/2)**2+(z-L/2)**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 !n = 1
 end function
