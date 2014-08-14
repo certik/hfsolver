@@ -57,6 +57,8 @@ contains
 subroutine free_energy_min(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
         Nq, quad_type, energy_eps, &
         Eh, Een, Ts, Exc, Nb)
+! Higher level subroutine that does FE precalculation inside it, so it is slow,
+! but the interface is simpler.
 real(dp), intent(in) :: Nelec, L, T_au
 integer, intent(in) :: p, Nq, quad_type, Nex, Ney, Nez
 procedure(func_xyz) :: fnen ! (negative) ionic particle density
@@ -188,6 +190,7 @@ subroutine free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps,&
         fed, &
         ! Output arguments
         Eh, Een, Ts, Exc)
+! Lower level subroutine that doesn't do any FE precalculation, so it is fast.
 real(dp), intent(in) :: Nelec
 real(dp), intent(in) :: nenq_pos(:, :, :, :)
 real(dp), intent(inout) :: nq_pos(:, :, :, :)
