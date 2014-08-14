@@ -10,7 +10,7 @@ use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 !use linalg, only: solve
 use isolve, only: solve_cg
-use utils, only: assert, zeros, stop_error
+use utils, only: zeros, stop_error
 use constants, only: pi
 use xc, only: xc_pz
 use optimize, only: bracket, brent
@@ -123,17 +123,6 @@ call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, f
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
     Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
-print *, "Summary of energies [a.u.]:"
-print "('    Ts   = ', f14.8)", Ts
-print "('    Een  = ', f14.8)", Een
-print "('    Eee  = ', f14.8)", Eh
-print "('    Exc  = ', f14.8)", Exc
-print *, "   ---------------------"
-print "('    Etot = ', f14.8, ' a.u.')", free_energy_
-call assert(abs(Ts - 10.61904507_dp) < 1e-8_dp)
-call assert(abs(Een - (-3.77207363_dp)) < 3e-3_dp)
-call assert(abs(Eh - 1.30109486_dp) < 3e-4_dp)
-call assert(abs(Exc - (-1.43805889_dp)) < 1e-8_dp)
 end subroutine
 
 end module
@@ -147,12 +136,12 @@ use types, only: dp
 use test_free_energy2_utils, only: free_energy2
 use ofdft, only: read_pseudo
 use constants, only: Ha2eV, pi
-use utils, only: loadtxt, stop_error
+use utils, only: loadtxt, stop_error, assert
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use feutils, only: quad_gauss
 implicit none
-real(dp) :: Eh, Een, Ts, Exc
+real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), c(:, :)
@@ -174,6 +163,18 @@ Nq = 20
 call free_energy2(1._dp, L, 4, 4, 4, p, T_au, nen_splines, ne, &
         Nq, quad_gauss, &
         Eh, Een, Ts, Exc, DOF)
+Etot = Eh + Een + Ts + Exc
+print *, "Summary of energies [a.u.]:"
+print "('    Ts   = ', f14.8)", Ts
+print "('    Een  = ', f14.8)", Een
+print "('    Eee  = ', f14.8)", Eh
+print "('    Exc  = ', f14.8)", Exc
+print *, "   ---------------------"
+print "('    Etot = ', f14.8, ' a.u.')", Etot
+call assert(abs(Ts - 10.61904507_dp) < 1e-8_dp)
+call assert(abs(Een - (-3.77207363_dp)) < 3e-3_dp)
+call assert(abs(Eh - 1.30109486_dp) < 3e-4_dp)
+call assert(abs(Exc - (-1.43805889_dp)) < 1e-8_dp)
 
 contains
 
