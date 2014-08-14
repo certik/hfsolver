@@ -23,7 +23,7 @@ use integration, only: integrate_trapz_1
 implicit none
 private
 public free_energy_min, radial_density_fourier, fe_data, initialize_fe, &
-    free_energy_min_low_level
+    free_energy_min_low_level, WITH_UMFPACK, free_energy
 
 logical, parameter :: WITH_UMFPACK=.false.
 
