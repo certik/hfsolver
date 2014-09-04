@@ -18,7 +18,7 @@ use integration, only: integrate_trapz_1
 implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
-    radial_potential_fourier, real2fourier, fourier2real
+    radial_potential_fourier, real2fourier, fourier2real, integralG
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
