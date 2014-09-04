@@ -3,6 +3,7 @@ use types, only: dp
 use constants, only: pi
 use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG
 use utils, only: assert
+use ewald_sums, only: ewald_box
 implicit none
 
 call test1()
@@ -88,7 +89,20 @@ do Ng = 32, 256, 16
     end do
     deallocate(ne, neG, VeeG, G, G2)
 end do
+end subroutine
 
+
+subroutine test3()
+integer :: N
+real(dp) :: L, E_ewald, stress(6)
+real(dp), allocatable :: X(:, :), fewald(:, :), q(:)
+L = 2
+N = 1
+allocate(X(3, N), fewald(3, N), q(N))
+X(:, 1) = [L/2, L/2, L/2]
+q = 1
+call ewald_box(L, X, q, E_ewald, fewald, stress)
+print *, "Ewald     =", E_ewald
 end subroutine
 
 end program
