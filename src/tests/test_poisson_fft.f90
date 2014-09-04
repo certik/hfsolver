@@ -60,12 +60,12 @@ integer :: Ng, i, j, k, ialpha
 L = 2
 
 print *, "Ng, alpha, Eee"
-do Ng = 32, 128, 16
+do Ng = 32, 256, 16
     allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
     allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
     call reciprocal_space_vectors(L, G, G2)
 
-    do ialpha = 1, 100, 10
+    do ialpha = 1, 200, 10
         alpha = 5 + ialpha
         do i = 1, size(ne, 1)
             do j = 1, size(ne, 2)
