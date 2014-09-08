@@ -11,9 +11,16 @@ real(dp), parameter :: E_ewald_exact = -6.3839193288315013_dp
 ! exactly equal to E_ewald_exact)
 real(dp), parameter :: E_gauss5_conv = -6.2425476594175731_dp
 
+! Two charges:
+real(dp), parameter :: E_ewald_exact2 = -9.1591267925365365_dp
+real(dp), parameter :: E_gauss5_conv2 = -9.1675102162814746_dp
+
+
 call test1()
 !call test2()
 call test3()
+call test4()
+call test5()
 
 contains
 
@@ -113,6 +120,68 @@ print *, "Ewald_exact =", E_ewald_exact
 print *, "error       =", abs(E_ewald - E_ewald_exact)
 
 call assert(abs(E_ewald - E_ewald_exact) < 1e-12)
+end subroutine
+
+subroutine test4()
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
+complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
+real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z
+integer :: Ng, i, j, k
+
+L = 2
+Ng = 256
+
+allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+call reciprocal_space_vectors(L, G, G2)
+
+alpha = 5
+do i = 1, size(ne, 1)
+    do j = 1, size(ne, 2)
+        do k = 1, size(ne, 3)
+            x = ([i, j, k]-1) * L / shape(ne) ! x is in [0, L)^3
+            charge_pos = L/4
+            Z = 3 ! Charge
+            r = sqrt(sum((x-charge_pos)**2))
+            ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
+            charge_pos = 3*L/4
+            Z = -3 ! Charge
+            r = sqrt(sum((x-charge_pos)**2))
+            ne(i, j, k) = ne(i, j, k) + Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
+        end do
+    end do
+end do
+call real2fourier(ne, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+
+Eee = integralG(L, VeeG*conjg(neG)) / 2
+Eee = Eee - 2 * Z**2 * alpha / sqrt(2*pi) ! subtract self-energy (2 charges)
+
+print *, "Ng = ", Ng
+print *, "Eee       =", Eee
+print *, "Eee_exact =", E_gauss5_conv2
+print *, "error     =", abs(Eee - E_gauss5_conv2)
+
+call assert(abs(Eee - E_gauss5_conv2) < 2e-12)
+end subroutine
+
+subroutine test5()
+integer :: N
+real(dp) :: L, E_ewald, stress(6)
+real(dp), allocatable :: X(:, :), fewald(:, :), q(:)
+L = 2
+N = 2
+allocate(X(3, N), fewald(3, N), q(N))
+X(:, 1) = [L/4, L/4, L/4]
+X(:, 2) = 3*[L/4, L/4, L/4]
+q = [3, -3]
+call ewald_box(L, X, q, E_ewald, fewald, stress)
+print *, "Ewald       =", E_ewald
+print *, "Ewald_exact =", E_ewald_exact2
+print *, "error       =", abs(E_ewald - E_ewald_exact2)
+
+call assert(abs(E_ewald - E_ewald_exact2) < 1e-12)
 end subroutine
 
 end program
