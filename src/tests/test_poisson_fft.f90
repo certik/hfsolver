@@ -61,7 +61,7 @@ print *, "Eee       =", Eee
 print *, "Eee_exact =", E_gauss5_conv
 print *, "error     =", abs(Eee - E_gauss5_conv)
 
-call assert(abs(Eee - E_gauss5_conv) < 2e-12)
+call assert(abs(Eee - E_gauss5_conv) < 2e-12_dp)
 end subroutine
 
 
@@ -119,7 +119,7 @@ print *, "Ewald       =", E_ewald
 print *, "Ewald_exact =", E_ewald_exact
 print *, "error       =", abs(E_ewald - E_ewald_exact)
 
-call assert(abs(E_ewald - E_ewald_exact) < 1e-12)
+call assert(abs(E_ewald - E_ewald_exact) < 1e-12_dp)
 end subroutine
 
 subroutine test4()
@@ -163,7 +163,7 @@ print *, "Eee       =", Eee
 print *, "Eee_exact =", E_gauss30_conv2
 print *, "error     =", abs(Eee - E_gauss30_conv2)
 
-call assert(abs(Eee - E_gauss30_conv2) < 1e-8)
+call assert(abs(Eee - E_gauss30_conv2) < 1e-8_dp)
 end subroutine
 
 subroutine test5()
@@ -181,7 +181,7 @@ print *, "Ewald       =", E_ewald
 print *, "Ewald_exact =", E_ewald_exact2
 print *, "error       =", abs(E_ewald - E_ewald_exact2)
 
-call assert(abs(E_ewald - E_ewald_exact2) < 1e-12)
+call assert(abs(E_ewald - E_ewald_exact2) < 1e-12_dp)
 end subroutine
 
 end program
