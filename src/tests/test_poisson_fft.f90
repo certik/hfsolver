@@ -5,16 +5,22 @@ use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG
 use utils, only: assert
 use ewald_sums, only: ewald_box
 implicit none
+! Exact value for a point charge
+real(dp), parameter :: E_ewald_exact = -6.3839193288315013_dp
+! Converged value for a Gaussian charge with alpha=5 (should be close, but not
+! exactly equal to E_ewald_exact)
+real(dp), parameter :: E_gauss5_conv = -6.2425476594175731_dp
 
 call test1()
-call test2()
+!call test2()
+call test3()
 
 contains
 
 subroutine test1()
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
-real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z, Eee_exact
+real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z
 integer :: Ng, i, j, k
 
 L = 2
@@ -25,12 +31,12 @@ allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors(L, G, G2)
 
 alpha = 5
+Z = 3 ! Charge
+charge_pos = L/2  ! The charge position is in the middle
 do i = 1, size(ne, 1)
     do j = 1, size(ne, 2)
         do k = 1, size(ne, 3)
             x = ([i, j, k]-1) * L / shape(ne) ! x is in [0, L)^3
-            charge_pos = L/2  ! The charge position is in the middle
-            Z = 1 ! Charge
             r = sqrt(sum((x-charge_pos)**2))
             ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
         end do
@@ -41,14 +47,14 @@ VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
-Eee_exact = 1.3010949954051885_dp
+Eee = Eee - Z**2 * alpha / sqrt(2*pi) ! subtract self-energy
 
 print *, "Ng = ", Ng
 print *, "Eee       =", Eee
-print *, "Eee_exact =", Eee_exact
-print *, "error     =", abs(Eee - Eee_exact)
+print *, "Eee_exact =", E_gauss5_conv
+print *, "error     =", abs(Eee - E_gauss5_conv)
 
-call assert(abs(Eee - Eee_exact) < 1e-12)
+call assert(abs(Eee - E_gauss5_conv) < 2e-12)
 end subroutine
 
 
@@ -100,9 +106,13 @@ L = 2
 N = 1
 allocate(X(3, N), fewald(3, N), q(N))
 X(:, 1) = [L/2, L/2, L/2]
-q = 1
+q = 3
 call ewald_box(L, X, q, E_ewald, fewald, stress)
-print *, "Ewald     =", E_ewald
+print *, "Ewald       =", E_ewald
+print *, "Ewald_exact =", E_ewald_exact
+print *, "error       =", abs(E_ewald - E_ewald_exact)
+
+call assert(abs(E_ewald - E_ewald_exact) < 1e-12)
 end subroutine
 
 end program
