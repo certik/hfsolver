@@ -417,8 +417,20 @@ scart(6) = w(1, 2)
 end subroutine
 
 subroutine direct_sum(q, r, L, ncut, E, forces)
-! Calculates the Coulombic energy E as a direc sum. It is very slow, but simple
-! to implement, so it is used for testing correctness of more advanced methods.
+! Calculates the Coulombic energy E and forces as a direc lattice sum.
+!
+! We use a spherically ordered direct lattice sum. If the unit cell dipole
+! moment is non-zero, the sum needs to be corrected in order to obtain the
+! correct Ewald energy and forces, see [1] for more details.
+!
+! The summation is converging very slowly, but the subroutine is simple to
+! implement, so it is used for testing correctness of faster more advanced
+! methods. The convergence is achieved by increasing 'ncut'.
+!
+! [1] Roberts, J. E., Schnitker, J. (1994). How the unit cell surface charge
+! distribution affects the energetics of ion–solvent interactions in
+! simulations. The Journal of Chemical Physics, 101(6), 5024.
+! doi:10.1063/1.467425
 real(dp), intent(in) :: q(:) ! q(i) is charge of i-th particle
 real(dp), intent(in) :: r(:, :) ! r(:, i) is (x, y, z) coordinates of i-th par.
 real(dp), intent(in) :: L ! length of the unit cell (box)
@@ -430,6 +442,8 @@ real(dp) :: d_ji(3), d
 N = size(q)
 E = 0
 forces = 0
+
+! Calculate the spherically ordered direct lattice sum
 do i = 1, N
     do j = 1, N
         do nx = -ncut, ncut
@@ -448,6 +462,20 @@ do i = 1, N
     end do
 end do
 E = E / 2
+
+! Calculate the dipole moment of the unit cell
+d_ji = 0
+do i = 1, N
+    d_ji = d_ji + q(i)*r(:, i)
+end do
+
+! Correct the sum in order to obtain Ewald energy and forces
+! Eq. (9) in [1]
+E = E - 2*pi/3*sum(d_ji**2)/L**3
+! Eq. (13) in [1]
+do i = 1, N
+    forces(:, i) = forces(:, i) + 4*pi/(3*L**3)*q(i)*d_ji
+end do
 end subroutine
 
 subroutine ewald_box(L, x, q, E, forces, stress)
