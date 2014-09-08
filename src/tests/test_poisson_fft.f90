@@ -12,8 +12,8 @@ real(dp), parameter :: E_ewald_exact = -6.3839193288315013_dp
 real(dp), parameter :: E_gauss5_conv = -6.2425476594175731_dp
 
 ! Two charges:
-real(dp), parameter :: E_ewald_exact2 = -9.1591267925365365_dp
-real(dp), parameter :: E_gauss5_conv2 = -9.1675102162814746_dp
+real(dp), parameter :: E_ewald_exact2  = -9.1591267925365365_dp
+real(dp), parameter :: E_gauss30_conv2 = -9.1591267927266529_dp
 
 
 call test1()
@@ -129,13 +129,13 @@ real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z
 integer :: Ng, i, j, k
 
 L = 2
-Ng = 256
+Ng = 128
 
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors(L, G, G2)
 
-alpha = 5
+alpha = 30
 do i = 1, size(ne, 1)
     do j = 1, size(ne, 2)
         do k = 1, size(ne, 3)
@@ -160,10 +160,10 @@ Eee = Eee - 2 * Z**2 * alpha / sqrt(2*pi) ! subtract self-energy (2 charges)
 
 print *, "Ng = ", Ng
 print *, "Eee       =", Eee
-print *, "Eee_exact =", E_gauss5_conv2
-print *, "error     =", abs(Eee - E_gauss5_conv2)
+print *, "Eee_exact =", E_gauss30_conv2
+print *, "error     =", abs(Eee - E_gauss30_conv2)
 
-call assert(abs(Eee - E_gauss5_conv2) < 2e-12)
+call assert(abs(Eee - E_gauss30_conv2) < 1e-8)
 end subroutine
 
 subroutine test5()
