@@ -312,7 +312,7 @@ R = linspace(1._dp/10000, 0.1_dp, 10000)
 call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G)
 Vee0G(1, 1, 1) = 0
 do i = 1, natom
-    fac = q(i)*L**3*Vee0G*aimag(neG*exp(-i_ * &
+    fac = q(i)*L**3*Vee0G*aimag(neG*exp(i_ * &
         (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
     forces(1, i) = sum(G(:,:,:,1)*fac)
     forces(2, i) = sum(G(:,:,:,2)*fac)
@@ -322,8 +322,6 @@ do i = 1, natom
     print *, i, forces(:, i)
 end do
 print *, "Errors:"
-! FIXME: this is a bug, the force of the second atom has a wrong sign...
-forces(:, 2) = -forces(:, 2)
 do i = 1, natom
     rel = sqrt(sum((forces(:, i)-forces_ewald(:, i))**2) / &
             sum(forces_ewald(:, i)**2))
