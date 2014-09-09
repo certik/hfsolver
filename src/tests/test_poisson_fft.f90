@@ -1,6 +1,6 @@
 program test_poisson_fft
 use types, only: dp
-use constants, only: pi
+use constants, only: pi, i_
 use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG
 use utils, only: assert
 use ewald_sums, only: ewald_box
@@ -243,8 +243,9 @@ call assert(abs(Eee - E_madelung) < 5e-6_dp)
 end subroutine
 
 subroutine test7()
-real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
-complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :), fac(:, :, :)
+real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
+complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
 integer, parameter :: natom = 8
 real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
 real(dp) :: stress(6), forces(3, natom)
@@ -254,7 +255,8 @@ L = 2
 Ng = 64
 
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
-allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng))
+allocate(ne0(Ng, Ng, Ng), ne0G(Ng, Ng, Ng), Vee0G(Ng, Ng, Ng))
 call reciprocal_space_vectors(L, G, G2)
 
 alpha = 14
@@ -298,7 +300,22 @@ call assert(abs(Eee - E_madelung) < 2e-11_dp)
 
 call ewald_box(L, X, q, Eee, forces, stress)
 call assert(abs(Eee / 4 - E_madelung) < 1e-13)
-print *, "Forces:"
+print *, "Ewald Forces:"
+do i = 1, natom
+    print *, i, forces(:, i)
+end do
+print *, "FFT Forces:"
+call gaussian_charges([1._dp], reshape([0, 0, 0]*1._dp, [3, 1]), L, alpha, ne0)
+call real2fourier(ne0, ne0G)
+Vee0G = 4*pi*real(ne0G, dp) / G2
+Vee0G(1, 1, 1) = 0
+do i = 1, natom
+    fac = q(i)*L**3*Vee0G*aimag(neG*exp(-i_ * &
+        (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+    forces(1, i) = sum(G(:,:,:,1)*fac)
+    forces(2, i) = sum(G(:,:,:,2)*fac)
+    forces(3, i) = sum(G(:,:,:,3)*fac)
+end do
 do i = 1, natom
     print *, i, forces(:, i)
 end do
