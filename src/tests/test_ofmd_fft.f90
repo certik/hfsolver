@@ -156,7 +156,12 @@ contains
     ! Calculate the electronic forces
     VenG = 0
     do i = 1, N
-        VenG = VenG - Ven0G * exp(i_ * &
+        ! Note: we use minus sign in the forward real -> fourier transform. Then
+        ! the following holds: F[f(x+b)] = e^{+i*G*b}F[f(x)], with plus sign in
+        ! the exponential. Finally, we are expressing Ven0(x-X) using Ven0(x),
+        ! i.e.: F[Ven0(x-X)] = F[Ven0(x)]*e^{-i*G*X} with minus sign in the
+        ! exponential.
+        VenG = VenG - Ven0G * exp(-i_ * &
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
@@ -212,6 +217,8 @@ contains
 
     fen = 0
     do i = 1, N
+        ! We have minus sign in the exponential, per the definition of VenG
+        ! above (see the comment there).
         fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
         fen(1, i) = sum(G(:,:,:,1)*fac)
@@ -255,6 +262,8 @@ contains
 
     fen = 0
     do i = 1, N
+        ! We have minus sign in the exponential, per the definition of VenG
+        ! above (see the comment there).
         fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
         fen(1, i) = sum(G(:,:,:,1)*fac)
