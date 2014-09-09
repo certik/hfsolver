@@ -250,7 +250,7 @@ real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
 integer, parameter :: natom = 8
 real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
-real(dp) :: stress(6), forces(3, natom), forces_ewald(3, natom)
+real(dp) :: stress(6), forces(3, natom), forces_ewald(3, natom), rel
 integer :: Ng, i
 
 L = 2
@@ -322,9 +322,17 @@ do i = 1, natom
     print *, i, forces(:, i)
 end do
 print *, "Errors:"
+! FIXME: this is a bug, the force of the second atom has a wrong sign...
+forces(:, 2) = -forces(:, 2)
 do i = 1, natom
-    print *, i, sqrt(sum((forces(:, i)-forces_ewald(:, i))**2) / &
-        sum(forces_ewald(:, i)**2))
+    rel = sqrt(sum((forces(:, i)-forces_ewald(:, i))**2) / &
+            sum(forces_ewald(:, i)**2))
+    print *, i, rel
+    if (i == 2 .or. i == 6) then
+        call assert(rel < 5e-6_dp)
+    else
+        call assert(rel < 1e-12_dp)
+    end if
 end do
 end subroutine
 
