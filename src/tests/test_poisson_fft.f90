@@ -13,7 +13,6 @@ real(dp), parameter :: E_gauss5_conv = -6.2425476594175731_dp
 
 ! Two charges:
 real(dp), parameter :: E_ewald_exact2  = -9.1591267925365365_dp
-real(dp), parameter :: E_gauss30_conv2 = -9.1591267927266529_dp
 
 
 call test1()
@@ -126,28 +125,43 @@ subroutine test4()
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
 real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z
-integer :: Ng, i, j, k
+integer :: Ng, i, j, k, a, b, c
 
 L = 2
-Ng = 128
+Ng = 32
 
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors(L, G, G2)
 
-alpha = 30
+alpha = 5
+ne = 0
 do i = 1, size(ne, 1)
     do j = 1, size(ne, 2)
         do k = 1, size(ne, 3)
             x = ([i, j, k]-1) * L / shape(ne) ! x is in [0, L)^3
             charge_pos = L/4
             Z = 3 ! Charge
-            r = sqrt(sum((x-charge_pos)**2))
-            ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
+            do a = -1, 1
+            do b = -1, 1
+            do c = -1, 1
+                r = sqrt(sum((x-charge_pos+[a, b, c]*L)**2))
+                ne(i, j, k) = ne(i, j, k) + &
+                    Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
+            end do
+            end do
+            end do
             charge_pos = 3*L/4
             Z = -3 ! Charge
-            r = sqrt(sum((x-charge_pos)**2))
-            ne(i, j, k) = ne(i, j, k) + Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
+            do a = -1, 1
+            do b = -1, 1
+            do c = -1, 1
+                r = sqrt(sum((x-charge_pos+[a, b, c]*L)**2))
+                ne(i, j, k) = ne(i, j, k) + &
+                    Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
+            end do
+            end do
+            end do
         end do
     end do
 end do
@@ -160,10 +174,10 @@ Eee = Eee - 2 * Z**2 * alpha / sqrt(2*pi) ! subtract self-energy (2 charges)
 
 print *, "Ng = ", Ng
 print *, "Eee       =", Eee
-print *, "Eee_exact =", E_gauss30_conv2
-print *, "error     =", abs(Eee - E_gauss30_conv2)
+print *, "Eee_exact =", E_ewald_exact2
+print *, "error     =", abs(Eee - E_ewald_exact2)
 
-call assert(abs(Eee - E_gauss30_conv2) < 1e-8_dp)
+call assert(abs(Eee - E_ewald_exact2) < 1e-12_dp)
 end subroutine
 
 subroutine test5()
