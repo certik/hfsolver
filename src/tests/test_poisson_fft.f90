@@ -20,6 +20,7 @@ call test1()
 call test3()
 call test4()
 call test5()
+call test6()
 
 contains
 
@@ -188,6 +189,56 @@ do k = 1, size(ne, 3)
 end do
 end do
 end do
+end subroutine
+
+subroutine test6()
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
+complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
+integer, parameter :: natom = 8
+real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
+integer :: Ng, i
+
+L = 2
+Ng = 32
+
+allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+call reciprocal_space_vectors(L, G, G2)
+
+alpha = 5
+! Cl^-
+xred(:, 1) = [0._dp, 0._dp, 0._dp]
+xred(:, 2) = [1._dp/2, 1._dp/2, 0._dp]
+xred(:, 3) = [1._dp/2, 0._dp, 1._dp/2]
+xred(:, 4) = [0._dp, 1._dp/2, 1._dp/2]
+! Na^+
+xred(:, 5) = [1._dp/2, 1._dp/2, 1._dp/2]
+xred(:, 6) = [1._dp/2, 0._dp, 0._dp]
+xred(:, 7) = [0._dp, 1._dp/2, 0._dp]
+xred(:, 8) = [0._dp, 0._dp, 1._dp/2]
+q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
+X = xred*L
+call gaussian_charges(q, X, L, alpha, ne)
+call real2fourier(ne, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+
+Eee = integralG(L, VeeG*conjg(neG)) / 2
+do i = 1, natom
+    Eee = Eee - q(i)**2 * alpha / sqrt(2*pi) ! subtract self-energy
+end do
+
+alpha = 1.74756459463318219064_dp ! Madelung constant for NaCl
+E_madelung = -2*alpha/L
+
+Eee = Eee / 4
+
+print *, "Ng = ", Ng
+print *, "Eee       =", Eee
+print *, "Eee_exact =", E_madelung
+print *, "error     =", abs(Eee - E_madelung)
+
+call assert(abs(Eee - E_madelung) < 5e-6_dp)
 end subroutine
 
 end program
