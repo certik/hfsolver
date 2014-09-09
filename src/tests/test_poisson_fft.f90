@@ -1,8 +1,9 @@
 program test_poisson_fft
 use types, only: dp
 use constants, only: pi, i_
-use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG
-use utils, only: assert
+use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG, &
+        radial_potential_fourier
+use utils, only: assert, linspace
 use ewald_sums, only: ewald_box
 implicit none
 ! Exact value for a point charge
@@ -243,7 +244,8 @@ call assert(abs(Eee - E_madelung) < 5e-6_dp)
 end subroutine
 
 subroutine test7()
-real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :), fac(:, :, :)
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :), fac(:, :, :),&
+    R(:)
 real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
 integer, parameter :: natom = 8
@@ -305,9 +307,9 @@ do i = 1, natom
     print *, i, forces(:, i)
 end do
 print *, "FFT Forces:"
-call gaussian_charges([1._dp], reshape([0, 0, 0]*1._dp, [3, 1]), L, alpha, ne0)
-call real2fourier(ne0, ne0G)
-Vee0G = 4*pi*real(ne0G, dp) / G2
+allocate(R(10000))
+R = linspace(1._dp/10000, 0.1_dp, 10000)
+call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G)
 Vee0G(1, 1, 1) = 0
 do i = 1, natom
     fac = q(i)*L**3*Vee0G*aimag(neG*exp(-i_ * &
