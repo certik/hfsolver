@@ -247,6 +247,7 @@ real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
 integer, parameter :: natom = 8
 real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
+real(dp) :: stress(6), forces(3, natom)
 integer :: Ng, i
 
 L = 2
@@ -294,6 +295,13 @@ print *, "Eee_exact =", E_madelung
 print *, "error     =", abs(Eee - E_madelung)
 
 call assert(abs(Eee - E_madelung) < 2e-11_dp)
+
+call ewald_box(L, X, q, Eee, forces, stress)
+call assert(abs(Eee / 4 - E_madelung) < 1e-13)
+print *, "Forces:"
+do i = 1, natom
+    print *, i, forces(:, i)
+end do
 end subroutine
 
 end program
