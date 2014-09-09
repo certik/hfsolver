@@ -9,7 +9,7 @@ implicit none
 real(dp), parameter :: E_ewald_exact = -6.3839193288315013_dp
 ! Converged value for a Gaussian charge with alpha=5 (should be close, but not
 ! exactly equal to E_ewald_exact)
-real(dp), parameter :: E_gauss5_conv = -6.2425476594175731_dp
+real(dp), parameter :: E_gauss5_conv = -6.2425476594199409_dp
 
 ! Two charges:
 real(dp), parameter :: E_ewald_exact2  = -9.1591267925365365_dp
@@ -26,8 +26,8 @@ contains
 subroutine test1()
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
-real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z
-integer :: Ng, i, j, k
+real(dp) :: L, Eee, alpha, Z, X(3, 1)
+integer :: Ng
 
 L = 2
 Ng = 32
@@ -37,17 +37,9 @@ allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors(L, G, G2)
 
 alpha = 5
-Z = 3 ! Charge
-charge_pos = L/2  ! The charge position is in the middle
-do i = 1, size(ne, 1)
-    do j = 1, size(ne, 2)
-        do k = 1, size(ne, 3)
-            x = ([i, j, k]-1) * L / shape(ne) ! x is in [0, L)^3
-            r = sqrt(sum((x-charge_pos)**2))
-            ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
-        end do
-    end do
-end do
+X(:, 1) = L/2
+Z = 3
+call gaussian_charges([Z], X, L, alpha, ne)
 call real2fourier(ne, neG)
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
