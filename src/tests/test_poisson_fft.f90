@@ -250,7 +250,7 @@ real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
 integer, parameter :: natom = 8
 real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
-real(dp) :: stress(6), forces(3, natom)
+real(dp) :: stress(6), forces(3, natom), forces_ewald(3, natom)
 integer :: Ng, i
 
 L = 2
@@ -300,11 +300,11 @@ print *, "error     =", abs(Eee - E_madelung)
 
 call assert(abs(Eee - E_madelung) < 2e-11_dp)
 
-call ewald_box(L, X, q, Eee, forces, stress)
+call ewald_box(L, X, q, Eee, forces_ewald, stress)
 call assert(abs(Eee / 4 - E_madelung) < 1e-13)
 print *, "Ewald Forces:"
 do i = 1, natom
-    print *, i, forces(:, i)
+    print *, i, forces_ewald(:, i)
 end do
 print *, "FFT Forces:"
 allocate(R(10000))
@@ -320,6 +320,11 @@ do i = 1, natom
 end do
 do i = 1, natom
     print *, i, forces(:, i)
+end do
+print *, "Errors:"
+do i = 1, natom
+    print *, i, sqrt(sum((forces(:, i)-forces_ewald(:, i))**2) / &
+        sum(forces_ewald(:, i)**2))
 end do
 end subroutine
 
