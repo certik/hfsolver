@@ -124,8 +124,8 @@ end subroutine
 subroutine test4()
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :)
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :)
-real(dp) :: L, Eee, x(3), alpha, r, charge_pos(3), Z
-integer :: Ng, i, j, k, a, b, c
+real(dp) :: L, Eee, X(3, 2), alpha, Z
+integer :: Ng
 
 L = 2
 Ng = 32
@@ -135,36 +135,10 @@ allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors(L, G, G2)
 
 alpha = 5
-ne = 0
-do i = 1, size(ne, 1)
-    do j = 1, size(ne, 2)
-        do k = 1, size(ne, 3)
-            x = ([i, j, k]-1) * L / shape(ne) ! x is in [0, L)^3
-            charge_pos = L/4
-            Z = 3 ! Charge
-            do a = -1, 1
-            do b = -1, 1
-            do c = -1, 1
-                r = sqrt(sum((x-charge_pos+[a, b, c]*L)**2))
-                ne(i, j, k) = ne(i, j, k) + &
-                    Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
-            end do
-            end do
-            end do
-            charge_pos = 3*L/4
-            Z = -3 ! Charge
-            do a = -1, 1
-            do b = -1, 1
-            do c = -1, 1
-                r = sqrt(sum((x-charge_pos+[a, b, c]*L)**2))
-                ne(i, j, k) = ne(i, j, k) + &
-                    Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r**2)
-            end do
-            end do
-            end do
-        end do
-    end do
-end do
+X(:, 1) = [L/4, L/4, L/4]
+X(:, 2) = 3*[L/4, L/4, L/4]
+Z = 3
+call gaussian_charges([Z, -Z], X, L, alpha, ne)
 call real2fourier(ne, neG)
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
@@ -196,6 +170,32 @@ print *, "Ewald_exact =", E_ewald_exact2
 print *, "error       =", abs(E_ewald - E_ewald_exact2)
 
 call assert(abs(E_ewald - E_ewald_exact2) < 1e-12_dp)
+end subroutine
+
+subroutine gaussian_charges(q, r, L, alpha, ne)
+real(dp), intent(in) :: q(:), r(:, :), L, alpha
+real(dp), intent(out) :: ne(:, :, :)
+integer :: i, j, k, a, b, c, n
+real(dp) :: x(3), r2
+ne = 0
+do i = 1, size(ne, 1)
+do j = 1, size(ne, 2)
+do k = 1, size(ne, 3)
+    x = ([i, j, k]-1) * L / shape(ne) ! x is in [0, L)^3
+    do n = 1, size(r, 2)
+        do a = -1, 1
+        do b = -1, 1
+        do c = -1, 1
+            r2 = sum((x-r(:, n)+[a, b, c]*L)**2)
+            ne(i, j, k) = ne(i, j, k) + &
+                q(n)*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
+        end do
+        end do
+        end do
+    end do
+end do
+end do
+end do
 end subroutine
 
 end program
