@@ -23,6 +23,7 @@ call test4()
 call test5()
 call test6()
 call test7()
+call test8()
 
 contains
 
@@ -332,6 +333,102 @@ do i = 1, natom
     else
         call assert(rel < 1e-12_dp)
     end if
+end do
+end subroutine
+
+subroutine test8()
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :), fac(:, :, :),&
+    R(:)
+real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
+complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
+integer, parameter :: natom = 8
+real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
+real(dp) :: stress(6), forces(3, natom), forces_ewald(3, natom), rel
+integer :: Ng, i
+
+L = 2
+Ng = 64
+
+allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng))
+allocate(ne0(Ng, Ng, Ng), ne0G(Ng, Ng, Ng), Vee0G(Ng, Ng, Ng))
+call reciprocal_space_vectors(L, G, G2)
+
+alpha = 14
+! Cl^-
+xred(:, 1) = [0._dp, 0._dp, 0._dp]
+xred(:, 2) = [1._dp/2, 1._dp/2, 0._dp]
+xred(:, 3) = [1._dp/2, 0._dp, 1._dp/2]
+xred(:, 4) = [0._dp, 1._dp/2, 1._dp/2]
+! Na^+
+xred(:, 5) = [1._dp/2, 1._dp/2, 1._dp/2]
+xred(:, 6) = [1._dp/2, 0._dp, 0._dp]
+xred(:, 7) = [0._dp, 1._dp/2, 0._dp]
+xred(:, 8) = [0._dp, 0._dp, 1._dp/2]
+
+! We shift the y-position here, this makes the dipole moment non-zero
+
+xred(:, 1) = xred(:, 1) + 0.1_dp
+xred(:, 2) = [0.20_dp, 0.25_dp, 0.15_dp]
+xred(:, 3) = xred(:, 3) - 0.1_dp
+xred(:, 4) = xred(:, 4) + 0.05_dp
+xred(:, 5) = xred(:, 5) - 0.05_dp
+xred(:, 6) = xred(:, 6) + 0.15_dp
+xred(:, 7) = xred(:, 7) - 0.15_dp
+xred(:, 8) = xred(:, 8) + 0.20_dp
+
+q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
+X = xred*L
+call gaussian_charges(q, X, L, alpha, ne)
+call real2fourier(ne, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+
+Eee = integralG(L, VeeG*conjg(neG)) / 2
+do i = 1, natom
+    Eee = Eee - q(i)**2 * alpha / sqrt(2*pi) ! subtract self-energy
+end do
+
+alpha = 1.0760854113057650_dp ! Madelung constant
+E_madelung = -2*alpha/L
+
+Eee = Eee / 4
+
+print *, "Ng = ", Ng
+print *, "Eee       =", Eee
+print *, "Eee_exact =", E_madelung
+print *, "error     =", abs(Eee - E_madelung)
+
+call assert(abs(Eee - E_madelung) < 2e-7_dp)
+
+call ewald_box(L, X, q, Eee, forces_ewald, stress)
+call assert(abs(Eee / 4 - E_madelung) < 1e-13)
+print *, "Ewald Forces:"
+do i = 1, natom
+    print *, i, forces_ewald(:, i)
+end do
+print *, "FFT Forces:"
+allocate(R(10000))
+R = linspace(1._dp/10000, 0.1_dp, 10000)
+call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G)
+do i = 1, natom
+    ! Important: in the shift theorem, we need to use plus sign in exp(+iG*X),
+    ! because our FFT uses minus sign in the forward real -> fourier transform.
+    fac = q(i)*L**3*Vee0G*aimag(neG*exp(i_ * &
+        (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+    forces(1, i) = sum(G(:,:,:,1)*fac)
+    forces(2, i) = sum(G(:,:,:,2)*fac)
+    forces(3, i) = sum(G(:,:,:,3)*fac)
+end do
+do i = 1, natom
+    print *, i, forces(:, i)
+end do
+print *, "Errors:"
+do i = 1, natom
+    rel = sqrt(sum((forces(:, i)-forces_ewald(:, i))**2) / &
+            sum(forces_ewald(:, i)**2))
+    print *, i, rel
+    call assert(rel < 3e-5_dp)
 end do
 end subroutine
 
