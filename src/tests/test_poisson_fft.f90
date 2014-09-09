@@ -311,6 +311,8 @@ allocate(R(10000))
 R = linspace(1._dp/10000, 0.1_dp, 10000)
 call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G)
 do i = 1, natom
+    ! Important: in the shift theorem, we need to use plus sign in exp(+iG*X),
+    ! because our FFT uses minus sign in the forward real -> fourier transform.
     fac = q(i)*L**3*Vee0G*aimag(neG*exp(i_ * &
         (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
     forces(1, i) = sum(G(:,:,:,1)*fac)
