@@ -164,7 +164,6 @@ do j = 1, N
 do k = 1, N
     do m = 1, 4
         idx = idx + 1
-        print *, i, j, k, m, idx
         X(:, idx) = a * (atoms(:, m)+[i, j, k]-0.75_dp)
     end do
 end do
