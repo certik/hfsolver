@@ -213,6 +213,7 @@ real(dp) :: thres
 thres = maxval(abs(u)) * 1e-5_dp
 nn = 0
 ok = .false.
+last_s = .false. ! To fix compiler uninitialized variable warning
 do i = 1, size(u)
     ! skip small "tails" of the wavefunction whose oscillations we don't want to
     ! count
