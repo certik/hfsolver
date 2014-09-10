@@ -8,7 +8,7 @@ use constants, only: Ha2eV, pi
 use utils, only: loadtxt, assert
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
-use feutils, only: quad_gauss
+use feutils, only: quad_lobatto
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
@@ -21,9 +21,9 @@ p = 8
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-Nq = 25
-call free_energy2(1._dp, L, 8, 8, 8, p, T_au, nen, ne, &
-        Nq, quad_gauss, &
+Nq = 9
+call free_energy2(1._dp, L, 9, 9, 9, p, T_au, nen, ne, &
+        Nq, quad_lobatto, &
         Eee, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eee + Exc
 print *, "p =", p
