@@ -12,6 +12,7 @@ use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use md, only: positions_fcc
+use converged_energies, only: four_gaussians
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
@@ -43,16 +44,16 @@ print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 print *, "Errors:"
-print *, abs(Ts - (10.61904507_dp))
-print *, abs(Een - (-2.92172113_dp))
-print *, abs(Eee - (1.30109500_dp))
-print *, abs(Exc - (-1.43805890_dp))
-print *, abs(Etot - (7.56036004_dp))
-call assert(abs(Ts - (10.61904507_dp)) < 1e-8_dp)
-call assert(abs(Een - (-2.92172113_dp)) < 1e-8_dp)
-call assert(abs(Eee - (1.30109500_dp)) < 1e-8_dp)
-call assert(abs(Exc - (-1.43805890_dp)) < 1e-8_dp)
-call assert(abs(Etot - (7.56036004_dp)) < 1e-8_dp)
+print *, abs(Ts - four_gaussians(1))
+print *, abs(Een - four_gaussians(2))
+print *, abs(Eee - four_gaussians(3))
+print *, abs(Exc - four_gaussians(4))
+print *, abs(Etot - four_gaussians(5))
+call assert(abs(Ts - four_gaussians(1)) < 1e-8_dp)
+call assert(abs(Een - four_gaussians(2)) < 1e-8_dp)
+call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
+call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
+call assert(abs(Etot - four_gaussians(5)) < 1e-8_dp)
 
 contains
 
