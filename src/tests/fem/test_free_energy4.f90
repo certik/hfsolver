@@ -5,29 +5,46 @@ program test_free_energy4
 ! This test uses FE and produces the same result as test_free_energy_fft2
 
 use types, only: dp
-use ofdft_fe, only: free_energy2
-use constants, only: Ha2eV, pi
-use utils, only: loadtxt, assert
+use ofdft_fe, only: free_energy2, fe_data, initialize_fe
+use ofdft_fft, only: reciprocal_space_vectors, radial_potential_fourier, &
+    real2fourier
+use constants, only: Ha2eV, pi, i_
+use utils, only: loadtxt, assert, linspace
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use md, only: positions_fcc
 use converged_energies, only: four_gaussians
+use poisson3d_assembly, only: func2quad
+use fe_mesh, only: quad2fe_3d, fe_eval_xyz
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
 real(dp) :: Rcut, L, T_eV, T_au
 integer, parameter :: natom = 4
 real(dp) :: X(3, natom)
+integer :: Nex, Ney, Nez
+! This is for forces only:
+real(dp) :: fen(3, natom)
+real(dp), allocatable :: ne(:, :, :), R(:), Ven0G(:, :, :), fac(:, :, :), &
+    G(:, :, :, :), G2(:, :, :), fullsol(:)
+complex(dp), allocatable :: neG(:, :, :)
+real(dp), allocatable, dimension(:, :, :, :) :: nq_pos
+type(fe_data) :: fed
+integer :: i, j, k, Ng
+
 
 Rcut = 0.3_dp
 p = 8
+Nex = 8
+Ney = 8
+Nez = 8
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 Nq = 9
 call positions_fcc(X, L)
-call free_energy2(real(natom, dp), L, 8, 8, 8, p, T_au, nen, ne, &
+call free_energy2(real(natom, dp), L, Nex, Ney, Nez, p, T_au, nen, fne, &
         Nq, quad_lobatto, &
         Eee, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eee + Exc
@@ -55,6 +72,50 @@ call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
 call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
 call assert(abs(Etot - four_gaussians(5)) < 1e-8_dp)
 
+! ----------------------------------------------------------------------
+! Forces calculation:
+
+Ng = 80
+allocate(Ven0G(Ng, Ng, Ng), ne(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng), neG(Ng, Ng, Ng))
+
+
+call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_lobatto, fed)
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(fullsol(maxval(fed%in)))
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fne)
+call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
+        fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
+        nq_pos, fullsol)
+do i = 1, Ng
+do j = 1, Ng
+do k = 1, Ng
+    ne(i, j, k) = fe_eval_xyz(fed%xin, fed%nodes, fed%elems, fed%in, &
+        fullsol, [L, L, L]/Ng * ([i, j, k]-1))
+end do
+end do
+end do
+
+call reciprocal_space_vectors(L, G, G2)
+allocate(R(40000))
+R = linspace(1._dp/40000, 0.9_dp, 40000)
+call radial_potential_fourier(R, 1*erf(6*R)/R, L, 1._dp, Ven0G)
+call real2fourier(ne, neG)
+fen = 0
+do i = 1, natom
+    fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
+        (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+    fen(1, i) = sum(G(:,:,:,1)*fac)
+    fen(2, i) = sum(G(:,:,:,2)*fac)
+    fen(3, i) = sum(G(:,:,:,3)*fac)
+end do
+
+print *, "forces FE:"
+print *, fen(:, 1)
+print *, fen(:, 2)
+print *, fen(:, 3)
+print *, fen(:, 4)
+
 contains
 
 real(dp) function nen(x_, y_, z_) result(n)
@@ -75,7 +136,7 @@ do i = 1, natom
 end do
 end function
 
-real(dp) function ne(x, y, z) result(n)
+real(dp) function fne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
 real(dp), parameter :: alpha = 5, Z_ = 4
 real(dp) :: r
