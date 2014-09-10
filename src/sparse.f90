@@ -203,9 +203,13 @@ integer, intent(in) :: Ap(:), Aj(:)
 real(dp), intent(in) :: Ax(:), x(:)
 real(dp) :: y(size(Ap)-1)
 integer :: i
-forall (i=1:size(Ap)-1)
+!$omp parallel default(none) shared(Ap, Aj, Ax, x, y) private(i)
+!$omp do
+do i = 1, size(Ap)-1
     y(i) = dot_product(Ax(Ap(i):Ap(i+1)-1), x(Aj(Ap(i):Ap(i+1)-1)))
-end forall
+end do
+!$omp end do
+!$omp end parallel
 end function
 
 integer function lower_bound(A, val) result(i)
