@@ -60,11 +60,17 @@ real(dp) function nen(x_, y_, z_) result(n)
 real(dp), intent(in) :: x_, y_, z_
 real(dp), parameter :: alpha = 6, Z = 1
 real(dp) :: r2
-integer :: i
+integer :: i, a, b, c
 n = 0
 do i = 1, natom
-    r2 = (x_-X(1, i))**2 + (y_-X(1, i))**2 + (z_-X(3, i))**2
-    n = n - Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
+    do a = -1, 1
+    do b = -1, 1
+    do c = -1, 1
+        r2 = sum(([x_, y_, z_]-X(:, i)+[a, b, c]*L)**2)
+        n = n - Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
+    end do
+    end do
+    end do
 end do
 end function
 
