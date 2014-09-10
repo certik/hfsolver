@@ -75,13 +75,10 @@ contains
     ! Calculates y = M^-1 x
     real(dp), intent(in) :: x(:)
     real(dp) :: y(size(x))
-    integer :: i
     ! No preconditioning:
     !y = x
-    ! Jacobi normalization: M = diag(A):
-    do i = 1, size(x)
-        y(i) = x(i) / A_diag(i)
-    end do
+    ! Jacobi preconditioning: M = diag(A):
+    y = x / A_diag
     end function
 
 end function
