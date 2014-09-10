@@ -2,6 +2,7 @@ module isolve
 use types, only: dp
 use utils, only: stop_error
 use sparse, only: csr_matvec, csr_getvalue
+use openmp, only: omp_get_wtime
 implicit none
 private
 public solve_cg
@@ -20,10 +21,13 @@ logical, intent(in), optional :: verbose
 real(dp) :: x(size(b)) ! solution
 real(dp), dimension(size(b)) :: r, p, Ap_, z
 real(dp) :: r2, r2old, alpha, res_norm
+real(dp) :: A_diag(size(x0))
+real(dp) :: t1, t2, t1_omp, t2_omp
 integer :: i
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
+call precond_init()
 
 x = x0
 r = b - csr_matvec(Ap, Aj, Ax, x)
@@ -34,6 +38,8 @@ if (verbose_) then
     print *, "Conjugate Gradient solver"
     print *, "Iter    Residual ||A x - b||"
 end if
+call cpu_time(t1)
+t1_omp = omp_get_wtime()
 do i = 1, maxiter
     Ap_ = csr_matvec(Ap, Aj, Ax, p)
     alpha = r2old / dot_product(p, Ap_)
@@ -45,6 +51,14 @@ do i = 1, maxiter
         print "(i4, '      ', es10.2)", i, res_norm
     end if
     if (res_norm < tol) then
+        t2_omp = omp_get_wtime()
+        call cpu_time(t2)
+        print *, "solve_cg() statistics:"
+        print *, "    Fortran CPU time [s]:", t2-t1
+        print *, "    OpenMP walltime [s]: ", t2_omp-t1_omp
+        print *, "    # iterations:", i
+        print *, "    Matrix size:", size(x0)
+        print *, "    # non-zeros:", size(Ax)
         if (verbose_) then
             r = csr_matvec(Ap, Aj, Ax, x) - b
             write(*, '(1x,a,es10.2)') "Solution vector residual ||A x - b||/||bv||: ",  sqrt(dot_product(r, r) / dot_product(b, b))
@@ -61,17 +75,22 @@ call stop_error("Solution did not converge.")
 
 contains
 
+    subroutine precond_init()
+    ! Precalculate the diagonal of the A matrix
+    integer :: i
+    do i = 1, size(x)
+        A_diag(i) = csr_getvalue(Ap, Aj, Ax, i, i)
+    end do
+    end subroutine
+
     function precond(x) result(y)
     ! Calculates y = M^-1 x
     real(dp), intent(in) :: x(:)
     real(dp) :: y(size(x))
-    integer :: i
     ! No preconditioning:
     !y = x
-    ! Jacobi normalization: M = diag(A):
-    do i = 1, size(x)
-        y(i) = x(i) / csr_getvalue(Ap, Aj, Ax, i, i)
-    end do
+    ! Jacobi preconditioning: M = diag(A):
+    y = x / A_diag
     end function
 
 end function

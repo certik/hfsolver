@@ -77,6 +77,8 @@ ADDTEST(test_ewald6)
 
 ADDPROG(test_ofmd_fft)
 
+ADDTEST(test_poisson_fft)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
