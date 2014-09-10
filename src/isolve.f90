@@ -20,10 +20,12 @@ logical, intent(in), optional :: verbose
 real(dp) :: x(size(b)) ! solution
 real(dp), dimension(size(b)) :: r, p, Ap_, z
 real(dp) :: r2, r2old, alpha, res_norm
+real(dp) :: A_diag(size(x0))
 integer :: i
 logical :: verbose_
 verbose_ = .false.
 if (present(verbose)) verbose_ = verbose
+call precond_init()
 
 x = x0
 r = b - csr_matvec(Ap, Aj, Ax, x)
@@ -61,6 +63,14 @@ call stop_error("Solution did not converge.")
 
 contains
 
+    subroutine precond_init()
+    ! Precalculate the diagonal of the A matrix
+    integer :: i
+    do i = 1, size(x)
+        A_diag(i) = csr_getvalue(Ap, Aj, Ax, i, i)
+    end do
+    end subroutine
+
     function precond(x) result(y)
     ! Calculates y = M^-1 x
     real(dp), intent(in) :: x(:)
@@ -70,7 +80,7 @@ contains
     !y = x
     ! Jacobi normalization: M = diag(A):
     do i = 1, size(x)
-        y(i) = x(i) / csr_getvalue(Ap, Aj, Ax, i, i)
+        y(i) = x(i) / A_diag(i)
     end do
     end function
 
