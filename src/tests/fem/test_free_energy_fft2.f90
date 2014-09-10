@@ -40,8 +40,8 @@ Z = 1
 
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-allocate(R(10000))
-R = linspace(1._dp/10000, 0.9_dp, 10000)
+allocate(R(40000))
+R = linspace(1._dp/40000, 0.9_dp, 40000)
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G)
 
 call reciprocal_space_vectors(L, G, G2)
