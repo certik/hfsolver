@@ -1,0 +1,14 @@
+module converged_energies
+
+! This module stores energies for various test problems that both the FE and FFT
+! solvers must converged to (the solvers are in different programs that share
+! this module).
+
+use types, only: dp
+implicit none
+
+! [Ts, Een, Eee, Exc, Etot]
+real(dp), parameter :: four_gaussians(*) = [107.03329544_dp, 1.17805865_dp, &
+            20.81751993_dp, -8.98245221_dp, 120.04642181_dp]
+
+end module
