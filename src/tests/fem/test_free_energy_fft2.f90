@@ -8,7 +8,7 @@ use types, only: dp
 use constants, only: i_
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
-    reciprocal_space_vectors, free_energy_min
+    reciprocal_space_vectors, free_energy_min, real2fourier
 use constants, only: Ha2eV, pi
 use utils, only: loadtxt, stop_error, assert, linspace
 use splines, only: spline3pars, iixmin, poly3, spline3ders
@@ -21,12 +21,12 @@ integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), dFdn(:, :, :)
-real(dp), allocatable :: Ven0G(:, :, :)
-complex(dp), allocatable :: VenG(:, :, :)
+real(dp), allocatable :: Ven0G(:, :, :), fac(:, :, :)
+complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp) :: L, T_eV, T_au
 integer :: i, j, k
 integer, parameter :: natom = 4
-real(dp) :: X(3, natom), r_, alpha_ne, alpha_nen, x_, y_, z_
+real(dp) :: X(3, natom), fen(3, natom), r_, alpha_ne, alpha_nen, x_, y_, z_
 
 Ng = 80
 
@@ -40,7 +40,7 @@ alpha_ne = 5
 Z = 1
 
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
-allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(R(40000))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G)
@@ -83,4 +83,23 @@ call assert(abs(Een - four_gaussians(2)) < 1e-8_dp)
 call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
 call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
 call assert(abs(Etot - four_gaussians(5)) < 1e-8_dp)
+
+! ----------------------------------------------------------------------
+! Forces calculation:
+
+call real2fourier(ne, neG)
+fen = 0
+do i = 1, natom
+    fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
+        (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+    fen(1, i) = sum(G(:,:,:,1)*fac)
+    fen(2, i) = sum(G(:,:,:,2)*fac)
+    fen(3, i) = sum(G(:,:,:,3)*fac)
+end do
+
+print *, "forces FFT:"
+print *, fen(:, 1)
+print *, fen(:, 2)
+print *, fen(:, 3)
+print *, fen(:, 4)
 end program
