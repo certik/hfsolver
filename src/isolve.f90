@@ -2,7 +2,7 @@ module isolve
 use types, only: dp
 use utils, only: stop_error
 use sparse, only: csr_matvec, csr_getvalue
-use openmp, only: omp_get_wtime
+use openmp, only: omp_get_wtime, omp_get_max_threads, with_openmp
 implicit none
 private
 public solve_cg
@@ -54,8 +54,15 @@ do i = 1, maxiter
         t2_omp = omp_get_wtime()
         call cpu_time(t2)
         print *, "solve_cg() statistics:"
-        print *, "    Fortran CPU time [s]:", t2-t1
-        print *, "    OpenMP walltime [s]: ", t2_omp-t1_omp
+        if (with_openmp()) then
+            print "('     Time (OpenMP walltime) [s]:     ', f11.6)", &
+                t2_omp-t1_omp
+        end if
+        print "('     Total CPU time on all cores [s]:', f11.6)", t2-t1
+        if (with_openmp()) then
+            print "('     Speedup:  ', f7.2, 'x')", (t2-t1) / (t2_omp-t1_omp)
+        end if
+        print "('     # threads:', i4)", omp_get_max_threads()
         print *, "    # iterations:", i
         print *, "    Matrix size:", size(x0)
         print *, "    # non-zeros:", size(Ax)
