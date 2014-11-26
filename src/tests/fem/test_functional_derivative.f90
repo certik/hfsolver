@@ -4,7 +4,8 @@ program test_functional_derivative
 ! functional derivative propagation.
 
 use types, only: dp
-use ofdft_fe, only: free_energy2, fe_data, initialize_fe
+use ofdft_fe, only: free_energy2, fe_data, initialize_fe, &
+    free_energy2_low_level
 use ofdft_fft, only: reciprocal_space_vectors, radial_potential_fourier, &
     real2fourier
 use constants, only: Ha2eV, pi
@@ -24,6 +25,8 @@ integer, parameter :: natom = 4
 real(dp) :: X(3, natom)
 integer :: Nex, Ney, Nez
 
+real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
+type(fe_data) :: fed
 
 Rcut = 0.3_dp
 p = 8
@@ -35,9 +38,18 @@ T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 Nq = 9
 call positions_fcc(X, L)
-call free_energy2(real(natom, dp), L, Nex, Ney, Nez, p, T_au, nen, fne, &
-        Nq, quad_lobatto, &
-        Eee, Een, Ts, Exc, DOF)
+call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_lobatto, fed)
+
+allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, nen)
+nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fne)
+
+call free_energy2_low_level(real(natom, dp), T_au, nenq_pos, nq_pos, &
+        fed, Eee, Een, Ts, Exc)
+
+DOF = fed%Nb
+
 Etot = Ts + Een + Eee + Exc
 print *, "p =", p
 print *, "DOF =", DOF
