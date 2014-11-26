@@ -5,18 +5,19 @@ program test_functional_derivative
 
 use types, only: dp
 use ofdft_fe, only: free_energy2, fe_data, initialize_fe, &
-    free_energy2_low_level
+    free_energy2_low_level, free_energy
 use ofdft_fft, only: reciprocal_space_vectors, radial_potential_fourier, &
     real2fourier
 use constants, only: Ha2eV, pi
-use utils, only: loadtxt, assert, linspace
+use utils, only: loadtxt, assert, linspace, zeros
 use splines, only: spline3pars, iixmin, poly3
+use isolve, only: solve_cg
 use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use md, only: positions_fcc
 use converged_energies, only: four_gaussians
-use poisson3d_assembly, only: func2quad
-use fe_mesh, only: quad2fe_3d, fe_eval_xyz
+use poisson3d_assembly, only: func2quad, integral, assemble_3d_coo_rhs
+use fe_mesh, only: c2fullc_3d, fe2quad_3d, fe2quad_3d_lobatto
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
@@ -27,6 +28,16 @@ integer :: Nex, Ney, Nez
 
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
 type(fe_data) :: fed
+
+real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
+    psi, Venq, &
+    nenq_neutral
+integer :: max_iter
+real(dp) :: brent_eps, free_energy_
+real(dp) :: psi_norm
+real(dp) :: background
+real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
+real(dp) :: Nelec
 
 Rcut = 0.3_dp
 p = 8
@@ -45,8 +56,54 @@ allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 nenq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, nen)
 nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fne)
 
-call free_energy2_low_level(real(natom, dp), T_au, nenq_pos, nq_pos, &
-        fed, Eee, Een, Ts, Exc)
+Nelec = real(natom, dp)
+
+brent_eps = 1e-3_dp
+max_iter = 200
+
+allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+
+
+! Calculate Venq
+allocate(rhs(fed%Nb), sol(fed%Nb), fullsol(maxval(fed%in)))
+allocate(fullsol2(maxval(fed%in)))
+background = integral(fed%nodes, fed%elems, fed%wtq3, nenq_pos) / &
+    (fed%Lx*fed%Ly*fed%Lz)
+print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
+print *, "Subtracting constant background (Q/V): ", background
+nenq_neutral = nenq_pos - background
+print *, "Assembling RHS..."
+call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
+    fed%ib, fed%phi_v, rhs)
+print *, "sum(rhs):    ", sum(rhs)
+print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
+print *, "Solving..."
+sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 800)
+print *, "Converting..."
+call c2fullc_3d(fed%in, fed%ib, sol, fullsol)
+if (fed%spectral) then
+    call fe2quad_3d_lobatto(fed%elems, fed%xiq, fed%in, fullsol, Venq)
+else
+    call fe2quad_3d(fed%elems, fed%xin, fed%xiq, fed%phihq, fed%in, fullsol, Venq)
+end if
+print *, "Done"
+
+
+psi = sqrt(nq_pos)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
+print *, "Initial norm of psi:", psi_norm
+psi = sqrt(Nelec / psi_norm) * psi
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
+print *, "norm of psi:", psi_norm
+! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
+! save space:
+call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
+    Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
+    fed%phi_v, fed%jac_det, &
+    Eee, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
 
 DOF = fed%Nb
 
