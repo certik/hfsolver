@@ -211,12 +211,11 @@ end subroutine
 
 integer function get_maxval(nbfl, nlist) result(r)
 integer, intent(in) :: nbfl(0:), nlist(:, 0:)
-integer :: l, m
-r = 0
-do l = 0, ubound(nbfl, 1)
-    m = maxval(nlist(:nbfl(l), l))
-    if (m > r) r = m
-end do
+integer :: l
+logical :: mask(size(nlist, 1), 0:ubound(nlist, 2))
+mask = .false.
+forall(l=0:ubound(nbfl, 1)) mask(:nbfl(l), l) = .true.
+r = maxval(nlist, mask=mask)
 end function
 
 subroutine stoints2(Z, nbfl, nlist, zetalist, S, T, V, slater_)
