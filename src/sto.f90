@@ -60,6 +60,9 @@ subroutine calc_factorials(maxn, fact)
 integer, intent(in) :: maxn
 real(dp), intent(out), allocatable :: fact(:)
 integer :: n
+if (maxn < 0) then
+    call stop_error("calc_factorials: maxn >= 0 must hold")
+end if
 allocate(fact(0:maxn))
 do n = 0, maxn
     fact(n) = gamma(n + 1._dp)
@@ -206,6 +209,16 @@ do i = 1, size(nlist)
 end do
 end subroutine
 
+integer function get_maxval(nbfl, nlist) result(r)
+integer, intent(in) :: nbfl(0:), nlist(:, 0:)
+integer :: l, m
+r = 0
+do l = 0, ubound(nbfl, 1)
+    m = maxval(nlist(:nbfl(l), l))
+    if (m > r) r = m
+end do
+end function
+
 subroutine stoints2(Z, nbfl, nlist, zetalist, S, T, V, slater_)
 ! Just like stoints, but it only handles the radial part.
 ! To get the full 3D integrals, use slater2int22 and radialC2C.
@@ -219,7 +232,7 @@ real(dp), dimension(sum(nbfl)) :: zl
 integer :: m, n, mu, nu, i, j, k, l, Lmax, k_, ijkl, ndof
 integer, allocatable :: intindex(:, :, :, :)
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
-call calc_factorials(maxval(nlist)*4-1, fact)
+call calc_factorials(get_maxval(nbfl, nlist)*4-1, fact)
 ! Precalculate the radial integrals
 Lmax = ubound(nbfl, 1)
 ndof = sum(nbfl)
@@ -283,7 +296,7 @@ real(dp), allocatable, intent(out) :: V(:, :, :)
 real(dp), intent(in) :: D ! Debye screening parameter
 integer ::  n, l, mu, nu, Lmax
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
-call calc_factorials(maxval(nlist)*4-1, fact)
+call calc_factorials(get_maxval(nbfl, nlist)*4-1, fact)
 ! Precalculate the radial integrals
 Lmax = ubound(nbfl, 1)
 n = maxval(nbfl)
@@ -363,7 +376,7 @@ real(dp), intent(in) :: zl(:, 0:), C(:, :, 0:), R(:)
 ! u(:, n, l) are the values of eigenvector (n, l)
 real(dp) :: u(size(R), size(C, 2), 0:ubound(C, 3))
 integer :: n, l
-call calc_factorials(maxval(nl)*2, fact)
+call calc_factorials(get_maxval(nbfl, nl)*2, fact)
 u = 0
 do l = 0, ubound(nbfl, 1)
     do n = 1, nbfl(l)
@@ -501,7 +514,7 @@ integer,  dimension(sum(nbfl)) :: nl
 real(dp), dimension(sum(nbfl)) :: zl
 integer :: m, n, i, j, k, l, k_, ijkl, ndof, Lmax
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
-call calc_factorials(maxval(nlist)*4-1, fact)
+call calc_factorials(get_maxval(nbfl, nlist)*4-1, fact)
 if (.not. allocated(xiq)) then
     allocate(xiq(52), wtq(52))
     xiq = gauss_laguerre_pts(52)
@@ -711,7 +724,7 @@ cr_ = .false.
 if (present(verbose)) verbose_ = verbose
 if (present(cr)) cr_ = cr
 ! Precalculate factorials. The maximum factorial needed is given by 4*maxn-1:
-call calc_factorials(maxval(nlist)*4-1, fact)
+call calc_factorials(get_maxval(nbfl, nlist)*4-1, fact)
 print *, "Calculating Slater integrals with screening..."
 Lmax = ubound(nbfl, 1)
 ndof = sum(nbfl)
