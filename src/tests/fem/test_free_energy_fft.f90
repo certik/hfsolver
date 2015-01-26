@@ -17,7 +17,7 @@ use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use converged_energies, only: one_gaussian
 implicit none
-real(dp) :: Eee, Een, Ts, Exc, Etot
+real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
@@ -64,6 +64,7 @@ y = L/2
 z_ = L/2
 VenG = -VenG0 * exp(-i_*(G(:,:,:,1)*x+G(:,:,:,2)*y+G(:,:,:,3)*z_))
 call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+Etot_conv = sum(one_gaussian)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
@@ -76,10 +77,10 @@ print *, abs(Ts - one_gaussian(1))
 print *, abs(Een - one_gaussian(2))
 print *, abs(Eee - one_gaussian(3))
 print *, abs(Exc - one_gaussian(4))
-print *, abs(Etot - one_gaussian(5))
+print *, abs(Etot - Etot_conv)
 call assert(abs(Ts - one_gaussian(1)) < 1e-8_dp)
 call assert(abs(Een - one_gaussian(2)) < 1e-8_dp)
 call assert(abs(Eee - one_gaussian(3)) < 1e-8_dp)
 call assert(abs(Exc - one_gaussian(4)) < 1e-8_dp)
-call assert(abs(Etot - one_gaussian(5)) < 1e-8_dp)
+call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 end program

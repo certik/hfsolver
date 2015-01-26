@@ -20,7 +20,7 @@ use converged_energies, only: four_gaussians
 use poisson3d_assembly, only: func2quad
 use fe_mesh, only: quad2fe_3d, fe_eval_xyz
 implicit none
-real(dp) :: Eee, Een, Ts, Exc, Etot
+real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: p, DOF, Nq
 real(dp) :: Rcut, L, T_eV, T_au
 integer, parameter :: natom = 4
@@ -50,6 +50,7 @@ call free_energy2(real(natom, dp), L, Nex, Ney, Nez, p, T_au, nen, fne, &
         Nq, quad_lobatto, &
         Eee, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eee + Exc
+Etot_conv = sum(four_gaussians)
 print *, "p =", p
 print *, "DOF =", DOF
 print *, "Rcut =", Rcut
@@ -67,12 +68,12 @@ print *, abs(Ts - four_gaussians(1))
 print *, abs(Een - four_gaussians(2))
 print *, abs(Eee - four_gaussians(3))
 print *, abs(Exc - four_gaussians(4))
-print *, abs(Etot - four_gaussians(5))
+print *, abs(Etot - Etot_conv)
 call assert(abs(Ts - four_gaussians(1)) < 1e-8_dp)
 call assert(abs(Een - four_gaussians(2)) < 1e-8_dp)
 call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
 call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
-call assert(abs(Etot - four_gaussians(5)) < 1e-8_dp)
+call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 
 ! ----------------------------------------------------------------------
 ! Forces calculation:
