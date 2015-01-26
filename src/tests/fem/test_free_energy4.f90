@@ -1,6 +1,8 @@
 program test_free_energy4
 
-! Test for 4 Gaussian charges.
+! nuclear charge: 1 Gaussian
+! electronic charge: 4 Gaussians
+! calculation: single free energy evaluation
 
 ! This test uses FE and produces the same result as test_free_energy_fft2
 

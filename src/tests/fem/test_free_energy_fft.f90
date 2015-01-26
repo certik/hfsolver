@@ -1,5 +1,9 @@
 program test_free_energy_fft
 
+! nuclear charge: 1 Gaussian
+! electronic charge: 1 Gaussian
+! calculation: single free energy evaluation
+
 ! This test uses FFT and produces the same result as test_free_energy3
 
 use types, only: dp
