@@ -8,7 +8,7 @@ use ofdft_fe, only: free_energy2, fe_data, initialize_fe, &
     free_energy2_low_level, free_energy
 use ofdft_fft, only: reciprocal_space_vectors, radial_potential_fourier, &
     real2fourier
-use constants, only: Ha2eV, pi
+use constants, only: Ha2eV, pi, i_
 use utils, only: loadtxt, assert, linspace, zeros
 use splines, only: spline3pars, iixmin, poly3
 use isolve, only: solve_cg
@@ -32,12 +32,15 @@ type(fe_data) :: fed
 real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
     psi, Venq, &
     nenq_neutral
+complex(dp), allocatable, dimension(:, :, :, :) :: cpsi, cpsi2, cpsi3
+real(dp) :: dt
 integer :: max_iter
 real(dp) :: brent_eps, free_energy_
 real(dp) :: psi_norm
 real(dp) :: background
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
 real(dp) :: Nelec
+integer :: i
 
 Rcut = 0.3_dp
 p = 8
@@ -65,6 +68,9 @@ allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(cpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(cpsi2(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(cpsi3(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 
 
 ! Calculate Venq
@@ -104,6 +110,8 @@ call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, f
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
     Eee, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
+Hpsi = Hpsi * 2*psi
 
 DOF = fed%Nb
 
@@ -132,6 +140,24 @@ call assert(abs(Een - four_gaussians(2)) < 1e-8_dp)
 call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
 call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
 call assert(abs(Etot - Etot_conv) < 1e-8_dp)
+
+! Propagate
+
+cpsi = psi
+dt = 0.1_dp
+
+! Do first step by hand:
+print *, "First step"
+cpsi2 = cpsi
+cpsi = cpsi2 - i_*dt*Hpsi*cpsi2
+
+do i = 1, 3
+    print *, "iter =", i
+    cpsi3 = cpsi2; cpsi2 = cpsi
+    cpsi = cpsi3 - 2*I*dt*Hpsi*cpsi2
+    psi = abs(cpsi)
+end do
+print *, "Done"
 
 contains
 
