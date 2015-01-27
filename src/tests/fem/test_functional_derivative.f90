@@ -53,7 +53,7 @@ T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 Nq = 9
 if (natom == 1) then
-    X = reshape([L/2 + L/64, L/2, L/2], [3, 1])
+    X(:, 1) = [L/2 + L/64, L/2, L/2]
     conv_energies = one_gaussian
 else
     call positions_fcc(X, L)
