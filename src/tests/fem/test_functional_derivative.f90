@@ -144,7 +144,9 @@ call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 ! Propagate
 
 cpsi = psi
-dt = 0.1_dp
+print *, "E_max =", maxval(abs(Hpsi)), "; dt <", 1/maxval(abs(Hpsi))
+dt = 1/maxval(abs(Hpsi)) / 10 ! set dt 10x smaller than the limit
+print *, "dt =", dt
 
 ! Do first step by hand:
 print *, "First step"
