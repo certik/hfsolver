@@ -166,6 +166,8 @@ do i = 1, 3
     cpsi3 = cpsi2; cpsi2 = cpsi
     cpsi = cpsi3 - 2*i_*dt*Hpsi*cpsi2
     psi = abs(cpsi)
+    psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
+    print *, "norm of psi:", psi_norm
 end do
 print *, "Done"
 
