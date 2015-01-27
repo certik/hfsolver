@@ -34,8 +34,9 @@ r = b - csr_matvec(Ap, Aj, Ax, x)
 z = precond(r)
 p = z
 r2old = dot_product(r, z)
+print "('Conjugate Gradient solver (using ', i0, ' threads)')", &
+    omp_get_max_threads()
 if (verbose_) then
-    print *, "Conjugate Gradient solver"
     print *, "Iter    Residual ||A x - b||"
 end if
 call cpu_time(t1)
