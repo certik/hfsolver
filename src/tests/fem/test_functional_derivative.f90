@@ -15,14 +15,14 @@ use isolve, only: solve_cg
 use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use md, only: positions_fcc
-use converged_energies, only: four_gaussians
+use converged_energies, only: one_gaussian, four_gaussians
 use poisson3d_assembly, only: func2quad, integral, assemble_3d_coo_rhs
 use fe_mesh, only: c2fullc_3d, fe2quad_3d, fe2quad_3d_lobatto
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: p, DOF, Nq
 real(dp) :: Rcut, L, T_eV, T_au
-integer, parameter :: natom = 4
+integer, parameter :: natom = 4  ! Set this to 1 or 4
 real(dp) :: X(3, natom)
 integer :: Nex, Ney, Nez
 
@@ -41,6 +41,7 @@ real(dp) :: background
 real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
 real(dp) :: Nelec
 integer :: i
+real(dp) :: conv_energies(4)
 
 Rcut = 0.3_dp
 p = 8
@@ -51,7 +52,13 @@ L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 Nq = 9
-call positions_fcc(X, L)
+if (natom == 1) then
+    X = reshape([L/2 + L/64, L/2, L/2], [3, 1])
+    conv_energies = one_gaussian
+else
+    call positions_fcc(X, L)
+    conv_energies = four_gaussians
+end if
 call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_lobatto, fed)
 
 allocate(nenq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
@@ -116,7 +123,7 @@ Hpsi = Hpsi * 2*psi
 DOF = fed%Nb
 
 Etot = Ts + Een + Eee + Exc
-Etot_conv = sum(four_gaussians)
+Etot_conv = sum(conv_energies)
 print *, "p =", p
 print *, "DOF =", DOF
 print *, "Rcut =", Rcut
@@ -130,15 +137,15 @@ print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 print *, "Errors:"
-print *, abs(Ts - four_gaussians(1))
-print *, abs(Een - four_gaussians(2))
-print *, abs(Eee - four_gaussians(3))
-print *, abs(Exc - four_gaussians(4))
+print *, abs(Ts - conv_energies(1))
+print *, abs(Een - conv_energies(2))
+print *, abs(Eee - conv_energies(3))
+print *, abs(Exc - conv_energies(4))
 print *, abs(Etot - Etot_conv)
-call assert(abs(Ts - four_gaussians(1)) < 1e-8_dp)
-call assert(abs(Een - four_gaussians(2)) < 1e-8_dp)
-call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
-call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
+call assert(abs(Ts - conv_energies(1)) < 1e-8_dp)
+call assert(abs(Een - conv_energies(2)) < 1e-8_dp)
+call assert(abs(Eee - conv_energies(3)) < 1e-8_dp)
+call assert(abs(Exc - conv_energies(4)) < 1e-8_dp)
 call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 
 ! Propagate
@@ -208,7 +215,7 @@ end function
 
 real(dp) function fne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 5, Z_ = 4
+real(dp), parameter :: alpha = 5, Z_ = natom
 real(dp) :: r
 r = sqrt((x-L/2)**2+(y-L/2)**2+(z-L/2)**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
