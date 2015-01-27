@@ -161,13 +161,28 @@ psi = abs(cpsi)
 psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "norm of psi:", psi_norm
 
-do i = 1, 3
+do i = 1, 10
     print *, "iter =", i
     cpsi3 = cpsi2; cpsi2 = cpsi
     cpsi = cpsi3 - 2*i_*dt*Hpsi*cpsi2
     psi = abs(cpsi)
     psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
     print *, "norm of psi:", psi_norm
+
+    call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
+        Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
+        fed%phi_v, fed%jac_det, &
+        Eee, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+    Hpsi = Hpsi * 2*psi
+    Etot = Ts + Een + Eee + Exc
+    print *, "Summary of energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
 end do
 print *, "Done"
 
