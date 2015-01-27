@@ -153,6 +153,14 @@ print *, "First step"
 cpsi2 = cpsi
 cpsi = cpsi2 - i_*dt*Hpsi*cpsi2
 
+psi = abs(cpsi)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
+print *, "Initial norm of psi:", psi_norm
+cpsi = sqrt(Nelec / psi_norm) * cpsi
+psi = abs(cpsi)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
+print *, "norm of psi:", psi_norm
+
 do i = 1, 3
     print *, "iter =", i
     cpsi3 = cpsi2; cpsi2 = cpsi
