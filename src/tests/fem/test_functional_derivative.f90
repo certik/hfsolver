@@ -154,7 +154,7 @@ cpsi = cpsi2 - i_*dt*Hpsi*cpsi2
 do i = 1, 3
     print *, "iter =", i
     cpsi3 = cpsi2; cpsi2 = cpsi
-    cpsi = cpsi3 - 2*I*dt*Hpsi*cpsi2
+    cpsi = cpsi3 - 2*i_*dt*Hpsi*cpsi2
     psi = abs(cpsi)
 end do
 print *, "Done"
