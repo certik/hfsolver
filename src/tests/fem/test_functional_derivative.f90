@@ -145,8 +145,8 @@ print *, abs(Etot - Etot_conv)
 call assert(abs(Ts - conv_energies(1)) < 1e-8_dp)
 call assert(abs(Een - conv_energies(2)) < 1e-8_dp)
 call assert(abs(Eee - conv_energies(3)) < 1e-8_dp)
-call assert(abs(Exc - conv_energies(4)) < 1e-8_dp)
-call assert(abs(Etot - Etot_conv) < 1e-8_dp)
+call assert(abs(Exc - conv_energies(4)) < 1e-7_dp)
+call assert(abs(Etot - Etot_conv) < 1e-7_dp)
 
 ! Propagate
 
