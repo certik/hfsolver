@@ -148,7 +148,7 @@ call assemble_3d_precalc(p, Nq, &
     fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
     fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
     fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-    fed%wtq3, fed%phihq, fed%dphihq, fed%jac_det, Am_loc, fed%phi_v)
+    fed%wtq3, fed%dphihq, fed%jac_det, Am_loc)
 
 print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
@@ -157,7 +157,12 @@ fed%Nb = maxval(fed%ib)
 Ncoo = fed%Ne*(p+1)**6
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
-call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, &
+    fed%dphihq, &
+    fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
+    fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
+    fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
+    fed%wtq3, matAi_coo, matAj_coo, matAx_coo, idx)
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
     fed%Ap, fed%Aj, fed%Ax)

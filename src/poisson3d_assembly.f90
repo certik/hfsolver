@@ -172,34 +172,42 @@ end do
 !$omp end parallel
 end subroutine
 
-subroutine assemble_3d_coo_A(Ne, p, ib, Am_loc, matAi, matAj, matAx, idx)
+subroutine assemble_3d_coo_A(Ne, p, ib, dphihq, lx, ly, lz, wtq, matAi, matAj, matAx, idx)
 ! Assembles the matrix A
 ! Assumes ib is never 0!
 integer, intent(in):: ib(:, :, :, :)
 integer, intent(in) :: Ne, p
-real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+real(dp), intent(in) :: lx, ly, lz
+real(dp), intent(in):: wtq(:, :, :), dphihq(:, :)
 ! Allocate the following three arrays to Ne*(p+1)**6 elements
 integer, intent(out) :: matAi(:), matAj(:)
 real(dp), intent(out) :: matAx(:)
 integer, intent(out) :: idx
 integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
+real(dp) :: jacx, jacy, jacz, jac_det
 call assert(all(ib > 0))
 idx = 0
+jacx = lx/2
+jacy = ly/2
+jacz = lz/2
+jac_det = abs(jacx*jacy*jacz)
 do e = 1, Ne
-    do bz = 1, p+1
-    do by = 1, p+1
-    do bx = 1, p+1
-        j = ib(bx, by, bz, e)
-        do az = 1, p+1
-        do ay = 1, p+1
-        do ax = 1, p+1
-            i = ib(ax, ay, az, e)
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        i = ib(ax, ay, az, e)
+
+        by = ay
+        bz = az
+        do bx = 1, p+1
+            j = ib(bx, by, bz, e)
             if (j > i) cycle
             idx = idx + 1
             matAi(idx) = i
             matAj(idx) = j
-            matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+            matAx(idx) = sum(dphihq(:, ax)*dphihq(:, bx) / jacx**2 * &
+                jac_det * wtq(:, ay, az))
             if (abs(matAx(idx)) < 1e-12_dp) then
                 idx = idx - 1
                 cycle
@@ -209,11 +217,56 @@ do e = 1, Ne
                 idx = idx + 1
                 matAi(idx) = j
                 matAj(idx) = i
-                matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+                matAx(idx) = matAx(idx-1)
             end if
         end do
+
+        bx = ax
+        bz = az
+        do by = 1, p+1
+            j = ib(bx, by, bz, e)
+            if (j > i) cycle
+            idx = idx + 1
+            matAi(idx) = i
+            matAj(idx) = j
+            matAx(idx) = sum(dphihq(:, ay)*dphihq(:, by) / jacy**2 * &
+                jac_det * wtq(ax, :, az))
+            if (abs(matAx(idx)) < 1e-12_dp) then
+                idx = idx - 1
+                cycle
+            end if
+            if (i /= j) then
+                ! Symmetric contribution
+                idx = idx + 1
+                matAi(idx) = j
+                matAj(idx) = i
+                matAx(idx) = matAx(idx-1)
+            end if
         end do
+
+        bx = ax
+        by = ay
+        do bz = 1, p+1
+            j = ib(bx, by, bz, e)
+            if (j > i) cycle
+            idx = idx + 1
+            matAi(idx) = i
+            matAj(idx) = j
+            matAx(idx) = sum(dphihq(:, az)*dphihq(:, bz) / jacz**2 * &
+                jac_det * wtq(ax, ay, :))
+            if (abs(matAx(idx)) < 1e-12_dp) then
+                idx = idx - 1
+                cycle
+            end if
+            if (i /= j) then
+                ! Symmetric contribution
+                idx = idx + 1
+                matAi(idx) = j
+                matAj(idx) = i
+                matAx(idx) = matAx(idx-1)
+            end if
         end do
+
     end do
     end do
     end do
