@@ -126,12 +126,13 @@ call test_poisson([2._dp, 2._dp, 2._dp], 2, 3, 5, 6, 3, sol2, rhs2, &
 call test_poisson([2._dp, 2._dp, 2._dp], 2, 2, 2, 4, 3, sol3, rhs3, &
     5e-13_dp, 128/(35*pi), 1e-14_dp)
 
-! Analytically I am getting for the Hartree integral: 1152/(35*pi)
+! The analytic solution of the Hartree integral: 1152/(35*pi)
 !   http://nbviewer.ipython.org/5506706
-! Which is 9/44 times the FE value.
-! Also the solution does not seem to agree.
+! Which is also equal to the numerical integral using sol4*rhs4.
+! However, if the actual numerical solution is used (which does not agree with
+! sol4), the Hartree integral is 44/9 larger.
 call test_poisson([2._dp, 4._dp, 2._dp], 1, 1, 1, 4, 3, sol4, rhs4, &
-    40._dp, 5632/(35*pi), 5e-12_dp)
+    40._dp, 1152/(35*pi) * 44/9, 5e-12_dp)
 
 contains
 
