@@ -172,7 +172,7 @@ end do
 !$omp end parallel
 end subroutine
 
-subroutine assemble_3d_coo_A(Ne, p, ib, dphihq, lx, ly, lz, wtq, matAi, matAj, matAx, idx)
+subroutine assemble_3d_coo_A(Ne, p, ib, dphihq, lx, ly, lz, wtq, matAi, matAj, matAx, idx, jac_det)
 ! Assembles the matrix A
 ! Assumes ib is never 0!
 integer, intent(in):: ib(:, :, :, :)
@@ -183,9 +183,10 @@ real(dp), intent(in):: wtq(:, :, :), dphihq(:, :)
 integer, intent(out) :: matAi(:), matAj(:)
 real(dp), intent(out) :: matAx(:)
 integer, intent(out) :: idx
+real(dp), intent(out) :: jac_det
 integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
-real(dp) :: jacx, jacy, jacz, jac_det
+real(dp) :: jacx, jacy, jacz
 call assert(all(ib > 0))
 idx = 0
 jacx = lx/2

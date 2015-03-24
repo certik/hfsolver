@@ -99,7 +99,7 @@ integer :: Nn, ibc
 integer :: i, j, k
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
-real(dp), allocatable :: matAx_coo(:), wtq(:), Am_loc(:, :, :, :, :, :)
+real(dp), allocatable :: matAx_coo(:), wtq(:)
 integer :: idx
 
 ibc = 3 ! Periodic boundary condition
@@ -141,14 +141,6 @@ forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
         fed%phihq(i, j) =  phih(fed%xin, j, fed%xiq(i))
 forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
         fed%dphihq(i, j) = dphih(fed%xin, j, fed%xiq(i))
-allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
-allocate(fed%phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
-print *, "Precalculating element matrix"
-call assemble_3d_precalc(p, Nq, &
-    fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
-    fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
-    fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-    fed%wtq3, fed%dphihq, fed%jac_det, Am_loc)
 
 print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
@@ -162,7 +154,7 @@ call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, &
     fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
     fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
     fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-    fed%wtq3, matAi_coo, matAj_coo, matAx_coo, idx)
+    fed%wtq3, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
     fed%Ap, fed%Aj, fed%Ax)
