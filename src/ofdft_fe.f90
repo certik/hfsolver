@@ -146,7 +146,7 @@ print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, fed%ib)
 fed%Nb = maxval(fed%ib)
-Ncoo = fed%Ne*(p+1)**6
+Ncoo = fed%Ne*(p+1)**4*6
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
 call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, &
