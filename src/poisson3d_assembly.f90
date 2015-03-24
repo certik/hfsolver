@@ -108,34 +108,15 @@ subroutine assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, &
 integer, intent(in) :: p, Nq
 real(dp), intent(in) :: lx, ly, lz
 real(dp), intent(in):: wtq(:, :, :), dphihq(:, :)
-real(dp), dimension(Nq, Nq, Nq, p+1, p+1, p+1) :: phi_dx, phi_dy, phi_dz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz
 real(dp), intent(out) :: jac_det
 real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc
-! Precalculate basis functions:
-print *, "Precalculate basis functions"
-
-phi_dx = 0
-phi_dy = 0
-phi_dz = 0
-do az = 1, p+1
-do ay = 1, p+1
-do ax = 1, p+1
-    phi_dx(: , ay, az, ax, ay, az) = dphihq(:, ax)
-    phi_dy(ax, : , az, ax, ay, az) = dphihq(:, ay)
-    phi_dz(ax, ay, : , ax, ay, az) = dphihq(:, az)
-end do
-end do
-end do
-
+call assert(Nq == p + 1)
 jacx = lx/2
 jacy = ly/2
 jacz = lz/2
 jac_det = abs(jacx*jacy*jacz)
-phi_dx = phi_dx / jacx
-phi_dy = phi_dy / jacy
-phi_dz = phi_dz / jacz
 ! Precalculate element matrix:
 print *, "Precalculate element matrix"
 Am_loc = 0
