@@ -154,6 +154,7 @@ phi_dy = phi_dy / jacy
 phi_dz = phi_dz / jacz
 ! Precalculate element matrix:
 print *, "Precalculate element matrix"
+Am_loc = 0
 !$omp parallel default(none) shared(p, phi_dx, phi_dy, phi_dz, jac_det, wtq, Am_loc) private(ax, ay, az, bx, by, bz)
 !$omp do
 do bz = 1, p+1
@@ -163,7 +164,6 @@ do bx = 1, p+1
     do ay = 1, p+1
     do ax = 1, p+1
         Am_loc(ax, ay, az, bx, by, bz) = sum(( &
-            phi_dx(:, :, :, ax, ay, az)*phi_dx(:, :, :, bx, by, bz) + &
             phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
             phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
             * jac_det * wtq)
@@ -175,6 +175,17 @@ end do
 end do
 !$omp end do
 !$omp end parallel
+do bx = 1, p+1
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        Am_loc(ax, ay, az, bx, ay, az) = Am_loc(ax, ay, az, bx, ay, az) + &
+            sum(phi_dx(:, ay, az, ax, ay, az)*phi_dx(:, ay, az, bx, ay, az) * &
+                jac_det * wtq(:, ay, az))
+    end do
+    end do
+    end do
+end do
 end subroutine
 
 subroutine local_overlap_matrix(wtq, jac_det, phi_v, Am_loc)
