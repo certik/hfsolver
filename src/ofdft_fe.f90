@@ -171,17 +171,17 @@ if (WITH_UMFPACK) then
     print *, "done"
 end if
 
-print *, "Precalculating overlap element matrix"
-call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
-print *, "Assembling matrix S"
-call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
-print *, "COO -> CSR"
-call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
-    fed%Sp, fed%Sj, fed%Sx)
-print *, "CSR Matrix:"
-print *, "    dimension:", fed%Nb
-print *, "    number of nonzeros:", size(fed%Sx)
-print "('     density:',f11.8,'%')", size(fed%Sx)*100._dp / real(fed%Nb, dp)**2
+!print *, "Precalculating overlap element matrix"
+!call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
+!print *, "Assembling matrix S"
+!call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+!print *, "COO -> CSR"
+!call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
+!    fed%Sp, fed%Sj, fed%Sx)
+!print *, "CSR Matrix:"
+!print *, "    dimension:", fed%Nb
+!print *, "    number of nonzeros:", size(fed%Sx)
+!print "('     density:',f11.8,'%')", size(fed%Sx)*100._dp / real(fed%Nb, dp)**2
 end subroutine
 
 subroutine free_fe_umfpack(fed)
