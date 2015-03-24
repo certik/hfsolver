@@ -120,38 +120,26 @@ jac_det = abs(jacx*jacy*jacz)
 ! Precalculate element matrix:
 print *, "Precalculate element matrix"
 Am_loc = 0
-do bx = 1, p+1
-    do az = 1, p+1
-    do ay = 1, p+1
-    do ax = 1, p+1
+do az = 1, p+1
+do ay = 1, p+1
+do ax = 1, p+1
+    do bx = 1, p+1
         Am_loc(ax, ay, az, bx, ay, az) = Am_loc(ax, ay, az, bx, ay, az) + &
             sum(dphihq(:, ax)*dphihq(:, bx) / jacx**2 * &
                 jac_det * wtq(:, ay, az))
     end do
-    end do
-    end do
-end do
-do by = 1, p+1
-    do az = 1, p+1
-    do ay = 1, p+1
-    do ax = 1, p+1
+    do by = 1, p+1
         Am_loc(ax, ay, az, ax, by, az) = Am_loc(ax, ay, az, ax, by, az) + &
             sum(dphihq(:, ay)*dphihq(:, by) / jacy**2 * &
                 jac_det * wtq(ax, :, az))
     end do
-    end do
-    end do
-end do
-do bz = 1, p+1
-    do az = 1, p+1
-    do ay = 1, p+1
-    do ax = 1, p+1
+    do bz = 1, p+1
         Am_loc(ax, ay, az, ax, ay, bz) = Am_loc(ax, ay, az, ax, ay, bz) + &
             sum(dphihq(:, az)*dphihq(:, bz) / jacz**2 * &
                 jac_det * wtq(ax, ay, :))
     end do
-    end do
-    end do
+end do
+end do
 end do
 end subroutine
 
