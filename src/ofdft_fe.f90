@@ -7,7 +7,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     fe2quad_3d_lobatto, quad2fe_3d
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
-    assemble_3d_coo_rhs, local_overlap_matrix
+    assemble_3d_coo_rhs, local_overlap_matrix, assemble_3d_coo_rhs_spectral
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
     quad_lobatto
 !use linalg, only: solve
@@ -242,8 +242,13 @@ print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nenq_neutral = nenq_pos - background
 print *, "Assembling RHS..."
-call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
-    fed%ib, fed%phi_v, rhs)
+if (fed%spectral) then
+    call assemble_3d_coo_rhs_spectral(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+    fed%jac_det, fed%wtq3, fed%ib, rhs)
+else
+    call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, &
+        fed%wtq3, fed%ib, fed%phi_v, rhs)
+end if
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
@@ -410,7 +415,13 @@ nq_neutral = nq_pos - background
 if (verbose_) then
     print *, "Assembling RHS..."
 end if
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, phi_v, rhs)
+if (spectral) then
+    call assemble_3d_coo_rhs_spectral(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, &
+        ib, rhs)
+else
+    call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, &
+        ib, phi_v, rhs)
+end if
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
@@ -550,8 +561,13 @@ print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nenq_neutral = nenq_pos - background
 print *, "Assembling RHS..."
-call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
-    fed%ib, fed%phi_v, rhs)
+if (fed%spectral) then
+    call assemble_3d_coo_rhs_spectral(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+        fed%jac_det, fed%wtq3, fed%ib, rhs)
+else
+    call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+        fed%jac_det, fed%wtq3, fed%ib, fed%phi_v, rhs)
+end if
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
