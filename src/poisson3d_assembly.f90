@@ -171,7 +171,7 @@ do by = 1, p+1
     do ay = 1, p+1
     do ax = 1, p+1
         Am_loc(ax, ay, az, ax, by, az) = Am_loc(ax, ay, az, ax, by, az) + &
-            sum(dphihq(:, ay)*dphihq(:, by) / jacx**2 * &
+            sum(dphihq(:, ay)*dphihq(:, by) / jacy**2 * &
                 jac_det * wtq(ax, :, az))
     end do
     end do
@@ -182,7 +182,7 @@ do bz = 1, p+1
     do ay = 1, p+1
     do ax = 1, p+1
         Am_loc(ax, ay, az, ax, ay, bz) = Am_loc(ax, ay, az, ax, ay, bz) + &
-            sum(dphihq(:, az)*dphihq(:, bz) / jacx**2 * &
+            sum(dphihq(:, az)*dphihq(:, bz) / jacz**2 * &
                 jac_det * wtq(ax, ay, :))
     end do
     end do
