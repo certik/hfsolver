@@ -155,26 +155,6 @@ phi_dz = phi_dz / jacz
 ! Precalculate element matrix:
 print *, "Precalculate element matrix"
 Am_loc = 0
-!$omp parallel default(none) shared(p, phi_dx, phi_dy, phi_dz, jac_det, wtq, Am_loc) private(ax, ay, az, bx, by, bz)
-!$omp do
-do bz = 1, p+1
-do by = 1, p+1
-do bx = 1, p+1
-    do az = 1, p+1
-    do ay = 1, p+1
-    do ax = 1, p+1
-        Am_loc(ax, ay, az, bx, by, bz) = sum(( &
-!            phi_dy(:, :, :, ax, ay, az)*phi_dy(:, :, :, bx, by, bz) + &
-            phi_dz(:, :, :, ax, ay, az)*phi_dz(:, :, :, bx, by, bz)) &
-            * jac_det * wtq)
-    end do
-    end do
-    end do
-end do
-end do
-end do
-!$omp end do
-!$omp end parallel
 do bx = 1, p+1
     do az = 1, p+1
     do ay = 1, p+1
@@ -193,6 +173,17 @@ do by = 1, p+1
         Am_loc(ax, ay, az, ax, by, az) = Am_loc(ax, ay, az, ax, by, az) + &
             sum(dphihq(:, ay)*dphihq(:, by) / jacx**2 * &
                 jac_det * wtq(ax, :, az))
+    end do
+    end do
+    end do
+end do
+do bz = 1, p+1
+    do az = 1, p+1
+    do ay = 1, p+1
+    do ax = 1, p+1
+        Am_loc(ax, ay, az, ax, ay, bz) = Am_loc(ax, ay, az, ax, ay, bz) + &
+            sum(dphihq(:, az)*dphihq(:, bz) / jacx**2 * &
+                jac_det * wtq(ax, ay, :))
     end do
     end do
     end do
