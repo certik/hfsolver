@@ -103,34 +103,18 @@ if (verbose_) then
 end if
 end subroutine
 
-subroutine assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
-        dphihq, jac_det, Am_loc, phi_v)
+subroutine assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, &
+        dphihq, jac_det, Am_loc)
 integer, intent(in) :: p, Nq
 real(dp), intent(in) :: lx, ly, lz
-real(dp), intent(in):: wtq(:, :, :), phihq(:, :), dphihq(:, :)
+real(dp), intent(in):: wtq(:, :, :), dphihq(:, :)
 real(dp), dimension(Nq, Nq, Nq, p+1, p+1, p+1) :: phi_dx, phi_dy, phi_dz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz
 real(dp), intent(out) :: jac_det
-real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc, phi_v
-real(dp) :: phihq2(Nq, p+1)
+real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc
 ! Precalculate basis functions:
 print *, "Precalculate basis functions"
-phihq2 = phihq
-
-phihq2 = 0
-do ax = 1, p+1
-    phihq2(ax, ax) = 1
-end do
-
-phi_v = 0
-do az = 1, p+1
-do ay = 1, p+1
-do ax = 1, p+1
-    phi_v (ax, ay, az, ax, ay, az) = 1
-end do
-end do
-end do
 
 phi_dx = 0
 phi_dy = 0
