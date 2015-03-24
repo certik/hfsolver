@@ -108,38 +108,43 @@ subroutine assemble_3d_precalc(p, Nq, lx, ly, lz, wtq, phihq, &
 integer, intent(in) :: p, Nq
 real(dp), intent(in) :: lx, ly, lz
 real(dp), intent(in):: wtq(:, :, :), phihq(:, :), dphihq(:, :)
-integer :: iqx, iqy, iqz
 real(dp), dimension(Nq, Nq, Nq, p+1, p+1, p+1) :: phi_dx, phi_dy, phi_dz
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz
 real(dp), intent(out) :: jac_det
 real(dp), intent(out), dimension(:, :, :, :, :, :) :: Am_loc, phi_v
+real(dp) :: phihq2(Nq, p+1)
 ! Precalculate basis functions:
 print *, "Precalculate basis functions"
-!$omp parallel default(none) shared(p, Nq, phihq, dphihq, phi_v, phi_dx, phi_dy, phi_dz) private(ax, ay, az, iqx, iqy, iqz)
-!$omp do
+phihq2 = phihq
+
+phihq2 = 0
+do ax = 1, p+1
+    phihq2(ax, ax) = 1
+end do
+
+phi_v = 0
 do az = 1, p+1
 do ay = 1, p+1
 do ax = 1, p+1
-    do iqz = 1, Nq
-    do iqy = 1, Nq
-    do iqx = 1, Nq
-        phi_v (iqx, iqy, iqz, ax, ay, az) = &
-             phihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
-        phi_dx(iqx, iqy, iqz, ax, ay, az) = &
-            dphihq(iqx, ax) *  phihq(iqy, ay) *  phihq(iqz, az)
-        phi_dy(iqx, iqy, iqz, ax, ay, az) = &
-             phihq(iqx, ax) * dphihq(iqy, ay) *  phihq(iqz, az)
-        phi_dz(iqx, iqy, iqz, ax, ay, az) = &
-             phihq(iqx, ax) *  phihq(iqy, ay) * dphihq(iqz, az)
-    end do
-    end do
-    end do
+    phi_v (ax, ay, az, ax, ay, az) = 1
 end do
 end do
 end do
-!$omp end do
-!$omp end parallel
+
+phi_dx = 0
+phi_dy = 0
+phi_dz = 0
+do az = 1, p+1
+do ay = 1, p+1
+do ax = 1, p+1
+    phi_dx(: , ay, az, ax, ay, az) = dphihq(:, ax)
+    phi_dy(ax, : , az, ax, ay, az) = dphihq(:, ay)
+    phi_dz(ax, ay, : , ax, ay, az) = dphihq(:, az)
+end do
+end do
+end do
+
 jacx = lx/2
 jacy = ly/2
 jacz = lz/2
