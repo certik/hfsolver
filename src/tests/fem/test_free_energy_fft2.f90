@@ -1,6 +1,8 @@
 program test_free_energy_fft2
 
-! Test for 4 Gaussian charges.
+! nuclear charge: 1 Gaussian
+! electronic charge: 4 Gaussians
+! calculation: single free energy evaluation
 
 ! This test uses FFT and produces the same result as test_free_energy4
 
@@ -16,7 +18,7 @@ use interp3d, only: trilinear
 use md, only: positions_fcc
 use converged_energies, only: four_gaussians
 implicit none
-real(dp) :: Eee, Een, Ts, Exc, Etot
+real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
@@ -65,6 +67,7 @@ do i = 1, natom
         (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
 end do
 call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+Etot_conv = sum(four_gaussians)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
@@ -77,12 +80,12 @@ print *, abs(Ts - four_gaussians(1))
 print *, abs(Een - four_gaussians(2))
 print *, abs(Eee - four_gaussians(3))
 print *, abs(Exc - four_gaussians(4))
-print *, abs(Etot - four_gaussians(5))
+print *, abs(Etot - Etot_conv)
 call assert(abs(Ts - four_gaussians(1)) < 1e-8_dp)
 call assert(abs(Een - four_gaussians(2)) < 1e-8_dp)
 call assert(abs(Eee - four_gaussians(3)) < 1e-8_dp)
 call assert(abs(Exc - four_gaussians(4)) < 1e-8_dp)
-call assert(abs(Etot - four_gaussians(5)) < 1e-8_dp)
+call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 
 ! ----------------------------------------------------------------------
 ! Forces calculation:

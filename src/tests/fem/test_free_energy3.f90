@@ -1,5 +1,9 @@
 program test_free_energy3
 
+! nuclear charge: 1 Gaussian
+! electronic charge: 1 Gaussian
+! calculation: single free energy evaluation
+
 ! This test uses FE and produces the same result as test_free_energy_fft
 
 use types, only: dp
@@ -11,7 +15,7 @@ use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use converged_energies, only: one_gaussian
 implicit none
-real(dp) :: Eee, Een, Ts, Exc, Etot
+real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: p, DOF, Nq
 real(dp) :: Z
 real(dp) :: Rcut, L, T_eV, T_au
@@ -27,6 +31,7 @@ call free_energy2(1._dp, L, 9, 9, 9, p, T_au, nen, ne, &
         Nq, quad_lobatto, &
         Eee, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eee + Exc
+Etot_conv = sum(one_gaussian)
 print *, "p =", p
 print *, "DOF =", DOF
 print *, "Rcut =", Rcut
@@ -44,12 +49,12 @@ print *, abs(Ts - one_gaussian(1))
 print *, abs(Een - one_gaussian(2))
 print *, abs(Eee - one_gaussian(3))
 print *, abs(Exc - one_gaussian(4))
-print *, abs(Etot - one_gaussian(5))
+print *, abs(Etot - Etot_conv)
 call assert(abs(Ts - one_gaussian(1)) < 1e-8_dp)
 call assert(abs(Een - one_gaussian(2)) < 1e-8_dp)
 call assert(abs(Eee - one_gaussian(3)) < 1e-8_dp)
 call assert(abs(Exc - one_gaussian(4)) < 1e-8_dp)
-call assert(abs(Etot - one_gaussian(5)) < 1e-8_dp)
+call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 
 contains
 

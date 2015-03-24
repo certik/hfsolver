@@ -6,6 +6,7 @@ use utils, only: loadtxt, assert
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 use feutils, only: quad_gauss
+use converged_energies, only: one_gaussian
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
@@ -36,14 +37,14 @@ print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 ! The reference answers are converged to at least 1e-5:
-print *, abs(Ts  - (+10.61905))
-call assert(abs(Ts  - (+10.61905)) < 1e-4)
+print *, abs(Ts  - one_gaussian(1))
+call assert(abs(Ts  - one_gaussian(1)) < 1e-4)
 print *, abs(Een - (- 3.80769))
 call assert(abs(Een - (- 3.80769)) < 1e-4)
-print *, abs(Eh  - (+ 1.30109))
-call assert(abs(Eh  - (+ 1.30109)) < 1e-4)
-print *, abs(Exc  - (- 1.43806))
-call assert(abs(Exc  - (- 1.43806)) < 1e-4)
+print *, abs(Eh  - one_gaussian(3))
+call assert(abs(Eh  - one_gaussian(3)) < 1e-4)
+print *, abs(Exc  - one_gaussian(4))
+call assert(abs(Exc  - one_gaussian(4)) < 1e-4)
 
 contains
 

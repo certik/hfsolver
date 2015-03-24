@@ -7,6 +7,7 @@ use utils, only: loadtxt, stop_error, assert
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use feutils, only: quad_gauss
+use converged_energies, only: one_gaussian
 implicit none
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF, Nq
@@ -38,10 +39,10 @@ print "('    Eee  = ', f14.8)", Eh
 print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u.')", Etot
-call assert(abs(Ts - 10.61904507_dp) < 1e-8_dp)
+call assert(abs(Ts - one_gaussian(1)) < 1e-8_dp)
 call assert(abs(Een - (-3.77207363_dp)) < 3e-3_dp)
-call assert(abs(Eh - 1.30109486_dp) < 3e-4_dp)
-call assert(abs(Exc - (-1.43805889_dp)) < 1e-8_dp)
+call assert(abs(Eh - one_gaussian(3)) < 3e-4_dp)
+call assert(abs(Exc - one_gaussian(4)) < 1e-8_dp)
 
 contains
 
