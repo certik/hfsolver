@@ -4,10 +4,11 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
-    fe2quad_3d_lobatto, quad2fe_3d
+    fe2quad_3d_lobatto
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
-    assemble_3d_coo_rhs, local_overlap_matrix
+    assemble_3d_coo_rhs, local_overlap_matrix, &
+    assemble_3d_coo_rhs_spectral, assemble_3d_coo_A_spectral
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
     quad_lobatto
 !use linalg, only: solve
@@ -29,6 +30,8 @@ public free_energy_min, radial_density_fourier, fe_data, initialize_fe, &
 logical, parameter :: WITH_UMFPACK=.false.
 
 type fe_data
+    ! -------------------------------------------------------
+    ! Variables in this section are always defined.
     real(dp) :: Lx, Ly, Lz, jac_det
     integer :: p, Nb, Nq, Ne
     integer :: Nx, Ny, Nz ! Number of elements in each direction
@@ -39,17 +42,26 @@ type fe_data
     real(dp), allocatable :: nodes(:, :)
     ! elems(:, i) are nodes of the i-th element
     integer, allocatable :: elems(:, :)
-    real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
-    real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
+    real(dp), allocatable :: xin(:), xiq(:), wtq(:), wtq3(:, :, :)
+    real(dp), allocatable :: dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
-    ! The CSR matrix S (Sp, Sj, Sx) is the overlap matrix
-    integer, allocatable :: Sp(:), Sj(:)
-    real(dp), allocatable :: Sx(:)
     ! The CSR matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
     integer, allocatable :: Ap(:), Aj(:)
     real(dp), allocatable :: Ax(:)
-    ! If WITH_UMFPACK==.true., then 'matd' contains the factorized matrix A
-    ! (Ap, Aj, Ax). Otherwise it is unused.
+
+    ! -------------------------------------------------------
+    ! Variables in this section are only used if spectral==.false., otherwise
+    ! they are undefined.
+    real(dp), allocatable :: phihq(:, :)
+    real(dp), allocatable :: phi_v(:, :, :, :, :, :)
+    ! The CSR matrix S (Sp, Sj, Sx) is the overlap matrix
+    integer, allocatable :: Sp(:), Sj(:)
+    real(dp), allocatable :: Sx(:)
+
+    ! -------------------------------------------------------
+    ! Variables in this section are only used if WITH_UMFPACK==.true., otherwise
+    ! they are undefined.
+    ! 'matd' contains the factorized matrix A (Ap, Aj, Ax)
     type(umfpack_numeric) :: matd
 end type
 
@@ -84,7 +96,8 @@ call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
 Nb = fed%Nb
 end subroutine
 
-subroutine initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+subroutine initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed, &
+        spectral_speedup)
 ! Initializes the FE datastructures (returned in 'fed').
 ! The 'fed' derived type can be assumed to be read-only after this function
 ! returns it.
@@ -94,13 +107,21 @@ integer, intent(in) :: p ! polynomial order
 ! Quadrature order (1..64) and quadrature type (quad_lobatto or quad_gauss)
 integer, intent(in) :: Nq, quad_type
 type(fe_data), intent(out) :: fed ! FE datastructures
+! If .true. and Nq==p+1 and quad_type==quad_lobatto, then the special fast code
+! for spectral elements will be used. If .false., then the general FE machinery
+! will be used instead (it will provide the same results, just slower) --- this
+! is useful for testing the specialized fast code. Default .true.:
+logical, intent(in), optional :: spectral_speedup
 
 integer :: Nn, ibc
 integer :: i, j, k
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
-real(dp), allocatable :: matAx_coo(:), wtq(:), Am_loc(:, :, :, :, :, :)
+real(dp), allocatable :: matAx_coo(:), Am_loc(:, :, :, :, :, :)
 integer :: idx
+logical :: spectral_speedup_
+spectral_speedup_ = .true.
+if (present(spectral_speedup)) spectral_speedup_ = spectral_speedup
 
 ibc = 3 ! Periodic boundary condition
 
@@ -117,7 +138,8 @@ Nn = size(fed%nodes, 2)
 fed%Ne = size(fed%elems, 2)
 fed%Nq = Nq
 fed%p = p
-fed%spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
+fed%spectral = (spectral_speedup_ .and. Nq == p+1 .and. &
+    quad_type == quad_lobatto)
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", fed%Ne
@@ -131,9 +153,10 @@ end if
 
 allocate(fed%xin(p+1))
 call get_parent_nodes(2, p, fed%xin)
-allocate(fed%xiq(Nq), wtq(Nq), fed%wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(quad_type, Nq, fed%xiq, wtq)
-forall(i=1:Nq, j=1:Nq, k=1:Nq) fed%wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
+allocate(fed%xiq(Nq), fed%wtq(Nq), fed%wtq3(Nq, Nq, Nq))
+call get_parent_quad_pts_wts(quad_type, Nq, fed%xiq, fed%wtq)
+forall(i=1:Nq, j=1:Nq, k=1:Nq) &
+        fed%wtq3(i, j, k) = fed%wtq(i)*fed%wtq(j)*fed%wtq(k)
 allocate(fed%phihq(size(fed%xiq), size(fed%xin)))
 allocate(fed%dphihq(size(fed%xiq), size(fed%xin)))
 ! Tabulate parent basis at quadrature points
@@ -141,42 +164,64 @@ forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
         fed%phihq(i, j) =  phih(fed%xin, j, fed%xiq(i))
 forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
         fed%dphihq(i, j) = dphih(fed%xin, j, fed%xiq(i))
-allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
-allocate(fed%phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
-print *, "Precalculating element matrix"
-call assemble_3d_precalc(p, Nq, &
-    fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
-    fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
-    fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-    fed%wtq3, fed%phihq, fed%dphihq, fed%jac_det, Am_loc, fed%phi_v)
+if (.not. fed%spectral) then
+    allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
+    allocate(fed%phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+    print *, "Precalculating element matrix"
+    call assemble_3d_precalc(p, Nq, &
+        fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
+        fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
+        fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
+        fed%wtq3, fed%phihq, fed%dphihq, fed%jac_det, Am_loc, fed%phi_v)
+end if
 
 print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, fed%ib)
 fed%Nb = maxval(fed%ib)
-Ncoo = fed%Ne*(p+1)**6
+if (fed%spectral) then
+    Ncoo = fed%Ne*(p+1)**4*6
+else
+    Ncoo = fed%Ne*(p+1)**6
+end if
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
-call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+if (fed%spectral) then
+    call assemble_3d_coo_A_spectral(fed%Ne, fed%p, fed%ib, &
+        fed%dphihq, &
+        fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
+        fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
+        fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
+        fed%wtq, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
+else
+    call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+end if
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
     fed%Ap, fed%Aj, fed%Ax)
-print *, "DOFs =", fed%Nb
-print *, "nnz =", size(fed%Ax)
+print *, "CSR Matrix:"
+print *, "    dimension:", fed%Nb
+print *, "    number of nonzeros:", size(fed%Ax)
+print "('     density:',f11.8,'%')", size(fed%Ax)*100._dp / real(fed%Nb, dp)**2
 if (WITH_UMFPACK) then
     print *, "umfpack factorize"
     call factorize(fed%Nb, fed%Ap, fed%Aj, fed%Ax, fed%matd)
     print *, "done"
 end if
 
-print *, "Precalculating overlap element matrix"
-call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
-print *, "Assembling matrix S"
-call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
-print *, "COO -> CSR"
-call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
-    fed%Sp, fed%Sj, fed%Sx)
-print *, "nnz =", size(fed%Sx)
+if (.not. fed%spectral) then
+    print *, "Precalculating overlap element matrix"
+    call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
+    print *, "Assembling matrix S"
+    call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+    print *, "COO -> CSR"
+    call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
+        fed%Sp, fed%Sj, fed%Sx)
+    print *, "CSR Matrix:"
+    print *, "    dimension:", fed%Nb
+    print *, "    number of nonzeros:", size(fed%Sx)
+    print "('     density:',f11.8,'%')", size(fed%Sx)*100._dp / real(fed%Nb, dp)**2
+end if
 end subroutine
 
 subroutine free_fe_umfpack(fed)
@@ -237,8 +282,13 @@ print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nenq_neutral = nenq_pos - background
 print *, "Assembling RHS..."
-call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
-    fed%ib, fed%phi_v, rhs)
+if (fed%spectral) then
+    call assemble_3d_coo_rhs_spectral(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+    fed%jac_det, fed%wtq3, fed%ib, rhs)
+else
+    call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, &
+        fed%wtq3, fed%ib, fed%phi_v, rhs)
+end if
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
@@ -405,7 +455,13 @@ nq_neutral = nq_pos - background
 if (verbose_) then
     print *, "Assembling RHS..."
 end if
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, phi_v, rhs)
+if (spectral) then
+    call assemble_3d_coo_rhs_spectral(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, &
+        ib, rhs)
+else
+    call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, &
+        ib, phi_v, rhs)
+end if
 if (verbose_) then
     print *, "sum(rhs):    ", sum(rhs)
     print *, "integral rhs:", integral(nodes, elems, wtq3, nq_neutral)
@@ -414,7 +470,7 @@ end if
 if (WITH_UMFPACK) then
     call solve(Ap, Aj, Ax, sol, rhs, matd)
 else
-    sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 800)
+    sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 4000)
 end if
 if (verbose_) then
     print *, "Converting..."
@@ -545,15 +601,20 @@ print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nenq_neutral = nenq_pos - background
 print *, "Assembling RHS..."
-call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
-    fed%ib, fed%phi_v, rhs)
+if (fed%spectral) then
+    call assemble_3d_coo_rhs_spectral(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+        fed%jac_det, fed%wtq3, fed%ib, rhs)
+else
+    call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+        fed%jac_det, fed%wtq3, fed%ib, fed%phi_v, rhs)
+end if
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
 if (WITH_UMFPACK) then
     call solve(fed%Ap, fed%Aj, fed%Ax, sol, rhs, fed%matd)
 else
-    sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 800)
+    sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 4000)
 end if
 print *, "Converting..."
 call c2fullc_3d(fed%in, fed%ib, sol, fullsol)

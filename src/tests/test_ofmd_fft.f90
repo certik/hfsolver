@@ -15,7 +15,7 @@ use ofdft_fe, only: radial_density_fourier, initialize_fe, &
     free_energy_min_low_level, fe_data
 use interp3d, only: trilinear
 use poisson3d_assembly, only: func2quad
-use fe_mesh, only: quad2fe_3d, fe_eval_xyz, vtk_save
+use fe_mesh, only: quad2fe_3d, quad2fe_3d_lobatto, fe_eval_xyz, vtk_save
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -234,9 +234,13 @@ contains
 
     ! Calculate forces using FE density
     print *, "FULLSOL"
-    call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
-            fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
-            nq_pos, fullsol)
+    if (fed%spectral) then
+        call quad2fe_3d_lobatto(fed%Ne, fed%p, fed%in, nq_pos, fullsol)
+    else
+        call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
+                fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
+                nq_pos, fullsol)
+    end if
     print *, "ne (FFT) ="
     print *, ne(:3, :3, :3)
     print *, "neG (FFT) ="

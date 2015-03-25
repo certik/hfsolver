@@ -31,7 +31,7 @@ private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
     define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
     vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto, &
-    quad2fe_3d
+    quad2fe_3d, quad2fe_3d_lobatto
 
 contains
 
@@ -422,6 +422,28 @@ real(dp) :: rhs(Nb), sol(Nb)
 call assemble_3d_coo_rhs(Ne, p, uq, jac_det, wtq3, ib, phi_v, rhs)
 sol = solve_cg(Sp, Sj, Sx, rhs, zeros(size(rhs)), 1e-12_dp, 400)
 call c2fullc_3d(in, ib, sol, fullu)
+end subroutine
+
+subroutine quad2fe_3d_lobatto(Ne, p, in, uq, fullu)
+! Transforms quadrature-grid representation to FE-coefficient (fullu).
+! fullu is a full FE coefficient vector, having values for all nodes in the
+! mesh, including domain-boundary nodes.
+! Assumes the same 'jac_det' for each finite element and spectral elements.
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: uq(:, :, :, :)
+integer, intent(in) :: in(:, :, :, :)
+real(dp), intent(out) :: fullu(:)
+integer :: ie, iqx, iqy, iqz
+! The quad points are the coefficients for spectral elements
+do ie = 1, Ne
+    do iqz = 1, p+1
+    do iqy = 1, p+1
+    do iqx = 1, p+1
+        fullu(in(iqx, iqy, iqz, ie)) = uq(iqx, iqy, iqz, ie)
+    end do
+    end do
+    end do
+end do
 end subroutine
 
 subroutine fe2quad_3d_lobatto(elems, xiq, in, fullu, uq)
