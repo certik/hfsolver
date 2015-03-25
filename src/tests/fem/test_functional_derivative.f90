@@ -16,7 +16,8 @@ use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use md, only: positions_fcc
 use converged_energies, only: one_gaussian, four_gaussians
-use poisson3d_assembly, only: func2quad, integral, assemble_3d_coo_rhs
+use poisson3d_assembly, only: func2quad, integral, assemble_3d_coo_rhs, &
+    assemble_3d_coo_rhs_spectral
 use fe_mesh, only: c2fullc_3d, fe2quad_3d, fe2quad_3d_lobatto
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
@@ -89,8 +90,13 @@ print *, "Total (negative) ionic charge: ", background * (fed%Lx*fed%Ly*fed%Lz)
 print *, "Subtracting constant background (Q/V): ", background
 nenq_neutral = nenq_pos - background
 print *, "Assembling RHS..."
-call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, fed%jac_det, fed%wtq3, &
-    fed%ib, fed%phi_v, rhs)
+if (fed%spectral) then
+    call assemble_3d_coo_rhs_spectral(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+        fed%jac_det, fed%wtq3, fed%ib, rhs)
+else
+    call assemble_3d_coo_rhs(fed%Ne, fed%p, 4*pi*nenq_neutral, &
+        fed%jac_det, fed%wtq3, fed%ib, fed%phi_v, rhs)
+end if
 print *, "sum(rhs):    ", sum(rhs)
 print *, "integral rhs:", integral(fed%nodes, fed%elems, fed%wtq3, nenq_neutral)
 print *, "Solving..."
