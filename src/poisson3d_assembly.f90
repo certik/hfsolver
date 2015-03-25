@@ -205,6 +205,9 @@ do ax = 1, p+1
 end do
 end do
 
+! Make sure there are no zeros in the local matrix
+call assert(all(abs(a_loc) > 1e-12_dp))
+
 idx = 0
 do e = 1, Ne
     do az = 1, p+1
@@ -221,7 +224,6 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = a_loc(ax, bx) / jacx**2 * wtq(ay)*wtq(az)
-            !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
@@ -240,7 +242,6 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = a_loc(ay, by) / jacy**2 * wtq(ax)*wtq(az)
-            !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
@@ -259,7 +260,6 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = a_loc(az, bz) / jacz**2 * wtq(ax)*wtq(ay)
-            !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
