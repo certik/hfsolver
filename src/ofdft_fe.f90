@@ -42,7 +42,7 @@ type fe_data
     real(dp), allocatable :: nodes(:, :)
     ! elems(:, i) are nodes of the i-th element
     integer, allocatable :: elems(:, :)
-    real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :)
+    real(dp), allocatable :: xin(:), xiq(:), wtq(:), wtq3(:, :, :)
     real(dp), allocatable :: dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
     ! The CSR matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
@@ -117,7 +117,7 @@ integer :: Nn, ibc
 integer :: i, j, k
 integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
-real(dp), allocatable :: matAx_coo(:), wtq(:), Am_loc(:, :, :, :, :, :)
+real(dp), allocatable :: matAx_coo(:), Am_loc(:, :, :, :, :, :)
 integer :: idx
 logical :: spectral_speedup_
 spectral_speedup_ = .true.
@@ -153,9 +153,10 @@ end if
 
 allocate(fed%xin(p+1))
 call get_parent_nodes(2, p, fed%xin)
-allocate(fed%xiq(Nq), wtq(Nq), fed%wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(quad_type, Nq, fed%xiq, wtq)
-forall(i=1:Nq, j=1:Nq, k=1:Nq) fed%wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
+allocate(fed%xiq(Nq), fed%wtq(Nq), fed%wtq3(Nq, Nq, Nq))
+call get_parent_quad_pts_wts(quad_type, Nq, fed%xiq, fed%wtq)
+forall(i=1:Nq, j=1:Nq, k=1:Nq) &
+        fed%wtq3(i, j, k) = fed%wtq(i)*fed%wtq(j)*fed%wtq(k)
 allocate(fed%phihq(size(fed%xiq), size(fed%xin)))
 allocate(fed%dphihq(size(fed%xiq), size(fed%xin)))
 ! Tabulate parent basis at quadrature points
@@ -191,7 +192,7 @@ if (fed%spectral) then
         fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
         fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
         fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-        wtq, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
+        fed%wtq, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
 else
     call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
 end if
