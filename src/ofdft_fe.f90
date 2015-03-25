@@ -4,7 +4,7 @@ use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
-    fe2quad_3d_lobatto, quad2fe_3d
+    fe2quad_3d_lobatto
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
     assemble_3d_coo_rhs, local_overlap_matrix, &

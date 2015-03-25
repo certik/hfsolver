@@ -18,7 +18,7 @@ use feutils, only: quad_lobatto
 use md, only: positions_fcc
 use converged_energies, only: four_gaussians
 use poisson3d_assembly, only: func2quad
-use fe_mesh, only: quad2fe_3d, fe_eval_xyz
+use fe_mesh, only: quad2fe_3d, quad2fe_3d_lobatto, fe_eval_xyz
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: p, DOF, Nq
@@ -87,9 +87,13 @@ call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_lobatto, fed)
 allocate(nq_pos(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(fullsol(maxval(fed%in)))
 nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, fne)
-call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
-        fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
-        nq_pos, fullsol)
+if (fed%spectral) then
+    call quad2fe_3d_lobatto(fed%Ne, fed%p, fed%in, nq_pos, fullsol)
+else
+    call quad2fe_3d(fed%Ne, fed%Nb, fed%p, fed%jac_det, fed%wtq3, &
+            fed%Sp, fed%Sj, fed%Sx, fed%phi_v, fed%in, fed%ib, &
+            nq_pos, fullsol)
+end if
 do i = 1, Ng
 do j = 1, Ng
 do k = 1, Ng
