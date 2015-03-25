@@ -26,12 +26,13 @@ use quadrature, only: gauss_pts, gauss_wts, lobatto_wts, lobatto_pts
 use solvers, only: solve_sym
 use feutils, only: phih
 use isolve, only: solve_cg
+use utils, only: assert
 implicit none
 private
 public cartesian_mesh_2d, cartesian_mesh_3d, define_connect_tensor_2d, &
     define_connect_tensor_3d, c2fullc_2d, c2fullc_3d, fe2quad_2d, fe2quad_3d, &
     vtk_save, get_element_3d, fe_eval_xyz, line_save, fe2quad_3d_lobatto, &
-    quad2fe_3d, quad2fe_3d_lobatto
+    quad2fe_3d, quad2fe_3d_lobatto, cartesian_mesh_3d_mask
 
 contains
 
@@ -617,6 +618,74 @@ logical pure function point_in_hex(p1, p2, x) result(r)
 ! opposite corners p1 (lower, left, front) and p2 (upper, right, back).
 real(dp), intent(in) :: p1(:), p2(:), x(:)
 r = all(p1 <= x) .and. all(x <= p2)
+end function
+
+
+subroutine cartesian_mesh_3d_mask(myid, nx, ny, nz, nsubx, nsuby, nsubz, &
+        mask_elems)
+! Returns a mask for a subdomain "myid" within a uniform 3D cartesian mesh of
+! (nx, ny, nz) elements, where subdomains have (nsubx, nsuby, nsubz) elements.
+! Total number of elements in the domain in each direction
+integer, intent(in) :: nx, ny, nz
+! number of subdomains elements in x, y and z-directions
+integer, intent(in) :: nsubx, nsuby, nsubz
+! Processor id = 0, 1, 2, ...
+integer, intent(in) :: myid
+integer, allocatable, intent(out) :: mask_elems(:)
+integer :: Ne, i, j, k, idx
+integer :: nesubx, nesuby, nesubz
+integer :: iminmax(6)
+call assert(modulo(nx, nsubx) == 0)
+call assert(modulo(ny, nsuby) == 0)
+call assert(modulo(nz, nsubz) == 0)
+Ne = nx*ny*nz
+nesubx = nx / nsubx
+nesuby = ny / nsuby
+nesubz = nz / nsubz
+allocate(mask_elems(Ne))
+
+iminmax = get_minmax(myid+1, nsubx, nsuby, nsubz, nesubx, nesuby, nesubz)
+
+mask_elems = 0
+idx = 1
+do i = 1, nx
+    do j = 1, ny
+        do k = 1, nz
+            if     (i >= iminmax(1) .and. i <= iminmax(2) .and. &
+                    j >= iminmax(3) .and. j <= iminmax(4) .and. &
+                    k >= iminmax(5) .and. k <= iminmax(6)) then
+                mask_elems(idx) = 1
+            end if
+            idx = idx + 1
+        end do
+    end do
+end do
+end subroutine
+
+function get_minmax(id, nsubx, nsuby, nsubz, nesubx, nesuby, nesubz) result(r)
+! Calculates element indices belonging to the subdomain 'id'
+integer, intent(in) :: id ! The subdomain ID = 1, 2, 3, ...
+! number of subdomains in each direction:
+integer, intent(in) :: nsubx, nsuby, nsubz
+! number of elements in a subdomain in each direction:
+integer, intent(in) :: nesubx, nesuby, nesubz
+integer :: r(6) ! r = [iminx, imaxx, iminy, imaxy, iminz, imaxz]
+integer :: i, j, k, idx
+idx = 1
+do i = 1, nsubx
+    do j = 1, nsuby
+        do k = 1, nsubz
+            if (idx == id) then
+                r = [(i-1)*nesubx + 1, i*nesubx, &
+                     (j-1)*nesuby + 1, j*nesuby, &
+                     (k-1)*nesubz + 1, k*nesubz]
+                return
+            end if
+            idx = idx + 1
+        end do
+    end do
+end do
+call stop_error("get_minmax(): 'id' not found")
 end function
 
 end module
