@@ -90,6 +90,32 @@ if(WITH_UMFPACK)
     set(LIBS ${LIBS} ${UMFPACK_LIBRARIES})
 endif()
 
+# These need to go before Lapack
+set(WITH_BDDC no
+    CACHE BOOL "Build with BDDC support")
+if(WITH_BDDC)
+    # BDDCML
+    find_package(BDDCML REQUIRED)
+    set(LIBS ${LIBS} ${BDDCML_LIBRARIES})
+
+    # MUMPS
+    find_package(MUMPS REQUIRED)
+    set(LIBS ${LIBS} ${MUMPS_LIBRARIES})
+
+    # ParMETIS
+    find_package(ParMETIS REQUIRED)
+    set(LIBS ${LIBS} ${PARMETIS_LIBRARIES})
+
+    # SCALAPACK
+    find_package(SCALAPACK REQUIRED)
+    set(LIBS ${LIBS} ${SCALAPACK_LIBRARIES})
+
+    # BLOPEX
+    find_package(BLOPEX REQUIRED)
+    set(LIBS ${LIBS} ${BLOPEX_LIBRARIES})
+endif()
+
+
 # Lapack
 find_package(Lapack REQUIRED)
 set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
@@ -198,6 +224,14 @@ message("WITH_UMFPACK: ${WITH_UMFPACK}")
 if(WITH_UMFPACK)
     message("UMFPACK_INCLUDE_DIRS: ${UMFPACK_INCLUDE_DIRS}")
     message("UMFPACK_LIBRARIES: ${UMFPACK_LIBRARIES}")
+endif()
+message("WITH_BDDC: ${WITH_BDDC}")
+if(WITH_BDDC)
+    message("BDDCML_LIBRARIES: ${BDDCML_LIBRARIES}")
+    message("SCALAPACK_LIBRARIES: ${SCALAPACK_LIBRARIES}")
+    message("MUMPS_LIBRARIES: ${MUMPS_LIBRARIES}")
+    message("ParMETIS_LIBRARIES: ${PARMETIS_LIBRARIES}")
+    message("BLOPEX_LIBRARIES: ${BLOPEX_LIBRARIES}")
 endif()
 message("WITH_PYTHON: ${WITH_PYTHON}")
 message("WITH_OPENMP: ${WITH_OPENMP}")
