@@ -96,7 +96,8 @@ call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, energy_eps, &
 Nb = fed%Nb
 end subroutine
 
-subroutine initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed)
+subroutine initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_type, fed, &
+        spectral_speedup)
 ! Initializes the FE datastructures (returned in 'fed').
 ! The 'fed' derived type can be assumed to be read-only after this function
 ! returns it.
@@ -106,6 +107,11 @@ integer, intent(in) :: p ! polynomial order
 ! Quadrature order (1..64) and quadrature type (quad_lobatto or quad_gauss)
 integer, intent(in) :: Nq, quad_type
 type(fe_data), intent(out) :: fed ! FE datastructures
+! If .true. and Nq==p+1 and quad_type==quad_lobatto, then the special fast code
+! for spectral elements will be used. If .false., then the general FE machinery
+! will be used instead (it will provide the same results, just slower) --- this
+! is useful for testing the specialized fast code. Default .true.:
+logical, intent(in), optional :: spectral_speedup
 
 integer :: Nn, ibc
 integer :: i, j, k
@@ -113,6 +119,9 @@ integer :: Ncoo
 integer, allocatable :: matAi_coo(:), matAj_coo(:)
 real(dp), allocatable :: matAx_coo(:), wtq(:), Am_loc(:, :, :, :, :, :)
 integer :: idx
+logical :: spectral_speedup_
+spectral_speedup_ = .true.
+if (present(spectral_speedup)) spectral_speedup_ = spectral_speedup
 
 ibc = 3 ! Periodic boundary condition
 
@@ -129,7 +138,8 @@ Nn = size(fed%nodes, 2)
 fed%Ne = size(fed%elems, 2)
 fed%Nq = Nq
 fed%p = p
-fed%spectral = (Nq == p+1 .and. quad_type == quad_lobatto)
+fed%spectral = (spectral_speedup_ .and. Nq == p+1 .and. &
+    quad_type == quad_lobatto)
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", fed%Ne
