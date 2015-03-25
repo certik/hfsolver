@@ -209,10 +209,7 @@ do e = 1, Ne
             matAj(idx) = j
             matAx(idx) = sum(dphihq(:, ax)*dphihq(:, bx) / jacx**2 * &
                 jac_det * wtq(:, ay, az))
-            if (abs(matAx(idx)) < 1e-12_dp) then
-                idx = idx - 1
-                cycle
-            end if
+            !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
@@ -232,10 +229,7 @@ do e = 1, Ne
             matAj(idx) = j
             matAx(idx) = sum(dphihq(:, ay)*dphihq(:, by) / jacy**2 * &
                 jac_det * wtq(ax, :, az))
-            if (abs(matAx(idx)) < 1e-12_dp) then
-                idx = idx - 1
-                cycle
-            end if
+            !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
@@ -255,10 +249,7 @@ do e = 1, Ne
             matAj(idx) = j
             matAx(idx) = sum(dphihq(:, az)*dphihq(:, bz) / jacz**2 * &
                 jac_det * wtq(ax, ay, :))
-            if (abs(matAx(idx)) < 1e-12_dp) then
-                idx = idx - 1
-                cycle
-            end if
+            !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
                 idx = idx + 1
