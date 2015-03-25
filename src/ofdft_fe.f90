@@ -444,7 +444,7 @@ end if
 if (WITH_UMFPACK) then
     call solve(Ap, Aj, Ax, sol, rhs, matd)
 else
-    sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 800)
+    sol = solve_cg(Ap, Aj, Ax, rhs, zeros(size(rhs)), 1e-12_dp, 4000)
 end if
 if (verbose_) then
     print *, "Converting..."
@@ -588,7 +588,7 @@ print *, "Solving..."
 if (WITH_UMFPACK) then
     call solve(fed%Ap, fed%Aj, fed%Ax, sol, rhs, fed%matd)
 else
-    sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 800)
+    sol = solve_cg(fed%Ap, fed%Aj, fed%Ax, rhs, zeros(size(rhs)), 1e-12_dp, 4000)
 end if
 print *, "Converting..."
 call c2fullc_3d(fed%in, fed%ib, sol, fullsol)
