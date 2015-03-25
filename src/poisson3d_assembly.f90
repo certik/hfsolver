@@ -187,12 +187,25 @@ real(dp), intent(out) :: jac_det
 integer :: e, i, j
 integer :: ax, ay, az, bx, by, bz
 real(dp) :: jacx, jacy, jacz
+real(dp) :: t1, t2
+real(dp) :: a_loc(p+1, p+1)
 call assert(all(ib > 0))
-idx = 0
+
+call cpu_time(t1)
+
+
 jacx = lx/2
 jacy = ly/2
 jacz = lz/2
 jac_det = abs(jacx*jacy*jacz)
+
+do bx = 1, p+1
+do ax = 1, p+1
+    a_loc(ax, bx) = sum(dphihq(:, ax) * dphihq(:, bx) * wtq) * jac_det
+end do
+end do
+
+idx = 0
 do e = 1, Ne
     do az = 1, p+1
     do ay = 1, p+1
@@ -207,8 +220,7 @@ do e = 1, Ne
             idx = idx + 1
             matAi(idx) = i
             matAj(idx) = j
-            matAx(idx) = sum(dphihq(:, ax)*dphihq(:, bx) / jacx**2 * &
-                jac_det * wtq(:)*wtq(ay)*wtq(az))
+            matAx(idx) = a_loc(ax, bx) / jacx**2 * wtq(ay)*wtq(az)
             !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
@@ -227,8 +239,7 @@ do e = 1, Ne
             idx = idx + 1
             matAi(idx) = i
             matAj(idx) = j
-            matAx(idx) = sum(dphihq(:, ay)*dphihq(:, by) / jacy**2 * &
-                jac_det * wtq(ax)*wtq(:)*wtq(az))
+            matAx(idx) = a_loc(ay, by) / jacy**2 * wtq(ax)*wtq(az)
             !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
@@ -247,8 +258,7 @@ do e = 1, Ne
             idx = idx + 1
             matAi(idx) = i
             matAj(idx) = j
-            matAx(idx) = sum(dphihq(:, az)*dphihq(:, bz) / jacz**2 * &
-                jac_det * wtq(ax)*wtq(ay)*wtq(:))
+            matAx(idx) = a_loc(az, bz) / jacz**2 * wtq(ax)*wtq(ay)
             !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
@@ -263,6 +273,8 @@ do e = 1, Ne
     end do
     end do
 end do
+call cpu_time(t2)
+print *, "Assembly time:", t2-t1, "s"
 !call assert(idx == Ne*(p+1)**6)
 end subroutine
 
