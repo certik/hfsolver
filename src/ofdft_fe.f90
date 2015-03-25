@@ -7,7 +7,8 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     fe2quad_3d_lobatto, quad2fe_3d
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_csr, assemble_3d_coo_A, &
-    assemble_3d_coo_rhs, local_overlap_matrix, assemble_3d_coo_rhs_spectral
+    assemble_3d_coo_rhs, local_overlap_matrix, &
+    assemble_3d_coo_rhs_spectral, assemble_3d_coo_A_spectral
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, quad_gauss, &
     quad_lobatto
 !use linalg, only: solve
@@ -154,10 +155,23 @@ print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
 call define_connect_tensor_3d(Nex, Ney, Nez, p, ibc, fed%ib)
 fed%Nb = maxval(fed%ib)
-Ncoo = fed%Ne*(p+1)**6
+if (fed%spectral) then
+    Ncoo = fed%Ne*(p+1)**4*6
+else
+    Ncoo = fed%Ne*(p+1)**6
+end if
 allocate(matAi_coo(Ncoo), matAj_coo(Ncoo), matAx_coo(Ncoo))
 print *, "Assembling matrix A"
-call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+if (fed%spectral) then
+    call assemble_3d_coo_A_spectral(fed%Ne, fed%p, fed%ib, &
+        fed%dphihq, &
+        fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
+        fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
+        fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
+        wtq, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
+else
+    call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+end if
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
     fed%Ap, fed%Aj, fed%Ax)
