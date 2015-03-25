@@ -25,3 +25,6 @@ addtest(test_fft_ofmd)
 addtest(test_free_energy_fft converged_energies)
 addtest(test_free_energy_fft2 converged_energies)
 addtest(test_functional_derivative converged_energies)
+
+set_tests_properties(test_free_energy4 PROPERTIES LABELS slow)
+set_tests_properties(test_functional_derivative PROPERTIES LABELS slow)
