@@ -30,6 +30,8 @@ public free_energy_min, radial_density_fourier, fe_data, initialize_fe, &
 logical, parameter :: WITH_UMFPACK=.false.
 
 type fe_data
+    ! -------------------------------------------------------
+    ! Variables in this section are always defined.
     real(dp) :: Lx, Ly, Lz, jac_det
     integer :: p, Nb, Nq, Ne
     integer :: Nx, Ny, Nz ! Number of elements in each direction
@@ -40,17 +42,26 @@ type fe_data
     real(dp), allocatable :: nodes(:, :)
     ! elems(:, i) are nodes of the i-th element
     integer, allocatable :: elems(:, :)
-    real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :), phihq(:, :)
-    real(dp), allocatable :: phi_v(:, :, :, :, :, :), dphihq(:, :)
+    real(dp), allocatable :: xin(:), xiq(:), wtq3(:, :, :)
+    real(dp), allocatable :: dphihq(:, :)
     integer, allocatable :: in(:, :, :, :), ib(:, :, :, :)
-    ! The CSR matrix S (Sp, Sj, Sx) is the overlap matrix
-    integer, allocatable :: Sp(:), Sj(:)
-    real(dp), allocatable :: Sx(:)
     ! The CSR matrix A (Ap, Aj, Ax) is the dicrete Poisson system matrix
     integer, allocatable :: Ap(:), Aj(:)
     real(dp), allocatable :: Ax(:)
-    ! If WITH_UMFPACK==.true., then 'matd' contains the factorized matrix A
-    ! (Ap, Aj, Ax). Otherwise it is unused.
+
+    ! -------------------------------------------------------
+    ! Variables in this section are only used if spectral==.false., otherwise
+    ! they are undefined.
+    real(dp), allocatable :: phihq(:, :)
+    real(dp), allocatable :: phi_v(:, :, :, :, :, :)
+    ! The CSR matrix S (Sp, Sj, Sx) is the overlap matrix
+    integer, allocatable :: Sp(:), Sj(:)
+    real(dp), allocatable :: Sx(:)
+
+    ! -------------------------------------------------------
+    ! Variables in this section are only used if WITH_UMFPACK==.true., otherwise
+    ! they are undefined.
+    ! 'matd' contains the factorized matrix A (Ap, Aj, Ax)
     type(umfpack_numeric) :: matd
 end type
 
