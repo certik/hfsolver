@@ -178,7 +178,7 @@ subroutine assemble_3d_coo_A(Ne, p, ib, dphihq, lx, ly, lz, wtq, matAi, matAj, m
 integer, intent(in):: ib(:, :, :, :)
 integer, intent(in) :: Ne, p
 real(dp), intent(in) :: lx, ly, lz
-real(dp), intent(in):: wtq(:, :, :), dphihq(:, :)
+real(dp), intent(in):: wtq(:), dphihq(:, :)
 ! Allocate the following three arrays to Ne*(p+1)**6 elements
 integer, intent(out) :: matAi(:), matAj(:)
 real(dp), intent(out) :: matAx(:)
@@ -208,7 +208,7 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = sum(dphihq(:, ax)*dphihq(:, bx) / jacx**2 * &
-                jac_det * wtq(:, ay, az))
+                jac_det * wtq(:)*wtq(ay)*wtq(az))
             !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
@@ -228,7 +228,7 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = sum(dphihq(:, ay)*dphihq(:, by) / jacy**2 * &
-                jac_det * wtq(ax, :, az))
+                jac_det * wtq(ax)*wtq(:)*wtq(az))
             !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution
@@ -248,7 +248,7 @@ do e = 1, Ne
             matAi(idx) = i
             matAj(idx) = j
             matAx(idx) = sum(dphihq(:, az)*dphihq(:, bz) / jacz**2 * &
-                jac_det * wtq(ax, ay, :))
+                jac_det * wtq(ax)*wtq(ay)*wtq(:))
             !call assert(abs(matAx(idx)) > 1e-12_dp)
             if (i /= j) then
                 ! Symmetric contribution

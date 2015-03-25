@@ -154,7 +154,7 @@ call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, &
     fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
     fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
     fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-    fed%wtq3, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
+    wtq, matAi_coo, matAj_coo, matAx_coo, idx, fed%jac_det)
 print *, "COO -> CSR"
 call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
     fed%Ap, fed%Aj, fed%Ax)
