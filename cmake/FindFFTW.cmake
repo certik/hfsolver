@@ -1,12 +1,11 @@
+include(LibFindMacros)
 # Note:
 # fftw3.h is a C interface (all precisions)
 # fftw3q.f03 is a double precision Fortran interface
-find_path(FFTW_INCLUDE_DIR fftw3.h $ENV{PYTHONHPC}/include NO_DEFAULT_PATH)
-find_path(FFTW_INCLUDE_DIR fftw3.h)
-find_library(FFTW_LIBRARY fftw3 $ENV{PYTHONHPC}/lib NO_DEFAULT_PATH)
-find_library(FFTW_LIBRARY fftw3)
+libfind_include(fftw3.h fftw)
+libfind_library(fftw3 fftw)
 
-set(FFTW_LIBRARIES ${FFTW_LIBRARY})
+set(FFTW_LIBRARIES ${FFTW3_LIBRARY})
 set(FFTW_INCLUDE_DIRS ${FFTW_INCLUDE_DIR})
 
 if(EXISTS "${FFTW_INCLUDE_DIR}/fftw3.f03")
@@ -18,6 +17,6 @@ endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(FFTW DEFAULT_MSG
-    FFTW_LIBRARY FFTW_INCLUDE_DIR FFTW_INCLUDE_DIR_HAS_FORTRAN)
+    FFTW_LIBRARIES FFTW_INCLUDE_DIRS FFTW_INCLUDE_DIR_HAS_FORTRAN)
 
-mark_as_advanced(FFTW_INCLUDE_DIR FFTW_LIBRARY)
+mark_as_advanced(FFTW_INCLUDE_DIR FFTW3_LIBRARY)
