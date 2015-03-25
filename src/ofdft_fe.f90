@@ -142,14 +142,16 @@ forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
         fed%phihq(i, j) =  phih(fed%xin, j, fed%xiq(i))
 forall(i=1:size(fed%xiq), j=1:size(fed%xin)) &
         fed%dphihq(i, j) = dphih(fed%xin, j, fed%xiq(i))
-allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
-allocate(fed%phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
-print *, "Precalculating element matrix"
-call assemble_3d_precalc(p, Nq, &
-    fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
-    fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
-    fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
-    fed%wtq3, fed%phihq, fed%dphihq, fed%jac_det, Am_loc, fed%phi_v)
+if (.not. fed%spectral) then
+    allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
+    allocate(fed%phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
+    print *, "Precalculating element matrix"
+    call assemble_3d_precalc(p, Nq, &
+        fed%nodes(1, fed%elems(7, 1)) - fed%nodes(1, fed%elems(1, 1)), &
+        fed%nodes(2, fed%elems(7, 1)) - fed%nodes(2, fed%elems(1, 1)), &
+        fed%nodes(3, fed%elems(7, 1)) - fed%nodes(3, fed%elems(1, 1)), &
+        fed%wtq3, fed%phihq, fed%dphihq, fed%jac_det, Am_loc, fed%phi_v)
+end if
 
 print *, "local to global mapping"
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, fed%in)
@@ -185,17 +187,19 @@ if (WITH_UMFPACK) then
     print *, "done"
 end if
 
-print *, "Precalculating overlap element matrix"
-call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
-print *, "Assembling matrix S"
-call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
-print *, "COO -> CSR"
-call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
-    fed%Sp, fed%Sj, fed%Sx)
-print *, "CSR Matrix:"
-print *, "    dimension:", fed%Nb
-print *, "    number of nonzeros:", size(fed%Sx)
-print "('     density:',f11.8,'%')", size(fed%Sx)*100._dp / real(fed%Nb, dp)**2
+if (.not. fed%spectral) then
+    print *, "Precalculating overlap element matrix"
+    call local_overlap_matrix(fed%wtq3, fed%jac_det, fed%phi_v, Am_loc)
+    print *, "Assembling matrix S"
+    call assemble_3d_coo_A(fed%Ne, fed%p, fed%ib, Am_loc, matAi_coo, matAj_coo, matAx_coo, idx)
+    print *, "COO -> CSR"
+    call coo2csr_canonical(matAi_coo(:idx), matAj_coo(:idx), matAx_coo(:idx), &
+        fed%Sp, fed%Sj, fed%Sx)
+    print *, "CSR Matrix:"
+    print *, "    dimension:", fed%Nb
+    print *, "    number of nonzeros:", size(fed%Sx)
+    print "('     density:',f11.8,'%')", size(fed%Sx)*100._dp / real(fed%Nb, dp)**2
+end if
 end subroutine
 
 subroutine free_fe_umfpack(fed)
