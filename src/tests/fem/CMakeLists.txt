@@ -15,6 +15,10 @@ addprog(schroed3d)
 addprog(conv_poisson3d)
 addprog(ofmd)
 
+if(WITH_BDDC)
+    addprog(test_free_energy_bddc)
+endif()
+
 addtest(test_poisson3d)
 addtest(test_free_energy converged_energies)
 addtest(test_free_energy2 converged_energies)

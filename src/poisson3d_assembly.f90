@@ -9,7 +9,8 @@ private
 public assemble_3d, integral, func2quad, func_xyz, assemble_3d_precalc, &
     assemble_3d_coo, assemble_3d_csr, assemble_3d_coo_rhs, assemble_3d_coo_A, &
     local_overlap_matrix, assemble_3d_coo_rhs_spectral, &
-    assemble_3d_coo_A_spectral
+    assemble_3d_coo_A_spectral, assemble_3d_coo_A_subdomain, &
+    assemble_3d_coo_A_subdomain_spectral
 
 interface
     real(dp) function func_xyz(x, y, z)
@@ -251,6 +252,106 @@ end do
 !call assert(idx == Ne*(p+1)**6)
 end subroutine
 
+subroutine assemble_3d_coo_A_subdomain_spectral(Ne, p, ib, dphihq, &
+        lx, ly, lz, wtq, elem_mask, matAi, matAj, matAx, idx, &
+        jac_det, global_to_local)
+! Assembles the matrix A, assuming spectral elements (Guass-Lobatto integration
+! points and Nq=p+1).
+! Assumes ib is never 0!
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: lx, ly, lz
+real(dp), intent(in):: wtq(:), dphihq(:, :)
+integer, intent(in) :: elem_mask(:)
+integer, intent(out) :: matAi(:), matAj(:)
+real(dp), intent(out) :: matAx(:)
+integer, intent(out) :: idx
+real(dp), intent(out) :: jac_det
+integer, intent(out) :: global_to_local(:)
+integer :: e, i, j, counter
+integer :: ax, ay, az, bx, by, bz
+real(dp) :: jacx, jacy, jacz
+real(dp) :: t1, t2
+real(dp) :: a_loc(p+1, p+1)
+call assert(all(ib > 0))
+
+call cpu_time(t1)
+
+jacx = lx/2
+jacy = ly/2
+jacz = lz/2
+jac_det = abs(jacx*jacy*jacz)
+
+do bx = 1, p+1
+do ax = 1, p+1
+    a_loc(ax, bx) = sum(dphihq(:, ax) * dphihq(:, bx) * wtq) * jac_det
+end do
+end do
+
+! Make sure there are no zeros in the local matrix
+call assert(all(abs(a_loc) > 1e-12_dp))
+
+idx = 0
+global_to_local = 0
+do e = 1, Ne
+    if (elem_mask(e) == 1) then
+        do az = 1, p+1
+        do ay = 1, p+1
+        do ax = 1, p+1
+            i = ib(ax, ay, az, e)
+
+            by = ay
+            bz = az
+            do bx = 1, p+1
+                j = ib(bx, by, bz, e)
+                if (j < i) cycle
+                idx = idx + 1
+                matAi(idx) = i
+                matAj(idx) = j
+                matAx(idx) = a_loc(ax, bx) / jacx**2 * wtq(ay)*wtq(az)
+                global_to_local(i) = 1
+            end do
+
+            bx = ax
+            bz = az
+            do by = 1, p+1
+                j = ib(bx, by, bz, e)
+                if (j < i) cycle
+                idx = idx + 1
+                matAi(idx) = i
+                matAj(idx) = j
+                matAx(idx) = a_loc(ay, by) / jacy**2 * wtq(ax)*wtq(az)
+                global_to_local(i) = 1
+            end do
+
+            bx = ax
+            by = ay
+            do bz = 1, p+1
+                j = ib(bx, by, bz, e)
+                if (j < i) cycle
+                idx = idx + 1
+                matAi(idx) = i
+                matAj(idx) = j
+                matAx(idx) = a_loc(az, bz) / jacz**2 * wtq(ax)*wtq(ay)
+                global_to_local(i) = 1
+            end do
+
+        end do
+        end do
+        end do
+    end if
+end do
+call cpu_time(t2)
+print *, "Assembly time:", t2-t1, "s"
+counter = 0
+do i = 1, size(global_to_local)
+    if (global_to_local(i) /= 0) then
+        counter = counter + 1
+        global_to_local(i) = counter
+    end if
+end do
+end subroutine
+
 subroutine assemble_3d_coo_A_spectral(Ne, p, ib, dphihq, lx, ly, lz, wtq, matAi, matAj, matAx, idx, jac_det)
 ! Assembles the matrix A, assuming spectral elements (Guass-Lobatto integration
 ! points and Nq=p+1).
@@ -404,6 +505,61 @@ do e = 1, Ne
     end do
     end do
     end do
+end do
+end subroutine
+
+subroutine assemble_3d_coo_A_subdomain(Ne, p, rhsq, jac_det, wtq, ib, Am_loc, &
+        elem_mask, matAi, matAj, matAx, idx, global_to_local)
+! The actual, low level assembly
+real(dp), intent(in):: wtq(:, :, :), rhsq(:, :, :, :)
+integer, intent(in):: ib(:, :, :, :)
+integer, intent(in) :: Ne, p
+real(dp), intent(in) :: jac_det
+real(dp), intent(in) :: Am_loc(:, :, :, :, :, :)
+integer, intent(in) :: elem_mask(:)
+integer, intent(out) :: matAi(:), matAj(:)
+real(dp), intent(out) :: matAx(:)
+integer, intent(out) :: idx
+integer, intent(out) :: global_to_local(:)
+real(dp), dimension(size(wtq, 1), size(wtq, 2), size(wtq, 3)) :: fq
+integer :: e, i, j, counter
+integer :: ax, ay, az, bx, by, bz
+idx = 0
+global_to_local = 0
+do e = 1, Ne
+    if (elem_mask(e) == 1) then
+        fq = rhsq(:, :, :, e) * jac_det * wtq
+        do bz = 1, p+1
+        do by = 1, p+1
+        do bx = 1, p+1
+            j = ib(bx, by, bz, e)
+            call assert(j /= 0)
+            do az = 1, p+1
+            do ay = 1, p+1
+            do ax = 1, p+1
+                i = ib(ax, ay, az, e)
+                if (i == 0) cycle
+                call assert(i /= 0)
+                if (j < i) cycle
+                idx = idx + 1
+                matAi(idx) = i
+                matAj(idx) = j
+                matAx(idx) = Am_loc(ax, ay, az, bx, by, bz)
+                global_to_local(i) = 1
+            end do
+            end do
+            end do
+        end do
+        end do
+        end do
+    end if
+end do
+counter = 0
+do i = 1, size(global_to_local)
+    if (global_to_local(i) /= 0) then
+        counter = counter + 1
+        global_to_local(i) = counter
+    end if
 end do
 end subroutine
 
