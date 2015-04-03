@@ -12,7 +12,8 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
     cartesian_mesh_3d_mask
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc, assemble_3d_coo_A_subdomain, assemble_3d_coo_rhs
+    assemble_3d_precalc, assemble_3d_coo_A_subdomain_spectral, &
+    assemble_3d_coo_rhs_spectral
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -56,7 +57,6 @@ real(dp) :: background
 real(dp) :: Lx, Ly, Lz
 real(dp) :: beta, tmp
 integer :: myid, ierr, nproc
-real(dp), allocatable :: phi_v(:, :, :, :, :, :), Am_loc(:, :, :, :, :, :)
 !real(dp) :: lx, ly, lz
 real(dp) :: jac_det
 integer, allocatable :: matAi(:), matAj(:)
@@ -163,7 +163,7 @@ call cartesian_mesh_3d_mask(myid, Nex, Ney, Nez, nsubx, nsuby, nsubz, &
 !stop "OK"
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
-Nq = 20
+Nq = p+1
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
@@ -172,9 +172,7 @@ print *, "p =", p
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
-allocate(phi_v(Nq, Nq, Nq, p+1, p+1, p+1))
-allocate(Am_loc(Nq, Nq, Nq, Nq, Nq, Nq))
-call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
+call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
 forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
@@ -219,14 +217,12 @@ elx = nodes(1, elems(7, 1)) - nodes(1, elems(1, 1)) ! Element sizes
 ely = nodes(2, elems(7, 1)) - nodes(2, elems(1, 1))
 elz = nodes(3, elems(7, 1)) - nodes(3, elems(1, 1))
 print *, "precalculating"
-call assemble_3d_precalc(p, Nq, elx, ely, elz, wtq3, phihq, &
-        dphihq, jac_det, Am_loc, phi_v)
 allocate(global_to_local(Nb))
 print *, "assembling 1"
-call assemble_3d_coo_A_subdomain(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, &
-    Am_loc, mask_elems, matAi, matAj, matAx, idx, global_to_local)
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, phi_v, rhs)
-call assert(idx == Asize)
+call assemble_3d_coo_A_subdomain_spectral(Ne, p, ib, dphihq, elx, ely, elz, &
+    wtq, mask_elems, matAi, matAj, matAx, idx, jac_det, global_to_local)
+call assemble_3d_coo_rhs_spectral(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, &
+    ib, rhs)
 print *, "preparing data..."
 Nbsub = count(global_to_local /= 0)
 allocate(local_to_global(Nbsub))
@@ -286,8 +282,8 @@ allocate(rhss(Nbsub))
 rhss = rhs(local_to_global)
 allocate(sols(Nbsub))
 sols = 0
-matAi = global_to_local(matAi)
-matAj = global_to_local(matAj)
+matAi(:idx) = global_to_local(matAi(:idx))
+matAj(:idx) = global_to_local(matAj(:idx))
 
 nlevels = 2  ! bddc levels
 nsublev = [nproc, 1]
@@ -316,7 +312,7 @@ call bddcml_upload_subdomain_data(Ne, Nb, Nb, 3, 3, &
                ifixs,size(ifixs), fixvs,size(fixvs), &
                rhss,size(rhss), is_rhs_complete_int, &
                sols,size(sols), &
-               matrixtype, matAi, matAj, matAx, size(matAx), is_assembled_int, &
+               matrixtype, matAi, matAj, matAx, idx, is_assembled_int, &
                user_constraints, 0, 0, &
                element_data, 0, 0, &
                dof_data, 0)
@@ -367,7 +363,7 @@ nenq = nenq - background
 !    4*pi*nenq, Ap, Aj, Ax, rhs)
 
 print *, "assembly rhs"
-call assemble_3d_coo_rhs(Ne, p, 4*pi*nenq, jac_det, wtq3, ib, phi_v, rhs)
+call assemble_3d_coo_rhs_spectral(Ne, p, 4*pi*nenq, jac_det, wtq3, ib, rhs)
 rhss = rhs(local_to_global)
 
 print *, "update rhs"
