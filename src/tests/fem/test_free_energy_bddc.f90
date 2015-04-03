@@ -1,3 +1,6 @@
+! Configure with:
+! CC=mpicc CXX=mpic++ FC=mpif90 cmake -DCOMMON_DIR=$HASHSTACK -DWITH_BDDC=yes .
+
 module test_free_energy_bddc_utils
 
 use types, only: dp
