@@ -12,7 +12,7 @@ use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
     c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
     cartesian_mesh_3d_mask
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
-    assemble_3d_precalc, assemble_3d_coo_subdomain, assemble_3d_coo_rhs
+    assemble_3d_precalc, assemble_3d_coo_A_subdomain, assemble_3d_coo_rhs
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts
 use linalg, only: solve
 use isolve, only: solve_cg
@@ -223,8 +223,9 @@ call assemble_3d_precalc(p, Nq, elx, ely, elz, wtq3, phihq, &
         dphihq, jac_det, Am_loc, phi_v)
 allocate(global_to_local(Nb))
 print *, "assembling 1"
-call assemble_3d_coo_subdomain(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, &
-    Am_loc, phi_v, mask_elems, matAi, matAj, matAx, rhs, idx, global_to_local)
+call assemble_3d_coo_A_subdomain(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, &
+    Am_loc, mask_elems, matAi, matAj, matAx, idx, global_to_local)
+call assemble_3d_coo_rhs(Ne, p, 4*pi*nq_neutral, jac_det, wtq3, ib, phi_v, rhs)
 call assert(idx == Asize)
 print *, "preparing data..."
 Nbsub = count(global_to_local /= 0)
