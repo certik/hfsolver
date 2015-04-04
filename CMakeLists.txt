@@ -96,6 +96,7 @@ set(WITH_BDDC no
 if(WITH_BDDC)
     # BDDCML
     find_package(BDDCML REQUIRED)
+    include_directories(${BDDCML_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${BDDCML_LIBRARIES})
 
     # MUMPS
@@ -227,6 +228,7 @@ if(WITH_UMFPACK)
 endif()
 message("WITH_BDDC: ${WITH_BDDC}")
 if(WITH_BDDC)
+    message("BDDCML_INCLUDE_DIRS: ${BDDCML_INCLUDE_DIRS}")
     message("BDDCML_LIBRARIES: ${BDDCML_LIBRARIES}")
     message("SCALAPACK_LIBRARIES: ${SCALAPACK_LIBRARIES}")
     message("MUMPS_LIBRARIES: ${MUMPS_LIBRARIES}")
