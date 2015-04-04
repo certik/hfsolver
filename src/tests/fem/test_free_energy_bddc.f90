@@ -20,7 +20,8 @@ use isolve, only: solve_cg
 use utils, only: assert, zeros, stop_error
 use constants, only: pi
 use xc, only: xc_pz
-use mpi, only: mpi_comm_rank, mpi_double_precision, mpi_comm_size
+use mpi_interface, only: mpi_comm_rank, mpi_double_precision, mpi_comm_size, &
+    mpi_bcast
 use bddcml_interface_fortran, only: bddcml_init, &
     bddcml_upload_subdomain_data, bddcml_setup_preconditioner, bddcml_solve, &
     bddcml_download_global_solution, bddcml_change_subdomain_data, &
@@ -511,12 +512,9 @@ use constants, only: Ha2eV, pi
 use utils, only: loadtxt, assert
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
-use mpi
-!use mpi_base
-!use mpi_constants
+use mpi_interface, only: mpi_finalize, mpi_comm_world, mpi_comm_rank, &
+    mpi_comm_size, mpi_init
 implicit none
-
-!include "mpif.h"
 
 real(dp) :: Eh, Een, Ts, Exc, Etot
 integer :: p, DOF
