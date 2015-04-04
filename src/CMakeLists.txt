@@ -111,6 +111,12 @@ else()
     )
 endif()
 
+if(WITH_MPI)
+    set(SRC ${SRC}
+        mpi_interface.f90
+    )
+endif()
+
 add_library(hfsolver ${SRC})
 
 add_subdirectory(feast)

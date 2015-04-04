@@ -22,6 +22,10 @@ endif ()
 set(WITH_OPENMP yes
     CACHE BOOL "Build with OpenMP")
 
+set(WITH_MPI no
+    CACHE BOOL "Build with MPI support")
+
+
 
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # gfortran
@@ -94,8 +98,11 @@ endif()
 set(WITH_BDDC no
     CACHE BOOL "Build with BDDC support")
 if(WITH_BDDC)
+    set(WITH_MPI yes)
+
     # BDDCML
     find_package(BDDCML REQUIRED)
+    include_directories(${BDDCML_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${BDDCML_LIBRARIES})
 
     # MUMPS
@@ -140,9 +147,6 @@ if(WITH_FFTW)
     set(LIBS ${LIBS} ${FFTW_LIBRARIES})
 endif()
 
-
-set(WITH_MPI no
-    CACHE BOOL "Build with MPI support")
 
 # PETSc
 set(WITH_PETSC no
@@ -227,6 +231,7 @@ if(WITH_UMFPACK)
 endif()
 message("WITH_BDDC: ${WITH_BDDC}")
 if(WITH_BDDC)
+    message("BDDCML_INCLUDE_DIRS: ${BDDCML_INCLUDE_DIRS}")
     message("BDDCML_LIBRARIES: ${BDDCML_LIBRARIES}")
     message("SCALAPACK_LIBRARIES: ${SCALAPACK_LIBRARIES}")
     message("MUMPS_LIBRARIES: ${MUMPS_LIBRARIES}")
