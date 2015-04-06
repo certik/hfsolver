@@ -104,7 +104,7 @@ integer :: Asize
 ! use recycling of Krylov subspace
 !     0 - no recycling used
 !     1 - basis of the Krylov subspace will be orthogonalized and also used for new right hand sides
-      integer,parameter :: recycling_int = 1
+      integer,parameter :: recycling_int = 0
 ! size of the Krylov subspace basis to store
       integer,parameter :: max_number_of_stored_vectors = 50
 
