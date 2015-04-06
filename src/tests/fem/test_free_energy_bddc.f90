@@ -3,6 +3,14 @@
 ! make
 ! cd src/tests/fem
 ! mpirun -np 2 ./test_free_energy_bddc
+!
+! Conejo:
+! module load gcc/4.8.2 openmpi
+! export HASHSTACK=/users/certik/repos/hashstack/default
+! CC=mpicc CXX=mpic++ FC=mpif90 cmake -DCOMMON_DIR=$HASHSTACK -DWITH_BDDC=yes .
+! make
+! cd src/tests/fem
+! mpiexec -n 2 ./test_free_energy_bddc
 
 module test_free_energy_bddc_utils
 
