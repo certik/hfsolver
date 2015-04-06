@@ -112,9 +112,17 @@ else()
 endif()
 
 if(WITH_MPI)
-    set(SRC ${SRC}
-        mpi_interface.f90
-    )
+    if(MPI_HAS_FINALIZE)
+        # mpi_finalize() is part of the 'mpi' module, we do not declare it
+        set(SRC ${SRC}
+            mpi_interface2.f90
+        )
+    else()
+        # mpi_finalize() is not part of the 'mpi' module, we need to declare it
+        set(SRC ${SRC}
+            mpi_interface1.f90
+        )
+    endif()
 endif()
 
 add_library(hfsolver ${SRC})

@@ -164,6 +164,8 @@ endif()
 # MPI
 if (WITH_MPI)
     find_package(MPI REQUIRED)
+    set(MPI_HAS_FINALIZE no
+        CACHE BOOL "mpi_finalize() is part of the 'mpi' module")
     include_directories(${MPI_INCLUDE_PATH})
     set(LIBS ${LIBS} ${MPI_LIBRARIES})
     set(CMAKE_C_FLAGS_DEBUG
@@ -246,4 +248,5 @@ if (WITH_MPI)
     message("MPI_LIBRARIES: ${MPI_LIBRARIES}")
     message("MPI_COMPILE_FLAGS: ${MPI_COMPILE_FLAGS}")
     message("MPI_LINK_FLAGS: ${MPI_LINK_FLAGS}")
+    message("MPI_HAS_FINALIZE: ${MPI_HAS_FINALIZE}")
 endif()
