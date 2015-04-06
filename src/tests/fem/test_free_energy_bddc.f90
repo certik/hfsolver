@@ -17,7 +17,7 @@ module test_free_energy_bddc_utils
 use types, only: dp
 use feutils, only: phih, dphih
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d, &
-    c2fullc_3d, fe2quad_3d, vtk_save, fe_eval_xyz, line_save, &
+    c2fullc_3d, fe2quad_3d_lobatto, vtk_save, fe_eval_xyz, line_save, &
     cartesian_mesh_3d_mask
 use poisson3d_assembly, only: assemble_3d, integral, func2quad, func_xyz, &
     assemble_3d_precalc, assemble_3d_coo_A_subdomain_spectral, &
@@ -365,7 +365,7 @@ print *, "myid = ", myid, "Nbsub = ", Nbsub
 print *, "fullc"
 call c2fullc_3d(in, ib, sol, fullsol)
 print *, "converting to quadrature points"
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Vhq)
+call fe2quad_3d_lobatto(elems, xin, in, fullsol, Vhq)
 
 print *, "background"
 background = integral(nodes, elems, wtq3, nenq) / (Lx*Ly*Lz)
@@ -412,7 +412,7 @@ print *, "fullc"
 
 call c2fullc_3d(in, ib, sol, fullsol)
 print *, "converting to quad points"
-call fe2quad_3d(elems, xin, xiq, phihq, in, fullsol, Venq)
+call fe2quad_3d_lobatto(elems, xin, in, fullsol, Venq)
 !print *, "Saving Ven to VTK"
 !call vtk_save("Venq.vtk", Nex, Ney, Nez, nodes, elems, xiq, Venq)
 !print *, "Saving values of Ven on a line"
