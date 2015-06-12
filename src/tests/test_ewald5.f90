@@ -10,7 +10,7 @@ program test_ewald5
 
 use types, only: dp
 use constants, only: ang2bohr, kJmol2Ha
-use ewald_sums, only: ewald, ewald2, direct_sum, fred2fcart
+use ewald_sums, only: ewald, ewald2, fred2fcart
 use utils, only: assert, init_random
 implicit none
 
