@@ -1,6 +1,6 @@
 program ofmd_fft
 use types, only: dp
-use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV, pi
+use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, minimize_energy, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
@@ -23,7 +23,6 @@ real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
-real(dp), allocatable :: nen(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
@@ -35,7 +34,6 @@ call read_pseudo("fem/H.pseudo.gaussian2", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-allocate(nen(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
@@ -119,7 +117,6 @@ contains
     real(dp), allocatable :: fewald(:, :), q(:), fen(:, :)
     real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
-    real(dp) :: Eee_fe, Een_fe, Ts_fe, Exc_fe, Etot_fe
     integer :: i
     N = size(X, 2)
     ! TODO: this can be done in the main program
@@ -142,7 +139,6 @@ contains
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
 
     ! Energy calculation
-    ! old eps: 3.6749308286427368e-5_dp
     ne=1._dp / L**3
     call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
             Eee, Een, Ts, Exc, Etot)
@@ -157,20 +153,8 @@ contains
     print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
-
-    call fourier2real(VenG*G2/(4*pi), nen)
-
-    Etot_fe = Eee_fe + Een_fe + Ts_fe + Exc_fe
-    print *, "Summary of FE energies [a.u.]:"
-    print "('    Ts   = ', f14.8)", Ts_fe
-    print "('    Een  = ', f14.8)", Een_fe
-    print "('    Eee  = ', f14.8)", Eee_fe
-    print "('    Exc  = ', f14.8)", Exc_fe
-    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot_fe, &
-        Etot_fe*Ha2eV
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
-        Temp_current / K2au, Etot_fe*Ha2eV/N
+        Temp_current / K2au
 
     print *, "EWALD", E_ewald
     print *, fewald(:, 1)
