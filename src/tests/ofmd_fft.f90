@@ -52,7 +52,9 @@ print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
 print *
 
+print *, "Converting aperiodic radial Ven to periodic cartesian Ven"
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
+print *, "  Done."
 Nmesh = 10000
 allocate(R2(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
