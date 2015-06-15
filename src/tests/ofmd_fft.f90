@@ -118,14 +118,17 @@ contains
     real(dp) :: fac(Ng, Ng, Ng)
     real(dp) :: Eee, Een, Ts, Exc, Etot
     integer :: i
+    print *, "Calculating forces"
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N), fen(3, N))
     q = 1
     ! Calculate nuclear forces
+    print *, "Calculating nuclear forces"
     call ewald_box(L, X, q, E_ewald, fewald, stress)
 
     ! Calculate the electronic forces
+    print *, "Calculating VenG"
     VenG = 0
     do i = 1, N
         ! Note: we use minus sign in the forward real -> fourier transform. Then
@@ -140,34 +143,19 @@ contains
 
     ! Energy calculation
     ne=1._dp / L**3
+    print *, "Minimizing free energy"
     call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
             Eee, Een, Ts, Exc, Etot)
-    print *, "Ng =", Ng
-    print *, "Rcut =", Rcut
-    print *, "T_au =", Temp
-    print *, "Summary of FFT energies [a.u.]:"
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eee
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
         Temp_current / K2au
 
-    print *, "EWALD", E_ewald
-    print *, fewald(:, 1)
-    print *, fewald(:, 2)
-    print *, fewald(:, 3)
-    print *, fewald(:, 4)
-    print *, "stress"
-    print *, stress
-
     ! Forces calculation
+    print *, "ne -> neG"
     call real2fourier(ne, neG)
 
     fen = 0
+    print *, "Calculating fen"
     do i = 1, N
         ! We have minus sign in the exponential, per the definition of VenG
         ! above (see the comment there).
@@ -178,27 +166,34 @@ contains
         fen(3, i) = sum(G(:,:,:,3)*fac)
     end do
 
-    print *, "forces FFT:"
+    f = fewald + fen
+
+    print *, "Nuclear forces:"
+    print *, fewald(:, 1)
+    print *, fewald(:, 2)
+    print *, fewald(:, 3)
+    print *, fewald(:, 4)
+
+    print *, "Electronic forces:"
     print *, fen(:, 1)
     print *, fen(:, 2)
     print *, fen(:, 3)
     print *, fen(:, 4)
-
-    call real2fourier(ne, neG)
-    print *, "Done"
-    print *, "ne (FE) ="
-    print *, ne(:3, :3, :3)
-    print *, "neG (FE) ="
-    print *, neG(:3, :3, :3)
-
-
-    f = fewald + fen
 
     print *, "total forces:"
     print *, f(:, 1)
     print *, f(:, 2)
     print *, f(:, 3)
     print *, f(:, 4)
+
+    print *, "Summary of electronic energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+    print *, "Nuclear energy (per atom)", E_ewald*Ha2eV/N
     end subroutine
 
     real(dp) function calc_Epot(X) result(E)
