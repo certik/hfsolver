@@ -1,4 +1,4 @@
-program test_ofmd_fft
+program test_ofmd_fft_fe
 use types, only: dp
 use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV, pi
 use md, only: velocity_verlet, minimize_energy, positions_random, &
