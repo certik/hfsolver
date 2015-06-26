@@ -6,7 +6,7 @@
 ! CC=mpicc CXX=mpic++ FC=mpif90 cmake -DCOMMON_DIR=$HASHSTACK -DMPI_HAS_FINALIZE=yes -DWITH_BDDC=yes .
 ! make
 ! cd src/tests/fem
-! mpiexec -n 2 ./test_free_energy_bddc
+! mpiexec -n 2 ./test_free_energy_bddc 6 4 4 4 2 1 1
 
 module test_free_energy_bddc_utils
 
@@ -513,7 +513,7 @@ program test_free_energy_bddc
 use types, only: dp
 use test_free_energy_bddc_utils, only: free_energy, read_pseudo
 use constants, only: Ha2eV, pi
-use utils, only: loadtxt, assert
+use utils, only: loadtxt, assert, stop_error
 use splines, only: spline3pars, iixmin, poly3
 use interp3d, only: trilinear
 use mpi_interface, only: mpi_finalize, mpi_comm_world, mpi_comm_rank, &
@@ -526,7 +526,9 @@ real(dp) :: Z
 real(dp) :: Rcut, L, T_eV, T_au
 !  parallel variables
 integer :: myid, comm_all, nproc, ierr
+integer :: Nx, Ny, Nz, Nxsub, Nysub, Nzsub
 
+call parse_command_line(p, Nx, Ny, Nz, Nxsub, Nysub, Nzsub)
 
 call MPI_INIT(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -538,11 +540,10 @@ call MPI_COMM_SIZE(comm_all,nproc,ierr)
 
 Z = 1
 Rcut = 0.3_dp
-p = 6
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-call free_energy(comm_all, L, 4, 4, 4, 2, 1, 1, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
+call free_energy(comm_all, L, Nx, Ny, Nz, Nxsub, Nysub, Nzsub, p, T_au, nen, ne, Eh, Een, Ts, Exc, DOF)
 Etot = Ts + Een + Eh + Exc
 if (myid == 0) then
     print *, "p =", p
@@ -590,5 +591,39 @@ real(dp) :: r
 r = sqrt(x**2+y**2+z**2)
 n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
 end function
+
+subroutine parse_command_line(p, Nx, Ny, Nz, Nxsub, Nysub, Nzsub)
+integer, intent(out) :: p, Nx, Ny, Nz, Nxsub, Nysub, Nzsub
+integer :: n, i
+integer, allocatable :: args(:)
+character(len=256) :: arg
+n = command_argument_count()
+allocate(args(n))
+do i = 1, n
+    call get_command_argument(i, arg)
+    read(arg,*) args(i)
+end do
+if (size(args) == 7) then
+    ! User specified arguments
+    p = args(1)
+    Nx = args(2)
+    Ny = args(3)
+    Nz = args(4)
+    Nxsub = args(5)
+    Nysub = args(6)
+    Nzsub = args(7)
+else if (size(args) == 0) then
+    ! Default arguments
+    p = 6
+    Nx = 4
+    Ny = 4
+    Nz = 4
+    Nxsub = 2
+    Nysub = 1
+    Nzsub = 1
+else
+    call stop_error("Incorrect number of arguments")
+end if
+end subroutine
 
 end program
