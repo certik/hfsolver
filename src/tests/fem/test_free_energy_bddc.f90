@@ -1,13 +1,9 @@
-! Configure, compile and run with:
-! CC=mpicc CXX=mpic++ FC=mpif90 cmake -DCOMMON_DIR=$HASHSTACK -DWITH_BDDC=yes .
-! make
-! cd src/tests/fem
-! mpirun -np 2 ./test_free_energy_bddc
+! Configure, compile and run with (change MPI_HAS_FINALIZE depending on your MPI
+! implementation):
 !
-! Conejo:
 ! module load gcc/4.8.2 openmpi
-! export HASHSTACK=/users/certik/repos/hashstack/default
-! CC=mpicc CXX=mpic++ FC=mpif90 cmake -DCOMMON_DIR=$HASHSTACK -DWITH_BDDC=yes .
+! hit load default
+! CC=mpicc CXX=mpic++ FC=mpif90 cmake -DCOMMON_DIR=$HASHSTACK -DMPI_HAS_FINALIZE=yes -DWITH_BDDC=yes .
 ! make
 ! cd src/tests/fem
 ! mpiexec -n 2 ./test_free_energy_bddc
