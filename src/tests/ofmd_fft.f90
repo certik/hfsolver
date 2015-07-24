@@ -131,11 +131,18 @@ contains
     print *, "Calculating VenG"
     VenG = 0
     do i = 1, N
-        ! Note: we use minus sign in the forward real -> fourier transform. Then
-        ! the following holds: F[f(x+b)] = e^{+i*G*b}F[f(x)], with plus sign in
-        ! the exponential. Finally, we are expressing Ven0(x-X) using Ven0(x),
-        ! i.e.: F[Ven0(x-X)] = F[Ven0(x)]*e^{-i*G*X} with minus sign in the
-        ! exponential.
+        ! Note: we use minus sign in the forward real -> fourier transform.
+        ! Then the following holds:
+        !
+        !         F[f(x+b)] = F[f(x)]*e^{+i*G*b},
+        !
+        ! with plus sign in the exponential. Finally, we are expressing
+        ! Ven0(x-X) using the above formula (with b=-X) in terms of Ven0(x),
+        ! i.e.:
+        !
+        !         F[Ven0(x-X)] = F[Ven0(x)]*e^{-i*G*X},
+        !
+        ! with minus sign in the exponential.
         VenG = VenG - Ven0G * exp(-i_ * &
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
