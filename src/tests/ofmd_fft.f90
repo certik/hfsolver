@@ -17,7 +17,7 @@ implicit none
 
 integer :: N = 4
 integer :: i, steps, u
-real(dp) :: dt, L, t, Rcut, eps, sigma, rho
+real(dp) :: dt, L, t, Rcut, eps, sigma, rho, scf_eps
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
@@ -29,7 +29,7 @@ real(dp) :: Ediff, Z
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
-            functional, Ng, steps, dt)
+            functional, Ng, scf_eps, steps, dt)
 call read_pseudo("fem/H.pseudo.gaussian2", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
@@ -37,14 +37,19 @@ allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
-print *, "Input:"
+print *, "----------------------------------------------------------------"
+print *, "Input Summary:"
 print *, "N =", N
 print *, "Ng =", Ng
 print *, "MD steps =", steps
 print *, "rho = ",  rho, "a.u. =", rho * density2gcm3, "g/cm^3"
-print *, "T =", Temp, "a.u. =", Temp / K2au, "K =", Temp * Ha2eV, "eV"
-print "('dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
+print *, "T =", Temp, "a.u. =", Temp / K2au, "K ="
+print *, "  =", Temp * Ha2eV, "eV"
+print "(' dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
     dt/s2au, dt/s2au * 1e12_dp
+print "(' SCF_eps =', es10.2, ' a.u. = ', es10.2, ' eV')", scf_eps, &
+    scf_eps * Ha2eV
+print *, "----------------------------------------------------------------"
 print *
 print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
@@ -151,7 +156,7 @@ contains
     ! Energy calculation
     ne=1._dp / L**3
     print *, "Minimizing free energy"
-    call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
+    call free_energy_min(N, L, G2, Temp, VenG, ne, scf_eps, &
             Eee, Een, Ts, Exc, Etot)
 
     write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
@@ -228,21 +233,23 @@ contains
     end function
 
     subroutine read_input(filename, T, density, Nspecies, N, start, dynamics, &
-            functional, Ng, steps, dt)
+            functional, Ng, scf_eps, steps, dt)
     ! Reads the input file, returns values in a.u.
     character(len=*), intent(in) :: filename
-    real(dp), intent(out) :: T, density, dt
+    real(dp), intent(out) :: T, density, dt, scf_eps
     integer, intent(out) :: Nspecies, N, start, dynamics, functional, Ng, steps
     integer :: u
+    real(dp) :: skip
     open(newunit=u, file=filename, status="old")
     read(u, *) T, density, Nspecies, N
     read(u, *) start
-    read(u, *) dynamics, functional, Ng
+    read(u, *) dynamics, functional, Ng, skip, skip, scf_eps
     read(u, *) steps, dt
     close(u)
     ! Convert to atomic units:
     T = T / Ha2eV
     density = density / density2gcm3
+    scf_eps = scf_eps / Ha2eV
     end subroutine
 
 end program
