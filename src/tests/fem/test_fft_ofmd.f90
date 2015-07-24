@@ -1,4 +1,8 @@
 program test_fft_ofmd
+! nuclear charge: 1 Gaussian
+! electronic charge: 1 Gaussian
+! calculation: single free energy evaluation and minimization
+! Tests free_energy() and free_energy_min() from ofdft_fft
 use types, only: dp
 use constants, only: i_
 use ofdft, only: read_pseudo
