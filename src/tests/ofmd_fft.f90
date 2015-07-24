@@ -83,8 +83,12 @@ V = V * sqrt(Temp / spread(m, 1, 3))
 print *, "MD start:"
 
 t = 0
-open(newunit=u, file="ofmd_results.txt", status="replace")
 ne = N / L**3
+
+open(newunit=u, file="ofmd_results.txt", status="replace")
+write(u, *) "t F K T"
+close(u)
+
 call forces(X, f)
 
 t = 0
@@ -158,8 +162,9 @@ contains
     call free_energy_min(N, L, G2, Temp, VenG, ne, scf_eps, &
             Eee, Een, Ts, Exc, Etot)
 
-    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
-        Temp_current / K2au
+    open(newunit=u, file="ofmd_results.txt", position="append", status="old")
+    write(u, *) t, Etot*Ha2eV/N, Ekin*Ha2eV/N, Temp_current / K2au
+    close(u)
 
     ! Forces calculation
     print *, "ne -> neG"
