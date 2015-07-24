@@ -21,10 +21,10 @@ real(dp), intent(in) :: y ! must be positive
 ! if deriv == .true. compute df/dy instead. Default .false.
 logical, intent(in), optional :: deriv
 real(dp), parameter :: y0 = 3*pi/(4*sqrt(2._dp))
-real(dp), parameter :: c(*) = [-0.8791880215_dp, 0.1989718742_dp, &
+real(dp), parameter :: c(8) = [-0.8791880215_dp, 0.1989718742_dp, &
     0.1068697043e-2_dp, -0.8812685726e-2_dp, 0.1272183027e-1_dp, &
     -0.9772758583e-2_dp, 0.3820630477e-2_dp, -0.5971217041e-3_dp]
-real(dp), parameter :: d(*) = [0.7862224183_dp, -0.1882979454e1_dp, &
+real(dp), parameter :: d(9) = [0.7862224183_dp, -0.1882979454e1_dp, &
     0.5321952681_dp, 0.2304457955e1_dp, -0.1614280772e2_dp, &
     0.5228431386e2_dp, -0.9592645619e2_dp, 0.9462230172e2_dp, &
     -0.3893753937e2_dp]

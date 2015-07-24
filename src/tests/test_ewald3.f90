@@ -15,7 +15,7 @@ implicit none
 
 integer :: natom, ntypat
 ! Various NaCl lattice constants in A
-real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
+real(dp), parameter :: Llist(5) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
 ! The component of the correct force for the given L
 ! The components of the correct force and stress tensor (multiplied by L)
 real(dp), parameter :: fcorrect0 = 10.180280846982683_dp

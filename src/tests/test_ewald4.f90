@@ -19,7 +19,7 @@ use utils, only: assert, init_random
 implicit none
 
 integer :: natom, ntypat
-real(dp), parameter :: Llist(*) = [2 / sqrt(3._dp), 1._dp, 2._dp, 3._dp]
+real(dp), parameter :: Llist(4) = [2 / sqrt(3._dp), 1._dp, 2._dp, 3._dp]
 real(dp), parameter :: alpha = 0.90980836237716_dp ! Madelung constant
 real(dp), parameter :: stress0 = 1.213077816502878_dp
 
