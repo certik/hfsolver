@@ -84,7 +84,7 @@ print *, "MD start:"
 
 t = 0
 open(newunit=u, file="ofmd_results.txt", status="replace")
-ne=1._dp / L**3
+ne = N / L**3
 call forces(X, f)
 
 t = 0
@@ -154,7 +154,6 @@ contains
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
 
     ! Energy calculation
-    ne=1._dp / L**3
     print *, "Minimizing free energy"
     call free_energy_min(N, L, G2, Temp, VenG, ne, scf_eps, &
             Eee, Een, Ts, Exc, Etot)
