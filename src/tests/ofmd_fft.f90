@@ -64,7 +64,8 @@ R2 = linspace(0._dp, L/2, Nmesh)
 
 call reciprocal_space_vectors(L, G, G2)
 
-call init_random()
+! Make it deterministic for now
+!call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
 call positions_fcc(X, L)
 print *, "Positions:"
