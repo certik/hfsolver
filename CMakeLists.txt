@@ -69,6 +69,24 @@ elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     endif ()
 endif ()
 
+# MKL
+set(WITH_MKL no
+    CACHE BOOL "Build with MKL support")
+
+if (WITH_MKL)
+    if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+        set(CMAKE_Fortran_FLAGS_DEBUG
+            "${CMAKE_Fortran_FLAGS_DEBUG}   -mkl")
+        set(CMAKE_Fortran_FLAGS_RELEASE
+            "${CMAKE_Fortran_FLAGS_RELEASE} -mkl")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG
+            "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -mkl")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE
+            "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -mkl")
+    endif ()
+endif ()
+
+# Python
 set(WITH_PYTHON no
     CACHE BOOL "Build with Python wrappers")
 
@@ -123,9 +141,11 @@ if(WITH_BDDC)
 endif()
 
 
-# Lapack
-find_package(Lapack REQUIRED)
-set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+if (NOT WITH_MKL)
+    # Lapack
+    find_package(Lapack REQUIRED)
+    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+endif ()
 
 # libint2
 set(WITH_LIBINT no
@@ -247,3 +267,4 @@ if (WITH_MPI)
     message("MPI_COMPILE_FLAGS: ${MPI_COMPILE_FLAGS}")
     message("MPI_LINK_FLAGS: ${MPI_LINK_FLAGS}")
 endif()
+message("WITH_MKL: ${WITH_MKL}")
