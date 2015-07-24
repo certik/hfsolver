@@ -65,8 +65,10 @@ ADDTEST(test_random)
 ADDTEST(test_linregress)
 
 ADDTEST(test_md)
+set_tests_properties(test_md PROPERTIES LABELS MD)
 ADDTEST(analyze_md)
 set_tests_properties(analyze_md PROPERTIES DEPENDS test_md)
+set_tests_properties(analyze_md PROPERTIES LABELS MD)
 
 ADDTEST(test_ewald)
 ADDTEST(test_ewald2)
