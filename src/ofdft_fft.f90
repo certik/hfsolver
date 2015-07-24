@@ -320,6 +320,8 @@ brent_eps = 1e-3_dp
 max_iter = 200
 update_type = update_polak_ribiere
 
+last3 = 0
+
 Ng = size(ne, 1)
 
 allocate(Hpsi(Ng, Ng, Ng))
@@ -390,7 +392,8 @@ do iter = 1, max_iter
 !    print "('    Eee  = ', f14.8)", Eee
 !    print "('    Exc  = ', f14.8)", Exc
 !    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+    print "('# ', i3, '    Etot = ', f14.8, ' a.u.;', es10.2)", iter, &
+        free_energy_, last3
     free_energies(iter) = free_energy_
     if (iter > 3) then
         last3 = maxval(free_energies(iter-3:iter)) - &
