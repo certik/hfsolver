@@ -249,6 +249,11 @@ dFdn = dFdn * L**3
 end subroutine
 
 subroutine radial_potential_fourier(R, V, L, Z, VenG)
+! Takes radial potential (given at origin) defined by:
+!   V(R) on a grid R
+!   Z/r for r > maxval(R)
+! and calculates a 3D Fourier transform of it into the VenG grid. 'L' is the
+! length of the box.
 real(dp), intent(in) :: R(:), V(:), L, Z
 real(dp), intent(out) :: VenG(:, :, :)
 integer :: Ng, i, j, k, idx
@@ -287,6 +292,12 @@ end function
 
 subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, energy_eps, &
         Eee, Een, Ts, Exc, Etot)
+! Minimize the electronic free energy using the initial condition 'ne'. Returns
+! the ground state in 'ne'. The free energy is returned in Etot, and it's
+! components are returned in Eee, Een, Ts and Exc. The relation is:
+!
+!     Etot = Ts + Een + Eee + Exc
+!
 integer, intent(in) :: Nelec ! Number of electrons
 real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
