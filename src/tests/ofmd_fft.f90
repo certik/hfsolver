@@ -1,7 +1,7 @@
 program ofmd_fft
 use types, only: dp
 use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
-use md, only: velocity_verlet, minimize_energy, positions_random, &
+use md, only: velocity_verlet, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
 use random, only: randn
