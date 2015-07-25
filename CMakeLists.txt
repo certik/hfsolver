@@ -75,10 +75,6 @@ set(WITH_MKL no
 
 if (WITH_MKL)
     if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-        set(CMAKE_Fortran_FLAGS_DEBUG
-            "${CMAKE_Fortran_FLAGS_DEBUG}   -mkl")
-        set(CMAKE_Fortran_FLAGS_RELEASE
-            "${CMAKE_Fortran_FLAGS_RELEASE} -mkl")
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG
             "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -mkl")
         set(CMAKE_EXE_LINKER_FLAGS_RELEASE
