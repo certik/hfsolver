@@ -87,7 +87,7 @@ t = 0
 ne = N / L**3
 
 open(newunit=u, file="ofmd_results.txt", status="replace")
-write(u, *) "t F K T"
+write(u, *) "t Fe K E_ewald T"
 close(u)
 
 call forces(X, f)
@@ -164,7 +164,7 @@ contains
             Eee, Een, Ts, Exc, Etot)
 
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
-    write(u, *) t, Etot*Ha2eV/N, Ekin*Ha2eV/N, Temp_current / K2au
+    write(u, *) t, Etot*Ha2eV/N, Ekin*Ha2eV/N, E_ewald*Ha2eV/N, Temp_current / K2au
     close(u)
 
     ! Forces calculation
