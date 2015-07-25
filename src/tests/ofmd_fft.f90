@@ -32,12 +32,12 @@ logging_info = .false. ! Turn of the INFO warnings
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
-call read_pseudo("fem/H.pseudo.gaussian2", R, Ven_rad, Z, Ediff)
+call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 
-m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
+m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "----------------------------------------------------------------"
 print *, "Input Summary:"
