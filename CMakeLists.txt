@@ -84,6 +84,8 @@ if (WITH_MKL)
         set(CMAKE_EXE_LINKER_FLAGS_RELEASE
             "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -mkl")
     endif ()
+    set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+    set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
 endif ()
 
 # Python
