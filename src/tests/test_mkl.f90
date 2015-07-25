@@ -5,7 +5,8 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random
 use constants, only: i_
-use mkl, only: mkl_fft3_inplace => fft3_inplace
+use mkl, only: mkl_fft3_inplace => fft3_inplace, &
+    mkl_ifft3_inplace => ifft3_inplace
 implicit none
 
 complex(dp), allocatable :: x3(:, :, :), x3d(:, :, :)
@@ -50,6 +51,16 @@ call ifft3_inplace(x3d)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/(l*m*n)) < 5e-15_dp))
+x3d = x3
+call cpu_time(t1)
+call fft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call cpu_time(t1)
+call mkl_ifft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call assert(all(abs(x3 - x3d/(l*m*n)) < 5e-15_dp))
 deallocate(x3, x3d)
 
 print *, "fft3:"
@@ -70,6 +81,16 @@ call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 call cpu_time(t1)
 call ifft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
+x3d = x3
+call cpu_time(t1)
+call fft3_inplace(x3d)
+call cpu_time(t2)
+print *, "time:", (t2-t1)*1000, "ms"
+call cpu_time(t1)
+call mkl_ifft3_inplace(x3d)
 call cpu_time(t2)
 print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
