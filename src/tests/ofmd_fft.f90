@@ -8,7 +8,7 @@ use random, only: randn
 use utils, only: init_random, stop_error, assert, linspace
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
-    reciprocal_space_vectors, real2fourier, fourier2real
+    reciprocal_space_vectors, real2fourier, fourier2real, logging_info
 use interp3d, only: trilinear
 use poisson3d_assembly, only: func2quad
 implicit none
@@ -27,6 +27,8 @@ real(dp), allocatable :: ne(:, :, :), R2(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
+
+logging_info = .false. ! Turn of the INFO warnings
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
@@ -87,7 +89,7 @@ t = 0
 ne = N / L**3
 
 open(newunit=u, file="ofmd_results.txt", status="replace")
-write(u, *) "t Fe K E_ewald T"
+write(u, *) "t Fe E_ewald K T"
 close(u)
 
 call forces(X, f)
@@ -164,7 +166,7 @@ contains
             Eee, Een, Ts, Exc, Etot)
 
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
-    write(u, *) t, Etot*Ha2eV/N, Ekin*Ha2eV/N, E_ewald*Ha2eV/N, Temp_current / K2au
+    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, Temp_current / K2au
     close(u)
 
     ! Forces calculation

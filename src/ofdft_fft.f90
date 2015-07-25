@@ -18,11 +18,14 @@ use integration, only: integrate_trapz_1
 implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
-    radial_potential_fourier, real2fourier, fourier2real, integralG
+    radial_potential_fourier, real2fourier, fourier2real, integralG, &
+    logging_info
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
 integer, parameter :: update_polak_ribiere   = 2
+
+logical :: logging_info = .true.
 
 interface integralG
     module procedure integralG_complex, integralG_real
@@ -75,7 +78,9 @@ tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized
 if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
-    print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+    if (logging_info) then
+        print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+    end if
 end if
 ! TODO: make this strict:
 !call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
@@ -93,7 +98,9 @@ complex(dp) :: s
 s = sum(fG) * L**3
 r = real(s, dp)
 if (abs(aimag(s)) > 1e-12_dp) then
-    print *, "INFO: integralG() imaginary part:", aimag(s)
+    if (logging_info) then
+        print *, "INFO: integralG() imaginary part:", aimag(s)
+    end if
 end if
 !if (abs(aimag(s)) > 1e-5_dp) then
 !    print *, "aimag(s) =", aimag(s)
