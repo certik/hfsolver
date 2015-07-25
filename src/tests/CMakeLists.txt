@@ -94,6 +94,10 @@ if(WITH_FFTW)
     add_test(test_fftw_c ${PROJECT_BINARY_DIR}/test_fftw_c)
 endif()
 
+if(WITH_MKL)
+    ADDTEST(test_mkl)
+endif()
+
 if(WITH_UMFPACK)
     ADDTEST(test_umfpack)
     ADDTEST(test_umfpack_factorize)

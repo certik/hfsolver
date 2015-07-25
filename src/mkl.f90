@@ -1,12 +1,13 @@
 module mkl
 use types, only: dp
+use utils, only: stop_error
 implicit none
 private
 public fft3_inplace
 
 interface
 
-    integer(c_int) function fft3_inplace(x, n1, n2, n3) &
+    integer(c_int) function mkl_fft3_inplace(x, n1, n2, n3) &
         bind(c, name="fft3_inplace")
     use iso_c_binding, only: c_int, c_double, c_double_complex
     implicit none
@@ -15,5 +16,14 @@ interface
     end function
 
 end interface
+
+contains
+
+subroutine fft3_inplace(x)
+complex(dp), intent(inout) :: x(:, :, :)
+integer :: r
+r = mkl_fft3_inplace(x, size(x, 1), size(x, 2), size(x, 3))
+if (r /= 0) call stop_error("MKL fft3_inplace returned an error.")
+end subroutine
 
 end module
