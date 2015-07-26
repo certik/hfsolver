@@ -1,4 +1,5 @@
 program ofmd_fft
+use, intrinsic :: iso_fortran_env, only: output_unit
 use types, only: dp
 use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, positions_random, &
@@ -102,13 +103,13 @@ t = 0
 ne = N * Z / L**3
 
 open(newunit=u, file="ofmd_results.txt", status="replace")
-write(u, '(6a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", "F [eV]", &
-    "T [eV]"
+call write_results_header(u)
 close(u)
 
 t = 0
 call cpu_time(t3)
 do i = 1, steps
+    print *, "Starting MD iteration:", i
     if (i == 1) then
         call forces(X, f)
     else
@@ -135,19 +136,12 @@ do i = 1, steps
     print *, f(:, 3)
     print *, f(:, 4)
 
-    print *, "Summary of electronic energies [a.u.]:"
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eee
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u. = ', f20.8, ' eV')", Etot, Etot*Ha2eV
-    print *, "Nuclear energy (per atom)", Enn*Ha2eV/N
-
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
-    write(u, '(6f17.6)') t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
-        (Etot + Enn + Ekin) * Ha2eV / N, Temp_current * Ha2eV
+    call write_results_line(u)
     close(u)
+
+    call write_results_header(output_unit)
+    call write_results_line(output_unit)
 
     t = t + dt
 end do
@@ -245,6 +239,19 @@ contains
     T = T / Ha2eV
     density = density / density2gcm3
     scf_eps = scf_eps / Ha2eV
+    end subroutine
+
+    subroutine write_results_header(u)
+    integer, intent(in) :: u
+    write(u, '(10a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", &
+        "F [eV]", "T [eV]", "Ts [eV]", "Een [eV]", "Eee [eV]", "Exc [eV]"
+    end subroutine
+
+    subroutine write_results_line(u)
+    integer, intent(in) :: u
+    write(u, '(10f17.6)') t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
+        (Etot + Enn + Ekin) * Ha2eV / N, Temp_current * Ha2eV, Ts * Ha2eV / N, &
+        Een * Ha2eV / N, Eee * Ha2eV / N, Exc * Ha2eV / N
     end subroutine
 
 end program
