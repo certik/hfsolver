@@ -145,7 +145,7 @@ contains
     N = size(X, 2)
     ! TODO: this can be done in the main program
     allocate(fewald(3, N), q(N), fen(3, N))
-    q = 1
+    q = Z
     ! Calculate nuclear forces
     print *, "Calculating nuclear forces"
     call ewald_box(L, X, q, E_ewald, fewald, stress)
