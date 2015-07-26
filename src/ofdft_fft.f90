@@ -305,7 +305,7 @@ subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, energy_eps, &
 !
 !     Etot = Ts + Een + Eee + Exc
 !
-integer, intent(in) :: Nelec ! Number of electrons
+real(dp), intent(in) :: Nelec ! Number of electrons
 real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)

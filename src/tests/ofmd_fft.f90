@@ -97,7 +97,7 @@ Temp_current = 2*Ekin/(3*N)
 print *, "MD start:"
 
 t = 0
-ne = N / L**3
+ne = N * Z / L**3
 
 open(newunit=u, file="ofmd_results.txt", status="replace")
 write(u, *) "t Fe E_ewald K T"
@@ -167,7 +167,7 @@ contains
 
     ! Energy calculation
     print *, "Minimizing free energy"
-    call free_energy_min(N, L, G2, Temp, VenG, ne, scf_eps, &
+    call free_energy_min(N*Z, L, G2, Temp, VenG, ne, scf_eps, &
             Eee, Een, Ts, Exc, Etot)
 
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
