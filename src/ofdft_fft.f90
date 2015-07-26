@@ -277,7 +277,7 @@ dk = 2*pi/L
 Vk(0) = 0
 do i = 1, 3*(Ng/2+1)**2
     w = sqrt(real(i, dp))*dk
-    Vk(i) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + cos(w*Rc))
+    Vk(i) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + Z*cos(w*Rc))
 end do
 
 ! We fill out the 3D grid using the values from Vk
@@ -286,7 +286,7 @@ do j = 1, Ng
 do k = 1, Ng
     idx = (i-1-Ng*nint((i-1.5_dp)/Ng))**2 + (j-1-Ng*nint((j-1.5_dp)/Ng))**2 &
             + (k-1-Ng*nint((k-1.5_dp)/Ng))**2
-    VenG(i, j, k) = Vk(idx) * Z
+    VenG(i, j, k) = Vk(idx)
 end do
 end do
 end do
