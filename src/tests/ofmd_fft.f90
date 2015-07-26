@@ -100,7 +100,8 @@ t = 0
 ne = N * Z / L**3
 
 open(newunit=u, file="ofmd_results.txt", status="replace")
-write(u, *) "t Fe E_ewald K T"
+write(u, '(6a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", "F [eV]", &
+    "T [eV]"
 close(u)
 
 call forces(X, f)
@@ -170,13 +171,14 @@ contains
     call free_energy_min(N*Z, N, L, G2, Temp, VenG, ne, scf_eps, &
             Eee, Een, Ts, Exc, Etot)
 
-    open(newunit=u, file="ofmd_results.txt", position="append", status="old")
-    write(u, *) t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, Temp_current / K2au
-    close(u)
-
     ! Forces calculation
     print *, "ne -> neG"
     call real2fourier(ne, neG)
+
+    open(newunit=u, file="ofmd_results.txt", position="append", status="old")
+    write(u, '(6f17.6)') t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
+        (Etot + E_ewald + Ekin) * Ha2eV / N, Temp_current * Ha2eV
+    close(u)
 
     fen = 0
     print *, "Calculating fen"
