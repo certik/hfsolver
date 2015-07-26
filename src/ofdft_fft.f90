@@ -255,7 +255,7 @@ dFdn = dF0dn + Vee + Ven + Vxc
 dFdn = dFdn * L**3
 end subroutine
 
-subroutine radial_potential_fourier(R, V, L, Z, VenG)
+subroutine radial_potential_fourier(R, V, L, Z, VenG, V0)
 ! Takes radial potential (given at origin) defined by:
 !   V(R) on a grid R
 !   Z/r for r > maxval(R)
@@ -263,6 +263,7 @@ subroutine radial_potential_fourier(R, V, L, Z, VenG)
 ! length of the box.
 real(dp), intent(in) :: R(:), V(:), L, Z
 real(dp), intent(out) :: VenG(:, :, :)
+real(dp), intent(out) :: V0
 integer :: Ng, i, j, k, idx
 real(dp) :: Rp(size(R)), dk, Rc, w, Vk(0:3*(size(VenG, 1)/2+1)**2)
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
@@ -273,6 +274,14 @@ Ng = size(VenG, 1)
 call assert(size(VenG, 2) == Ng)
 call assert(size(VenG, 3) == Ng)
 dk = 2*pi/L
+
+! V0 =      \int V(r) - Z/r d^3x
+!    = 4*pi*\int_0^Rc (V(r) - Z/r) r^2 dr
+!    = 4*pi*\int_0^Rc V(r) r^2 dr - Z*Rc^2 / 2
+! So these two are equivalent, we use the one that is faster:
+!V0 = -4*pi*integrate(Rp, R**2*(V-Z/R))
+V0 = -4*pi*(integrate(Rp, R**2*V) - Z*Rc**2/2)
+
 ! We prepare the values of the radial Fourier transform on a 3D grid
 Vk(0) = 0
 do i = 1, 3*(Ng/2+1)**2

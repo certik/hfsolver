@@ -248,6 +248,7 @@ subroutine test7()
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :), fac(:, :, :),&
     R(:)
 real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
+real(dp) :: V0
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
 integer, parameter :: natom = 8
 real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
@@ -310,7 +311,7 @@ end do
 print *, "FFT Forces:"
 allocate(R(10000))
 R = linspace(1._dp/10000, 0.1_dp, 10000)
-call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G)
+call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G, V0)
 do i = 1, natom
     ! Important: in the shift theorem, we need to use plus sign in exp(+iG*X),
     ! because our FFT uses minus sign in the forward real -> fourier transform.
@@ -340,6 +341,7 @@ subroutine test8()
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), ne(:, :, :), fac(:, :, :),&
     R(:)
 real(dp), allocatable :: ne0(:, :, :), Vee0G(:, :, :)
+real(dp) :: V0
 complex(dp), allocatable :: neG(:, :, :), VeeG(:, :, :), ne0G(:, :, :)
 integer, parameter :: natom = 8
 real(dp) :: L, Eee, X(3, natom), xred(3, natom), alpha, q(natom), E_madelung
@@ -410,7 +412,7 @@ end do
 print *, "FFT Forces:"
 allocate(R(10000))
 R = linspace(1._dp/10000, 0.1_dp, 10000)
-call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G)
+call radial_potential_fourier(R, erf(alpha*R)/R, L, 1._dp, Vee0G, V0)
 do i = 1, natom
     ! Important: in the shift theorem, we need to use plus sign in exp(+iG*X),
     ! because our FFT uses minus sign in the forward real -> fourier transform.

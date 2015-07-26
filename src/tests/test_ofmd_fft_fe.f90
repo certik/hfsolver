@@ -27,6 +27,7 @@ real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
+real(dp) :: V0
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: nen(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:), fullsol(:)
@@ -61,7 +62,7 @@ print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
 print *
 
-call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
+call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, V0)
 Nmesh = 10000
 allocate(R2(Nmesh), nen0(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)

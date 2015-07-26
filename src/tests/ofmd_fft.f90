@@ -26,6 +26,7 @@ complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:)
 real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
 real(dp) :: Ediff, Z
+real(dp) :: Een_correction
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 
 logging_info = .false. ! Turn of the INFO warnings
@@ -58,7 +59,7 @@ print *, "L =", L, "a.u."
 print *
 
 print *, "Converting aperiodic radial Ven to periodic cartesian Ven"
-call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
+call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, Een_correction)
 print *, "  Done."
 Nmesh = 10000
 allocate(R2(Nmesh))

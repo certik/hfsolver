@@ -19,6 +19,7 @@ real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), dFdn(:, :, :)
 real(dp), allocatable :: VenG0(:, :, :)
+real(dp) :: V0
 complex(dp), allocatable :: VenG(:, :, :)
 real(dp) :: Rcut, L, T_eV, T_au
 integer :: i, j, k
@@ -35,7 +36,7 @@ Rcut = R(size(R))
 
 allocate(VenG0(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-call radial_potential_fourier(R, V, L, Z, VenG0)
+call radial_potential_fourier(R, V, L, Z, VenG0, V0)
 
 call reciprocal_space_vectors(L, G, G2)
 ne = 1
