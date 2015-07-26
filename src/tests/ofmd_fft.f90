@@ -114,13 +114,7 @@ do i = 1, steps
     Temp_current = 2*Ekin/(3*N)
     print "(i5, ': E=', f10.4, ' a.u.; Epot=', f10.4, ' a.u.; T=',f10.4,' K')",&
         i, Ekin + Epot, Epot, Temp_current / K2au
-    call velocity_verlet(dt, m, forces, f, V, X)
-    if (any(abs(X/L) > 2)) then
-        print *, "max n = X/L =", maxval(abs(X/L))
-        call stop_error("X is out of range after Verlet: abs(X/L) > 2")
-    end if
-    ! Periodically shift particles to the [0, L]^3 box
-    X = X - L*floor(X/L)
+    call velocity_verlet(dt, m, L, forces, f, V, X)
     t = t + dt
 end do
 call cpu_time(t4)
