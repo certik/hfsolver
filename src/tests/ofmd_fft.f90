@@ -17,16 +17,18 @@ implicit none
 
 integer :: N = 4
 integer :: i, steps, u
-real(dp) :: dt, L, t, Rcut, eps, sigma, rho, scf_eps
+real(dp) :: dt, L, t, rho, scf_eps
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:)
-real(dp) :: Temp, Ekin, Epot, Temp_current, t3, t4
+real(dp) :: Temp, Ekin, Temp_current, t3, t4
 real(dp) :: Ediff, Z
 real(dp) :: Een_correction
+real(dp) :: Eee, Een, Ts, Exc, Etot, Enn
+real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 
 logging_info = .false. ! Turn of the INFO warnings
@@ -37,7 +39,9 @@ call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+allocate(fnn(3, N), q(N), fen(3, N))
 
+q = Z
 m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "----------------------------------------------------------------"
@@ -92,9 +96,6 @@ Temp_current = 2*Ekin/(3*N)
 ! be Temp. But we want to set it exactly to Temp, so we rescale the velocities.
 V = V * sqrt(Temp / Temp_current)
 
-Ekin = calc_Ekin(V, m)
-Temp_current = 2*Ekin/(3*N)
-
 print *, "MD start:"
 
 t = 0
@@ -105,18 +106,49 @@ write(u, '(6a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", "F [eV]", &
     "T [eV]"
 close(u)
 
-call forces(X, f)
-
 t = 0
 call cpu_time(t3)
 do i = 1, steps
-    print *, "MD step:", i, Temp, Temp_current
+    if (i == 1) then
+        call forces(X, f)
+    else
+        call velocity_verlet(dt, m, L, forces, f, V, X)
+    end if
     Ekin = calc_Ekin(V, m)
-    Epot = calc_Epot(X)
     Temp_current = 2*Ekin/(3*N)
-    print "(i5, ': E=', f10.4, ' a.u.; Epot=', f10.4, ' a.u.; T=',f10.4,' K')",&
-        i, Ekin + Epot, Epot, Temp_current / K2au
-    call velocity_verlet(dt, m, L, forces, f, V, X)
+
+    print *, "Nuclear forces:"
+    print *, fnn(:, 1)
+    print *, fnn(:, 2)
+    print *, fnn(:, 3)
+    print *, fnn(:, 4)
+
+    print *, "Electronic forces:"
+    print *, fen(:, 1)
+    print *, fen(:, 2)
+    print *, fen(:, 3)
+    print *, fen(:, 4)
+
+    print *, "total forces:"
+    print *, f(:, 1)
+    print *, f(:, 2)
+    print *, f(:, 3)
+    print *, f(:, 4)
+
+    print *, "Summary of electronic energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f20.8, ' eV')", Etot, Etot*Ha2eV
+    print *, "Nuclear energy (per atom)", Enn*Ha2eV/N
+
+    open(newunit=u, file="ofmd_results.txt", position="append", status="old")
+    write(u, '(6f17.6)') t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
+        (Etot + Enn + Ekin) * Ha2eV / N, Temp_current * Ha2eV
+    close(u)
+
     t = t + dt
 end do
 call cpu_time(t4)
@@ -130,21 +162,14 @@ contains
     subroutine forces(X, f)
     real(dp), intent(in) :: X(:, :) ! positions
     real(dp), intent(out) :: f(:, :) ! forces
-    integer :: N
     real(dp) :: stress(6)
-    real(dp) :: E_ewald
-    real(dp), allocatable :: fewald(:, :), q(:), fen(:, :)
     real(dp) :: fac(Ng, Ng, Ng)
-    real(dp) :: Eee, Een, Ts, Exc, Etot
     integer :: i
+    print *, "-------------------------------------"
     print *, "Calculating forces"
-    N = size(X, 2)
-    ! TODO: this can be done in the main program
-    allocate(fewald(3, N), q(N), fen(3, N))
-    q = Z
     ! Calculate nuclear forces
     print *, "Calculating nuclear forces"
-    call ewald_box(L, X, q, E_ewald, fewald, stress)
+    call ewald_box(L, X, q, Enn, fnn, stress)
 
     ! Calculate the electronic forces
     print *, "Calculating VenG"
@@ -179,11 +204,6 @@ contains
     Een = Een + Een_correction * real(neG(1, 1, 1), dp) * N
     Etot = Eee + Een + Ts + Exc
 
-    open(newunit=u, file="ofmd_results.txt", position="append", status="old")
-    write(u, '(6f17.6)') t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
-        (Etot + E_ewald + Ekin) * Ha2eV / N, Temp_current * Ha2eV
-    close(u)
-
     fen = 0
     print *, "Calculating fen"
     do i = 1, N
@@ -196,53 +216,10 @@ contains
         fen(3, i) = sum(G(:,:,:,3)*fac)
     end do
 
-    f = fewald + fen
-
-    print *, "Nuclear forces:"
-    print *, fewald(:, 1)
-    print *, fewald(:, 2)
-    print *, fewald(:, 3)
-    print *, fewald(:, 4)
-
-    print *, "Electronic forces:"
-    print *, fen(:, 1)
-    print *, fen(:, 2)
-    print *, fen(:, 3)
-    print *, fen(:, 4)
-
-    print *, "total forces:"
-    print *, f(:, 1)
-    print *, f(:, 2)
-    print *, f(:, 3)
-    print *, f(:, 4)
-
-    print *, "Summary of electronic energies [a.u.]:"
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eee
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
-    print *, "Nuclear energy (per atom)", E_ewald*Ha2eV/N
+    f = fnn + fen
+    print *, "Done calculating forces."
+    print *, "-------------------------------------"
     end subroutine
-
-    real(dp) function calc_Epot(X) result(E)
-    real(dp), intent(in) :: X(:, :) ! positions
-    real(dp) :: r2, d(3), Xj(3)
-    integer :: N, i, j
-    ! TODO: this needs to get calculated as part of the force calculation
-    N = size(X, 2)
-    E = 0
-    do i = 1, N
-        do j = 1, i-1
-            Xj = X(:, j)-X(:, i)+[L/2, L/2, L/2]
-            Xj = Xj - L*floor(Xj/L)
-            d = [L/2, L/2, L/2] - Xj
-            r2 = sum(d**2)
-            if (r2 <= Rcut**2) E = E + 4*eps *(sigma**12/r2**6 - sigma**6/r2**3)
-        end do
-    end do
-    end function
 
     real(dp) pure function calc_Ekin(V, m) result(Ekin)
     real(dp), intent(in) :: V(:, :) ! velocities
