@@ -8,7 +8,7 @@ module ofdft_fft
 ! space, VenG is the same potential in reciprocal space.
 
 use types, only: dp
-use constants, only: pi, i_
+use constants, only: pi, i_, Ha2eV
 use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz
@@ -297,7 +297,7 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, energy_eps, &
+subroutine free_energy_min(Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
         Eee, Een, Ts, Exc, Etot)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
@@ -306,6 +306,7 @@ subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, energy_eps, &
 !     Etot = Ts + Een + Eee + Exc
 !
 real(dp), intent(in) :: Nelec ! Number of electrons
+integer, intent(in) :: Natom ! Number of atoms
 real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
@@ -316,7 +317,7 @@ real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
     psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
 integer :: iter, max_iter
-real(dp) :: mu, last3, brent_eps, free_energy_, &
+real(dp) :: mu, last2, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
 real(dp) :: psi_norm
@@ -327,6 +328,7 @@ brent_eps = 1e-3_dp
 max_iter = 2000
 update_type = update_polak_ribiere
 
+last2 = 0
 last3 = 0
 
 Ng = size(ne, 1)
@@ -399,12 +401,18 @@ do iter = 1, max_iter
 !    print "('    Eee  = ', f14.8)", Eee
 !    print "('    Exc  = ', f14.8)", Exc
 !    print *, "   ---------------------"
-    print "('# ', i3, '    Etot = ', f14.8, ' a.u.;', es10.2)", iter, &
-        free_energy_, last3
-    free_energies(iter) = free_energy_
+    free_energies(iter) = free_energy_ / Natom
+    if (iter > 1) then
+        last2 = maxval(free_energies(iter-1:iter)) - &
+            minval(free_energies(iter-1:iter))
+    end if
+    if (iter > 2) then
+        last3 = maxval(free_energies(iter-2:iter)) - &
+            minval(free_energies(iter-2:iter))
+    end if
+    print "('# ', i3, ' Etot/atom = ', f18.8, ' eV; last2 = ', es10.2, ' last3 = ',es10.2)", &
+        iter, free_energy_ * Ha2eV / Natom, last2 * Ha2eV, last3 * Ha2eV
     if (iter > 3) then
-        last3 = maxval(free_energies(iter-3:iter)) - &
-            minval(free_energies(iter-3:iter))
         if (last3 < energy_eps) then
             ne = psi**2
             Etot = free_energy_

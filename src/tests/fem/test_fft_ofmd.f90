@@ -70,7 +70,7 @@ call assert(abs(Eee - (0.73653527)) < 5e-8)
 call assert(abs(Exc - (-0.88363737)) < 5e-8)
 call assert(abs(Etot - (1.34447026)) < 1e-8)
 ne=1._dp / L**3
-call free_energy_min(1, L, G2, T_au, VenG, ne, 1e-9_dp, Eee, Een, Ts, Exc, Etot)
+call free_energy_min(1._dp, 1, L, G2, T_au, VenG, ne, 1e-9_dp, Eee, Een, Ts, Exc, Etot)
 print *, "Ng =", Ng
 print *, "Rcut =", Rcut
 print *, "T_au =", T_au
