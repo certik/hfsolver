@@ -176,6 +176,9 @@ contains
     print *, "ne -> neG"
     call real2fourier(ne, neG)
 
+    Een = Een + Een_correction * real(neG(1, 1, 1), dp) * N
+    Etot = Eee + Een + Ts + Exc
+
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
     write(u, '(6f17.6)') t, Etot*Ha2eV/N, E_ewald*Ha2eV/N, Ekin*Ha2eV/N, &
         (Etot + E_ewald + Ekin) * Ha2eV / N, Temp_current * Ha2eV
