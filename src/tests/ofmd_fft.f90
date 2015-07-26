@@ -80,8 +80,19 @@ do i = 2, N
 end do
 print *
 
+! Initialize velocities based on Maxwell-Boltzmann distribution
 call randn(V)
 V = V * sqrt(Temp / spread(m, 1, 3))
+
+Ekin = calc_Ekin(V, m)
+Temp_current = 2*Ekin/(3*N)
+
+! The average temperature (i.e. if we average Temp_current for many runs) will
+! be Temp. But we want to set it exactly to Temp, so we rescale the velocities.
+V = V * sqrt(Temp / Temp_current)
+
+Ekin = calc_Ekin(V, m)
+Temp_current = 2*Ekin/(3*N)
 
 print *, "MD start:"
 
