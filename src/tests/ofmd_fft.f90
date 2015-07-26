@@ -181,7 +181,7 @@ contains
         !         F[Ven0(x-X)] = F[Ven0(x)]*e^{-i*G*X},
         !
         ! with minus sign in the exponential.
-        VenG = VenG - Ven0G * exp(-i_ * &
+        VenG = VenG - Ven0G * exp(i_ * &
             (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
