@@ -324,7 +324,7 @@ integer :: update_type
 !real(dp) :: A, B
 
 brent_eps = 1e-3_dp
-max_iter = 200
+max_iter = 2000
 update_type = update_polak_ribiere
 
 last3 = 0
