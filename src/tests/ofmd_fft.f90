@@ -130,27 +130,27 @@ do i = 1, steps
         ! ne_aux(:, :, :, -4) ... n_{i-4}
         ! ne_aux(:, :, :, -5) ... n_{i-5}
         if (i < 100) then
-            ne_aux(:, :, :, 1) = 2*ne - ne_aux(:, :, :, -1) &
-                + alpha*(c0*ne &
+            ne_aux(:, :, :, 1) = 2*sqrt(ne) - ne_aux(:, :, :, -1) &
+                + alpha*(c0*sqrt(ne) &
                 + c1*ne_aux(:, :, :, -1) + c2*ne_aux(:, :, :, -2) &
                 + c3*ne_aux(:, :, :, -3) + c4*ne_aux(:, :, :, -4) &
                 + c5*ne_aux(:, :, :, -5))
         else
             ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 0) - ne_aux(:, :, :, -1) &
-                + kappa*(ne-ne_aux(:, :, :, 0)) + alpha*(c0*ne_aux(:, :, :, 0) &
+                + kappa*(sqrt(ne)-ne_aux(:, :, :, 0)) + alpha*(c0*ne_aux(:, :, :, 0) &
                 + c1*ne_aux(:, :, :, -1) + c2*ne_aux(:, :, :, -2) &
                 + c3*ne_aux(:, :, :, -3) + c4*ne_aux(:, :, :, -4) &
                 + c5*ne_aux(:, :, :, -5))
         end if
     else
-        ne_aux(:, :, :, 1) = ne
+        ne_aux(:, :, :, 1) = sqrt(ne)
     end if
 
     do j = 0, -K, -1
         ne_aux(:, :, :, j) = ne_aux(:, :, :, j+1)
     end do
 
-    ne = abs(ne_aux(:, :, :, 1))
+    ne = ne_aux(:, :, :, 1)**2
 
     if (i == 1) then
         call forces(X, f)
