@@ -56,8 +56,9 @@ real(dp) :: tol1, tol2, tmp1, tmp2, deltax, dx_temp, rat, xmid, &
         a, b, p, u, v, w, x, fu, fv, fw, fx
 integer :: iter
 logical :: verbose_
-verbose_ = .false.
+verbose_ = .true.
 if (present(verbose)) verbose_ = verbose
+verbose_ = .true.
 
 x = xb; w = xb; v = xb
 fx = f(x)

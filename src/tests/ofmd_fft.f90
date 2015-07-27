@@ -17,9 +17,12 @@ implicit none
 ! All variables are in Hartree atomic units
 
 ! XLBOMD parameters:
-integer, parameter :: K = 5
-real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
-integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
+!integer, parameter :: K = 5
+!real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
+!integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
+integer, parameter :: K = 6
+real(dp), parameter :: kappa = 1.84_dp, alpha = 5.5e-3_dp
+integer, parameter :: c0 = -14, c1 = 36, c2 = -27, c3 = -2, c4 = 12, c5 = -6, c6 = 1
 
 integer :: N = 4
 integer :: i, j, steps, u
@@ -48,7 +51,7 @@ allocate(X(3, N), V(3, N), fnew(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(fnn(3, N), q(N), fen(3, N))
-allocate(ne_aux(Ng, Ng, Ng, -K:1))
+allocate(ne_aux(Ng, Ng, Ng, K+2))
 
 q = Z
 m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
@@ -86,6 +89,7 @@ call reciprocal_space_vectors(L, G, G2)
 !call positions_fcc(X, L)
 X(:, 1) = [L/2, L/2, L/2]
 X(:, 2) = [0._dp, 0._dp, 0._dp]
+!X(:, 2) = [0.1_dp, 0.2_dp, 0.3_dp]
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
@@ -118,39 +122,47 @@ close(u)
 
 t = 0
 call cpu_time(t3)
+
+        ! ne_aux(:, :, :,  1) ... n_{i+1}
+        ! ne_aux(:, :, :,  2) ... n_{i}
+        ! ne_aux(:, :, :,  3) ... n_{i-1}
+        ! ne_aux(:, :, :,  4) ... n_{i-2}
+        ! ne_aux(:, :, :,  5) ... n_{i-3}
+        ! ne_aux(:, :, :,  6) ... n_{i-4}
+        ! ne_aux(:, :, :,  7) ... n_{i-5}
+        ! ne_aux(:, :, :,  8) ... n_{i-6}
+
 do i = 1, steps
     print *, "Starting MD iteration:", i
-
-    if (i > 10) then
-        ! ne_aux(:, :, :,  1) ... n_{i+1}
-        ! ne_aux(:, :, :,  0) ... n_{i}
-        ! ne_aux(:, :, :, -1) ... n_{i-1}
-        ! ne_aux(:, :, :, -2) ... n_{i-2}
-        ! ne_aux(:, :, :, -3) ... n_{i-3}
-        ! ne_aux(:, :, :, -4) ... n_{i-4}
-        ! ne_aux(:, :, :, -5) ... n_{i-5}
-        if (i < 100) then
-            ne_aux(:, :, :, 1) = 2*sqrt(ne) - ne_aux(:, :, :, -1) &
-                + alpha*(c0*sqrt(ne) &
-                + c1*ne_aux(:, :, :, -1) + c2*ne_aux(:, :, :, -2) &
-                + c3*ne_aux(:, :, :, -3) + c4*ne_aux(:, :, :, -4) &
-                + c5*ne_aux(:, :, :, -5))
-        else
-            ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 0) - ne_aux(:, :, :, -1) &
-                + kappa*(sqrt(ne)-ne_aux(:, :, :, 0)) + alpha*(c0*ne_aux(:, :, :, 0) &
-                + c1*ne_aux(:, :, :, -1) + c2*ne_aux(:, :, :, -2) &
-                + c3*ne_aux(:, :, :, -3) + c4*ne_aux(:, :, :, -4) &
-                + c5*ne_aux(:, :, :, -5))
-        end if
-    else
-        ne_aux(:, :, :, 1) = sqrt(ne)
+    if (i == 1) then
+        do j = 1, K+2
+            ne_aux(:, :, :, j) = ne
+        end do
     end if
+    if (i < 100) then
+        ne_aux(:, :, :, 2) = ne
+    end if
+    ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 2) - ne_aux(:, :, :, 3) &
+        + kappa*(ne-ne_aux(:, :, :, 2)) + alpha * &
+        (c0*ne_aux(:, :, :, 2)+c1*ne_aux(:, :, :, 3) + &
+        c2*ne_aux(:, :, :, 4) + c3*ne_aux(:, :, :, 5) + &
+        c4*ne_aux(:, :, :, 6) + c5*ne_aux(:, :, :, 7) + &
+        c6*ne_aux(:, :, :, 8))
+    !ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 2) - ne_aux(:, :, :, 3)
 
-    do j = 0, -K, -1
-        ne_aux(:, :, :, j) = ne_aux(:, :, :, j+1)
-    end do
+    !print *, c0 + c1 + c2 + c3 + c4 + c5 + c6
 
-    ne = ne_aux(:, :, :, 1)**2
+    ne_aux(:, :, :, 8) = ne_aux(:, :, :, 7)
+    ne_aux(:, :, :, 7) = ne_aux(:, :, :, 6)
+    ne_aux(:, :, :, 6) = ne_aux(:, :, :, 5)
+    ne_aux(:, :, :, 5) = ne_aux(:, :, :, 4)
+    ne_aux(:, :, :, 4) = ne_aux(:, :, :, 3)
+    ne_aux(:, :, :, 3) = ne_aux(:, :, :, 2)
+    ne_aux(:, :, :, 2) = ne_aux(:, :, :, 1)
+
+    !ne = ne_aux(:, :, :, 1)**2
+    ne = abs(ne_aux(:, :, :, 1))
+    !ne = N * Z / L**3
 
     if (i == 1) then
         call forces(X, fnew)
