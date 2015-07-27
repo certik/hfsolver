@@ -24,7 +24,7 @@ integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
 integer :: N = 4
 integer :: i, j, steps, u
 real(dp) :: dt, L, t, rho, scf_eps
-real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
+real(dp), allocatable :: V(:, :), X(:, :), fnew(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
@@ -44,7 +44,7 @@ logging_info = .false. ! Turn of the INFO warnings
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
 call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
-allocate(X(3, N), V(3, N), f(3, N), m(N))
+allocate(X(3, N), V(3, N), fnew(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(fnn(3, N), q(N), fen(3, N))
@@ -153,9 +153,9 @@ do i = 1, steps
     ne = ne_aux(:, :, :, 1)**2
 
     if (i == 1) then
-        call forces(X, f)
+        call forces(X, fnew)
     else
-        call velocity_verlet(dt, m, L, forces, f, V, X)
+        call velocity_verlet(dt, m, L, forces, fnew, V, X)
     end if
     Ekin = calc_Ekin(V, m)
     Temp_current = 2*Ekin/(3*N)
@@ -169,8 +169,8 @@ do i = 1, steps
     print *, fen(:, 2)
 
     print *, "total forces:"
-    print *, f(:, 1)
-    print *, f(:, 2)
+    print *, fnew(:, 1)
+    print *, fnew(:, 2)
 
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
     call write_results_line(u)
