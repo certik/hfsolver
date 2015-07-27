@@ -20,12 +20,12 @@ implicit none
 !integer, parameter :: K = 3
 !real(dp), parameter :: kappa = 1.69_dp, alpha = 150e-3_dp
 !integer, parameter :: c0 = -2, c1 = 3, c2 = 0, c3 = -1
-integer, parameter :: K = 4
-real(dp), parameter :: kappa = 1.75_dp, alpha = 57e-3_dp
-integer, parameter :: c0 = -3, c1 = 6, c2 = -2, c3 = -2, c4 = 1
-!integer, parameter :: K = 5
-!real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
-!integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
+!integer, parameter :: K = 4
+!real(dp), parameter :: kappa = 1.75_dp, alpha = 57e-3_dp
+!integer, parameter :: c0 = -3, c1 = 6, c2 = -2, c3 = -2, c4 = 1
+integer, parameter :: K = 5
+real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
+integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
 !integer, parameter :: K = 6
 !real(dp), parameter :: kappa = 1.84_dp, alpha = 5.5e-3_dp
 !integer, parameter :: c0 = -14, c1 = 36, c2 = -27, c3 = -2, c4 = 12, c5 = -6, c6 = 1
@@ -155,16 +155,16 @@ do i = 1, steps
     !    c4*ne_aux(:, :, :, 6) + c5*ne_aux(:, :, :, 7) + &
     !    c6*ne_aux(:, :, :, 8))
 
-    !ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 2) - ne_aux(:, :, :, 3) &
-    !    + kappa*(ne-ne_aux(:, :, :, 2)) + alpha * &
-    !    (c0*ne_aux(:, :, :, 2)+c1*ne_aux(:, :, :, 3) + &
-    !    c2*ne_aux(:, :, :, 4) + c3*ne_aux(:, :, :, 5) + &
-    !    c4*ne_aux(:, :, :, 6) + c5*ne_aux(:, :, :, 7))
     ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 2) - ne_aux(:, :, :, 3) &
         + kappa*(ne-ne_aux(:, :, :, 2)) + alpha * &
         (c0*ne_aux(:, :, :, 2)+c1*ne_aux(:, :, :, 3) + &
         c2*ne_aux(:, :, :, 4) + c3*ne_aux(:, :, :, 5) + &
-        c4*ne_aux(:, :, :, 6))
+        c4*ne_aux(:, :, :, 6) + c5*ne_aux(:, :, :, 7))
+    !ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 2) - ne_aux(:, :, :, 3) &
+    !    + kappa*(ne-ne_aux(:, :, :, 2)) + alpha * &
+    !    (c0*ne_aux(:, :, :, 2)+c1*ne_aux(:, :, :, 3) + &
+    !    c2*ne_aux(:, :, :, 4) + c3*ne_aux(:, :, :, 5) + &
+    !    c4*ne_aux(:, :, :, 6))
 
 !    ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 2) - ne_aux(:, :, :, 3) &
 !        + kappa*(ne-ne_aux(:, :, :, 2)) + alpha * &
@@ -175,7 +175,7 @@ do i = 1, steps
     !print *, c0 + c1 + c2 + c3 + c4 + c5 + c6
 
     !ne_aux(:, :, :, 8) = ne_aux(:, :, :, 7)
-    !ne_aux(:, :, :, 7) = ne_aux(:, :, :, 6)
+    ne_aux(:, :, :, 7) = ne_aux(:, :, :, 6)
     ne_aux(:, :, :, 6) = ne_aux(:, :, :, 5)
     ne_aux(:, :, :, 5) = ne_aux(:, :, :, 4)
     ne_aux(:, :, :, 4) = ne_aux(:, :, :, 3)
