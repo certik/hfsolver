@@ -21,7 +21,7 @@ implicit none
 ! All variables are in Hartree atomic units
 
 integer :: N = 4
-integer :: i, steps, u
+integer :: i, steps, u, cg_iter
 real(dp) :: dt, L, t, Rcut, eps, sigma, rho
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
@@ -165,7 +165,7 @@ contains
     ! old eps: 3.6749308286427368e-5_dp
     ne=1._dp / L**3
     call free_energy_min(real(N, dp), N, L, G2, Temp, VenG, ne, 1e-9_dp, &
-            Eee, Een, Ts, Exc, Etot)
+            Eee, Een, Ts, Exc, Etot, cg_iter)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
     print *, "T_au =", Temp

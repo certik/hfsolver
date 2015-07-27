@@ -307,7 +307,7 @@ s = integrate_trapz_1(Rp, f)
 end function
 
 subroutine free_energy_min(Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
-        Eee, Een, Ts, Exc, Etot)
+        Eee, Een, Ts, Exc, Etot, cg_iter)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
 ! components are returned in Eee, Een, Ts and Exc. The relation is:
@@ -320,6 +320,7 @@ real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
+integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
 
 integer :: Ng
 real(dp), allocatable :: free_energies(:)
@@ -425,6 +426,7 @@ do iter = 1, max_iter
         if (last3 < energy_eps) then
             ne = psi**2
             Etot = free_energy_
+            cg_iter = iter
             return
         end if
     end if

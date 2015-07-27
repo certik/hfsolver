@@ -14,7 +14,7 @@ use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot
-integer :: Ng
+integer :: Ng, cg_iter
 real(dp) :: Z, Ediff
 real(dp), allocatable :: R(:), V(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), dFdn(:, :, :)
@@ -71,7 +71,8 @@ call assert(abs(Eee - (0.73653527)) < 5e-8)
 call assert(abs(Exc - (-0.88363737)) < 5e-8)
 call assert(abs(Etot - (1.34447026)) < 1e-8)
 ne=1._dp / L**3
-call free_energy_min(1._dp, 1, L, G2, T_au, VenG, ne, 1e-9_dp, Eee, Een, Ts, Exc, Etot)
+call free_energy_min(1._dp, 1, L, G2, T_au, VenG, ne, 1e-9_dp, Eee, Een, Ts, &
+    Exc, Etot, cg_iter)
 print *, "Ng =", Ng
 print *, "Rcut =", Rcut
 print *, "T_au =", T_au

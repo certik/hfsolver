@@ -36,6 +36,7 @@ real(dp) :: Een_correction
 real(dp) :: Eee, Een, Ts, Exc, Etot, Enn
 real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
+integer :: cg_iter
 real(dp), dimension(:,:,:,:), allocatable :: ne_aux
 
 logging_info = .false. ! Turn of the INFO warnings
@@ -228,7 +229,7 @@ contains
     ! Energy calculation
     print *, "Minimizing free energy"
     call free_energy_min(N*Z, N, L, G2, Temp, VenG, ne, scf_eps, &
-            Eee, Een, Ts, Exc, Etot)
+            Eee, Een, Ts, Exc, Etot, cg_iter)
 
     ! Forces calculation
     print *, "ne -> neG"
@@ -282,15 +283,16 @@ contains
 
     subroutine write_results_header(u)
     integer, intent(in) :: u
-    write(u, '(10a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", &
-        "F [eV]", "T [eV]", "Ts [eV]", "Een [eV]", "Eee [eV]", "Exc [eV]"
+    write(u, '(11a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", &
+        "F [eV]", "T [eV]", "Ts [eV]", "Een [eV]", "Eee [eV]", "Exc [eV]", &
+        "CG iter"
     end subroutine
 
     subroutine write_results_line(u)
     integer, intent(in) :: u
-    write(u, '(10f17.6)') t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
+    write(u, '(10f17.6, i17)') t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
         (Etot + Enn + Ekin) * Ha2eV / N, Temp_current * Ha2eV, Ts * Ha2eV / N, &
-        Een * Ha2eV / N, Eee * Ha2eV / N, Exc * Ha2eV / N
+        Een * Ha2eV / N, Eee * Ha2eV / N, Exc * Ha2eV / N, cg_iter
     end subroutine
 
 end program
