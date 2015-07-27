@@ -389,12 +389,8 @@ do iter = 1, max_iter
     theta_a = 0
     theta_b = mod(theta, 2*pi)
     call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
-    if (iter < 2) then
-        call brent(func, theta_a, theta_b, theta_c, brent_eps, 500, theta, &
-            free_energy_, verbose=.false.)
-    else
-        call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
-    end if
+    call brent(func, theta_a, theta_b, theta_c, brent_eps, 500, theta, &
+        free_energy_, verbose=.false.)
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
