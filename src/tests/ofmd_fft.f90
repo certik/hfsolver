@@ -161,7 +161,10 @@ do i = 1, steps
     ne_aux(:, :, :, 2) = ne_aux(:, :, :, 1)
 
     !ne = ne_aux(:, :, :, 1)**2
-    ne = abs(ne_aux(:, :, :, 1))
+    ne = ne_aux(:, :, :, 1)
+    if (any(ne < 0)) then
+        stop "ne is negative"
+    end if
     !ne = N * Z / L**3
 
     if (i == 1) then
