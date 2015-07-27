@@ -16,8 +16,13 @@ implicit none
 
 ! All variables are in Hartree atomic units
 
+! XLBOMD parameters:
+integer, parameter :: K = 5
+real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
+integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
+
 integer :: N = 4
-integer :: i, steps, u
+integer :: i, j, steps, u
 real(dp) :: dt, L, t, rho, scf_eps
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
@@ -31,6 +36,7 @@ real(dp) :: Een_correction
 real(dp) :: Eee, Een, Ts, Exc, Etot, Enn
 real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
+real(dp), dimension(:,:,:,:), allocatable :: ne_aux
 
 logging_info = .false. ! Turn of the INFO warnings
 
@@ -41,6 +47,7 @@ allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(fnn(3, N), q(N), fen(3, N))
+allocate(ne_aux(Ng, Ng, Ng, -K:1))
 
 q = Z
 m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
@@ -110,6 +117,38 @@ t = 0
 call cpu_time(t3)
 do i = 1, steps
     print *, "Starting MD iteration:", i
+
+    if (i > 10) then
+        ! ne_aux(:, :, :,  1) ... n_{i+1}
+        ! ne_aux(:, :, :,  0) ... n_{i}
+        ! ne_aux(:, :, :, -1) ... n_{i-1}
+        ! ne_aux(:, :, :, -2) ... n_{i-2}
+        ! ne_aux(:, :, :, -3) ... n_{i-3}
+        ! ne_aux(:, :, :, -4) ... n_{i-4}
+        ! ne_aux(:, :, :, -5) ... n_{i-5}
+        if (i < 100) then
+            ne_aux(:, :, :, 1) = 2*ne - ne_aux(:, :, :, -1) &
+                + alpha*(c0*ne &
+                + c1*ne_aux(:, :, :, -1) + c2*ne_aux(:, :, :, -2) &
+                + c3*ne_aux(:, :, :, -3) + c4*ne_aux(:, :, :, -4) &
+                + c5*ne_aux(:, :, :, -5))
+        else
+            ne_aux(:, :, :, 1) = 2*ne_aux(:, :, :, 0) - ne_aux(:, :, :, -1) &
+                + kappa*(ne-ne_aux(:, :, :, 0)) + alpha*(c0*ne_aux(:, :, :, 0) &
+                + c1*ne_aux(:, :, :, -1) + c2*ne_aux(:, :, :, -2) &
+                + c3*ne_aux(:, :, :, -3) + c4*ne_aux(:, :, :, -4) &
+                + c5*ne_aux(:, :, :, -5))
+        end if
+    else
+        ne_aux(:, :, :, 1) = ne
+    end if
+
+    do j = 0, -K, -1
+        ne_aux(:, :, :, j) = ne_aux(:, :, :, j+1)
+    end do
+
+    ne = abs(ne_aux(:, :, :, 1))
+
     if (i == 1) then
         call forces(X, f)
     else
