@@ -423,12 +423,12 @@ do iter = 1, max_iter
     end if
     print "('# ', i3, ' Etot/atom = ', f18.8, ' eV; last2 = ', es10.2, ' last3 = ',es10.2)", &
         iter, free_energy_ * Ha2eV / Natom, last2 * Ha2eV, last3 * Ha2eV
-    if (MD_iter > 100 .and. iter == 8) then
-            ne = psi**2
-            Etot = free_energy_
-            cg_iter = iter
-            return
-    end if
+    !if (MD_iter > 100 .and. iter == 8) then
+    !        ne = psi**2
+    !        Etot = free_energy_
+    !        cg_iter = iter
+    !        return
+    !end if
     if (iter > 3) then
         if (last3 < energy_eps) then
             ne = psi**2
