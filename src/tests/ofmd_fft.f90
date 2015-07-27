@@ -43,7 +43,7 @@ logging_info = .false. ! Turn of the INFO warnings
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
-call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
+call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
@@ -51,7 +51,7 @@ allocate(fnn(3, N), q(N), fen(3, N))
 allocate(ne_aux(Ng, Ng, Ng, -K:1))
 
 q = Z
-m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
+m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "----------------------------------------------------------------"
 print *, "Input Summary:"
@@ -83,7 +83,9 @@ call reciprocal_space_vectors(L, G, G2)
 ! Make it deterministic for now
 !call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
-call positions_fcc(X, L)
+!call positions_fcc(X, L)
+X(:, 1) = [L/2, L/2, L/2]
+X(:, 2) = [0._dp, 0._dp, 0._dp]
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
@@ -161,20 +163,14 @@ do i = 1, steps
     print *, "Nuclear forces:"
     print *, fnn(:, 1)
     print *, fnn(:, 2)
-    print *, fnn(:, 3)
-    print *, fnn(:, 4)
 
     print *, "Electronic forces:"
     print *, fen(:, 1)
     print *, fen(:, 2)
-    print *, fen(:, 3)
-    print *, fen(:, 4)
 
     print *, "total forces:"
     print *, f(:, 1)
     print *, f(:, 2)
-    print *, f(:, 3)
-    print *, f(:, 4)
 
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
     call write_results_line(u)
