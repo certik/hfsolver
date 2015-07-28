@@ -53,7 +53,7 @@ logging_info = .false. ! Turn of the INFO warnings
 
 call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
-call read_pseudo("fem/H.pseudo.gaussian", R, Ven_rad, Z, Ediff)
+call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
@@ -61,7 +61,7 @@ allocate(fnn(3, N), q(N), fen(3, N))
 allocate(ne_aux(Ng, Ng, Ng, K+2))
 
 q = Z
-m = 1._dp * u2au ! Using Hydrogen mass in atomic mass units [u]
+m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "----------------------------------------------------------------"
 print *, "Input Summary:"
@@ -139,7 +139,7 @@ call cpu_time(t3)
 
 do i = 1, steps
     print *, "Starting MD iteration:", i
-    if (i == 1) then
+    if (i < 10) then
         do j = 1, K+2
             ne_aux(:, :, :, j) = ne
         end do
