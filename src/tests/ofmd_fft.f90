@@ -106,7 +106,7 @@ do i = 2, N
 end do
 print *
 
-call initial_velocities(X, V, m, Temp, 2._dp)
+call initial_velocities(X, V, m, Temp, 0.05_dp)
 print *
 total_momentum = calc_total_momentum(V, m)
 print *, "Center of mass momentum: ", sqrt(sum(total_momentum**2))
@@ -329,6 +329,8 @@ contains
     real(dp), intent(in) :: m(:) ! masses
     real(dp), intent(in) :: T ! Temperature
     real(dp), intent(in) :: max_L ! Maximum angular momentum allowed
+    real(dp) :: min_L
+    min_L = huge(1._dp)
     do
         ! Initialize velocities based on Maxwell-Boltzmann distribution
         call randn(V)
@@ -346,11 +348,14 @@ contains
 
         total_momentum = calc_total_angular_momentum(X, V, m)
 
-        if (sqrt(sum(total_momentum**2)) < max_L) then
-            return
+        if (sqrt(sum(total_momentum**2)) < min_L) then
+            min_L = sqrt(sum(total_momentum**2))
+            print *, "Found new minimum angular momentum:", min_L
         end if
 
-        print *, "Center of mass angular momentum too big, adjusting:", sqrt(sum(total_momentum**2))
+        if (min_L < max_L) then
+            return
+        end if
     end do
     end subroutine
 
