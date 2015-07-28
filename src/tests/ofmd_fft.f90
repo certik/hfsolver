@@ -44,6 +44,7 @@ real(dp) :: Ediff, Z
 real(dp) :: Een_correction
 real(dp) :: Eee, Een, Ts, Exc, Etot, Enn
 real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
+real(dp) :: total_momentum(3)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 integer :: cg_iter
 real(dp), dimension(:,:,:,:), allocatable :: ne_aux
@@ -108,16 +109,22 @@ end do
 print *
 
 ! Initialize velocities based on Maxwell-Boltzmann distribution
-!call randn(V)
-!V = V * sqrt(Temp / spread(m, 1, 3))
-V = 0
+call randn(V)
+V = V * sqrt(Temp / spread(m, 1, 3))
 
-!Ekin = calc_Ekin(V, m)
-!Temp_current = 2*Ekin/(3*N)
+Ekin = calc_Ekin(V, m)
+Temp_current = 2*Ekin/(3*N)
 
 ! The average temperature (i.e. if we average Temp_current for many runs) will
 ! be Temp. But we want to set it exactly to Temp, so we rescale the velocities.
-!V = V * sqrt(Temp / Temp_current)
+V = V * sqrt(Temp / Temp_current)
+
+! Now we need to remove center of mass motion
+total_momentum = calc_total_momentum(V, m)
+print *, "Center of mass momentum before:", sqrt(sum(total_momentum**2))
+V = V - spread(total_momentum / sum(m), 2, N)
+total_momentum = calc_total_momentum(V, m)
+print *, "Center of mass momentum after: ", sqrt(sum(total_momentum**2))
 
 print *, "MD start:"
 
@@ -294,6 +301,13 @@ contains
     real(dp), intent(in) :: V(:, :) ! velocities
     real(dp), intent(in) :: m(:) ! masses
     Ekin = sum(m*sum(V**2, dim=1))/2
+    end function
+
+    pure function calc_total_momentum(V, m) result(p)
+    real(dp), intent(in) :: V(:, :) ! velocities
+    real(dp), intent(in) :: m(:) ! masses
+    real(dp) :: p(3)
+    p = sum(spread(m, 1, 3)*V, dim=2)
     end function
 
     subroutine read_input(filename, T, density, Nspecies, N, start, dynamics, &
