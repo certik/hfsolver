@@ -263,7 +263,7 @@ contains
 
     ! Energy calculation
     print *, "Minimizing free energy"
-    call free_energy_min(i, N*Z, N, L, G2, Temp, VenG, ne, scf_eps, &
+    call free_energy_min(N*Z, N, L, G2, Temp, VenG, ne, scf_eps, &
             Eee, Een, Ts, Exc, Etot, cg_iter)
 
     ! Forces calculation

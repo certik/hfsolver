@@ -306,7 +306,7 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine free_energy_min(MD_iter, Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
+subroutine free_energy_min(Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
         Eee, Een, Ts, Exc, Etot, cg_iter)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
@@ -314,7 +314,6 @@ subroutine free_energy_min(MD_iter, Nelec, Natom, L, G2, T_au, VenG, ne, energy_
 !
 !     Etot = Ts + Een + Eee + Exc
 !
-integer, intent(in) :: MD_iter
 real(dp), intent(in) :: Nelec ! Number of electrons
 integer, intent(in) :: Natom ! Number of atoms
 real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
@@ -390,7 +389,7 @@ do iter = 1, max_iter
     theta_b = mod(theta, 2*pi)
     call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
     if (iter < 2) then
-        call brent(func, theta_a, theta_b, theta_c, brent_eps, 500, theta, &
+        call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
     else
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
@@ -423,19 +422,11 @@ do iter = 1, max_iter
     end if
     print "('# ', i3, ' Etot/atom = ', f18.8, ' eV; last2 = ', es10.2, ' last3 = ',es10.2)", &
         iter, free_energy_ * Ha2eV / Natom, last2 * Ha2eV, last3 * Ha2eV
-    !if (MD_iter > 100 .and. iter == 8) then
-    !        ne = psi**2
-    !        Etot = free_energy_
-    !        cg_iter = iter
-    !        return
-    !end if
     if (iter > 3) then
         if (last3 < energy_eps) then
             ne = psi**2
             Etot = free_energy_
             cg_iter = iter
-            psi_norm = integral(L, psi**2)
-            print *, "Final norm of psi:", psi_norm
             return
         end if
     end if
