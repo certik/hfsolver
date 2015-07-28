@@ -91,11 +91,11 @@ R2 = linspace(0._dp, L/2, Nmesh)
 call reciprocal_space_vectors(L, G, G2)
 
 ! Make it deterministic for now
-!call init_random()
+call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
-!call positions_fcc(X, L)
-X(:, 1) = [L/2, L/2, L/2]
-X(:, 2) = [0._dp, 0._dp, 0._dp]
+call positions_fcc(X, L)
+!X(:, 1) = [L/2, L/2, L/2]
+!X(:, 2) = [0._dp, 0._dp, 0._dp]
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
