@@ -233,7 +233,7 @@ contains
     real(dp), intent(out) :: f(:, :) ! forces
     real(dp) :: stress(6)
     real(dp) :: fac(Ng, Ng, Ng)
-    integer :: j
+    integer :: i
     print *, "-------------------------------------"
     print *, "Calculating forces"
     ! Calculate nuclear forces
@@ -243,7 +243,7 @@ contains
     ! Calculate the electronic forces
     print *, "Calculating VenG"
     VenG = 0
-    do j = 1, N
+    do i = 1, N
         ! Note: we use minus sign in the forward real -> fourier transform.
         ! Then the following holds:
         !
@@ -257,7 +257,7 @@ contains
         !
         ! with minus sign in the exponential.
         VenG = VenG - Ven0G * exp(i_ * &
-            (G(:,:,:,1)*X(1,j) + G(:,:,:,2)*X(2,j) + G(:,:,:,3)*X(3,j)))
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
     end do
     call assert(abs(VenG(1, 1, 1)) < epsilon(1._dp)) ! The G=0 component
 
@@ -275,14 +275,14 @@ contains
 
     fen = 0
     print *, "Calculating fen"
-    do j = 1, N
+    do i = 1, N
         ! We have minus sign in the exponential, per the definition of VenG
         ! above (see the comment there).
         fac = L**3*Ven0G*aimag(neG*exp(-i_ * &
-            (G(:,:,:,1)*X(1,j) + G(:,:,:,2)*X(2,j) + G(:,:,:,3)*X(3,j))))
-        fen(1, j) = sum(G(:,:,:,1)*fac)
-        fen(2, j) = sum(G(:,:,:,2)*fac)
-        fen(3, j) = sum(G(:,:,:,3)*fac)
+            (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i))))
+        fen(1, i) = sum(G(:,:,:,1)*fac)
+        fen(2, i) = sum(G(:,:,:,2)*fac)
+        fen(3, i) = sum(G(:,:,:,3)*fac)
     end do
 
     f = fnn + fen
