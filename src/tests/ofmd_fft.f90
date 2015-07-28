@@ -95,9 +95,7 @@ call reciprocal_space_vectors(L, G, G2)
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
 !call positions_fcc(X, L)
 X(:, 1) = [L/2, L/2, L/2]
-!X(:, 2) = [0._dp, 0._dp, 0._dp]
-!X(:, 2) = [0.1_dp, 0.2_dp, 0.3_dp]
-X(:, 2) = [L/2+0.5_dp, L/2+0.6_dp, L/2+0.02_dp]
+X(:, 2) = [0._dp, 0._dp, 0._dp]
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
@@ -108,23 +106,15 @@ do i = 2, N
 end do
 print *
 
-! Initialize velocities based on Maxwell-Boltzmann distribution
-call randn(V)
-V = V * sqrt(Temp / spread(m, 1, 3))
-
+call initial_velocities(X, V, m, Temp, 2._dp)
+print *
+total_momentum = calc_total_momentum(V, m)
+print *, "Center of mass momentum: ", sqrt(sum(total_momentum**2))
+total_momentum = calc_total_angular_momentum(X, V, m)
+print *, "Center of mass angular momentum:", sqrt(sum(total_momentum**2))
 Ekin = calc_Ekin(V, m)
 Temp_current = 2*Ekin/(3*N)
-
-! The average temperature (i.e. if we average Temp_current for many runs) will
-! be Temp. But we want to set it exactly to Temp, so we rescale the velocities.
-V = V * sqrt(Temp / Temp_current)
-
-! Now we need to remove center of mass motion
-total_momentum = calc_total_momentum(V, m)
-print *, "Center of mass momentum before:", sqrt(sum(total_momentum**2))
-V = V - spread(total_momentum / sum(m), 2, N)
-total_momentum = calc_total_momentum(V, m)
-print *, "Center of mass momentum after: ", sqrt(sum(total_momentum**2))
+print *, "Temperature:", Temp_current, Temp
 
 print *, "MD start:"
 
@@ -309,6 +299,60 @@ contains
     real(dp) :: p(3)
     p = sum(spread(m, 1, 3)*V, dim=2)
     end function
+
+    pure function cross_product(a, b) result(c)
+    real(dp), intent(in) :: a(:), b(:)
+    real(dp) :: c(3)
+    c(1) = a(2) * b(3) - a(3) * b(2)
+    c(2) = a(3) * b(1) - a(1) * b(3)
+    c(3) = a(1) * b(2) - a(2) * b(1)
+    end function
+
+    pure function calc_total_angular_momentum(X, V, m) result(L)
+    real(dp), intent(in) :: X(:, :) ! positions
+    real(dp), intent(in) :: V(:, :) ! velocities
+    real(dp), intent(in) :: m(:) ! masses
+    real(dp) :: L(3)
+    real(dp) :: P(3)
+    integer :: i, N
+    N = size(X, 2)
+    P = sum(spread(m, 2, N) * X, dim=2) / sum(m)
+    L = 0
+    do i = 1, N
+        L = L + cross_product(X(:, i)-P, m(i)*V(:, i))
+    end do
+    end function
+
+    subroutine initial_velocities(X, V, m, T, max_L)
+    real(dp), intent(in) :: X(:, :) ! positions
+    real(dp), intent(out) :: V(:, :) ! velocities
+    real(dp), intent(in) :: m(:) ! masses
+    real(dp), intent(in) :: T ! Temperature
+    real(dp), intent(in) :: max_L ! Maximum angular momentum allowed
+    do
+        ! Initialize velocities based on Maxwell-Boltzmann distribution
+        call randn(V)
+        V = V * sqrt(T / spread(m, 1, 3))
+
+        ! Now we need to remove center of mass motion
+        total_momentum = calc_total_momentum(V, m)
+        V = V - spread(total_momentum / sum(m), 2, N)
+
+        Ekin = calc_Ekin(V, m)
+        Temp_current = 2*Ekin/(3*N)
+        ! The average temperature (i.e. if we average Temp_current for many runs) will
+        ! be Temp. But we want to set it exactly to Temp, so we rescale the velocities.
+        V = V * sqrt(T / Temp_current)
+
+        total_momentum = calc_total_angular_momentum(X, V, m)
+
+        if (sqrt(sum(total_momentum**2)) < max_L) then
+            return
+        end if
+
+        print *, "Center of mass angular momentum too big, adjusting:", sqrt(sum(total_momentum**2))
+    end do
+    end subroutine
 
     subroutine read_input(filename, T, density, Nspecies, N, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
