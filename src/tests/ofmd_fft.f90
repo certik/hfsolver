@@ -182,9 +182,9 @@ do i = 1, steps
     ne_aux(:, :, :, 2) = ne_aux(:, :, :, 1)
 
     !ne = ne_aux(:, :, :, 1)**2
-    ne = ne_aux(:, :, :, 1)
-    if (any(ne < 0)) then
-        stop "ne is negative"
+    ne = abs(ne_aux(:, :, :, 1))
+    if (any(ne_aux(:, :, :, 1) < 0)) then
+        print *, "INFO: ne_aux is negative"
     end if
     !ne = N * Z / L**3
 
