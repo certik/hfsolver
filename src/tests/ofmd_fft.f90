@@ -139,7 +139,7 @@ call cpu_time(t3)
 
 do i = 1, steps
     print *, "Starting MD iteration:", i
-    if (i < 10) then
+    if (i < 5) then
         do j = 1, K+2
             ne_aux(:, :, :, j) = ne
         end do
