@@ -30,7 +30,7 @@ integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
 !real(dp), parameter :: kappa = 1.84_dp, alpha = 5.5e-3_dp
 !integer, parameter :: c0 = -14, c1 = 36, c2 = -27, c3 = -2, c4 = 12, c5 = -6, c6 = 1
 
-integer :: N = 4
+integer :: N
 integer :: i, j, steps, u
 real(dp) :: dt, L, t, rho, scf_eps
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
@@ -106,7 +106,7 @@ do i = 2, N
 end do
 print *
 
-call initial_velocities(X, V, m, Temp, 0.05_dp)
+call initial_velocities(X, V, m, Temp, 3._dp)
 print *
 total_momentum = calc_total_momentum(V, m)
 print *, "Center of mass momentum: ", sqrt(sum(total_momentum**2))
@@ -316,7 +316,7 @@ contains
     real(dp) :: P(3)
     integer :: i, N
     N = size(X, 2)
-    P = sum(spread(m, 2, N) * X, dim=2) / sum(m)
+    P = sum(spread(m, 1, 3) * X, dim=2) / sum(m)
     L = 0
     do i = 1, N
         L = L + cross_product(X(:, i)-P, m(i)*V(:, i))
