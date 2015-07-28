@@ -94,8 +94,9 @@ call reciprocal_space_vectors(L, G, G2)
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
 !call positions_fcc(X, L)
 X(:, 1) = [L/2, L/2, L/2]
-X(:, 2) = [0._dp, 0._dp, 0._dp]
+!X(:, 2) = [0._dp, 0._dp, 0._dp]
 !X(:, 2) = [0.1_dp, 0.2_dp, 0.3_dp]
+X(:, 2) = [L/2+0.5_dp, L/2+0.6_dp, L/2+0.02_dp]
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
@@ -107,15 +108,16 @@ end do
 print *
 
 ! Initialize velocities based on Maxwell-Boltzmann distribution
-call randn(V)
-V = V * sqrt(Temp / spread(m, 1, 3))
+!call randn(V)
+!V = V * sqrt(Temp / spread(m, 1, 3))
+V = 0
 
-Ekin = calc_Ekin(V, m)
-Temp_current = 2*Ekin/(3*N)
+!Ekin = calc_Ekin(V, m)
+!Temp_current = 2*Ekin/(3*N)
 
 ! The average temperature (i.e. if we average Temp_current for many runs) will
 ! be Temp. But we want to set it exactly to Temp, so we rescale the velocities.
-V = V * sqrt(Temp / Temp_current)
+!V = V * sqrt(Temp / Temp_current)
 
 print *, "MD start:"
 
