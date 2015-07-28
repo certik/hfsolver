@@ -1,7 +1,7 @@
 5.0 2.7 1 4 ! T(eV), density(g/cm^3), Number of Species, Number of nuclei
 3 -1 -1 -1   ! start
 1 4 64 -1 -1 .0001 -1   ! Dynamics, Functional, FFT, SKIP, SKIP, SCF tolerance
-20000 2.5   1  ! Number of time steps , time step (a.u)
+20000 20   1  ! Number of time steps , time step (a.u)
 Al 13 26.9 4
 
 
