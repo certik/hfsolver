@@ -1,7 +1,7 @@
 program analyze_md
 use types, only: dp
 use constants, only: ang2bohr, K2au, density2gcm3, u2au, s2au
-use md, only: velocity_verlet, unfold_positions
+use md, only: unfold_positions
 use random, only: randn
 use utils, only: init_random
 use optimize, only: linregress

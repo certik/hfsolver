@@ -8,7 +8,7 @@ module ofdft_fft
 ! space, VenG is the same potential in reciprocal space.
 
 use types, only: dp
-use constants, only: pi, i_
+use constants, only: pi, i_, Ha2eV
 use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz
@@ -18,11 +18,14 @@ use integration, only: integrate_trapz_1
 implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
-    radial_potential_fourier, real2fourier, fourier2real, integralG
+    radial_potential_fourier, real2fourier, fourier2real, integralG, &
+    logging_info
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
 integer, parameter :: update_polak_ribiere   = 2
+
+logical :: logging_info = .true.
 
 interface integralG
     module procedure integralG_complex, integralG_real
@@ -75,7 +78,9 @@ tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized
 if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
-    print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+    if (logging_info) then
+        print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+    end if
 end if
 ! TODO: make this strict:
 !call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
@@ -93,7 +98,9 @@ complex(dp) :: s
 s = sum(fG) * L**3
 r = real(s, dp)
 if (abs(aimag(s)) > 1e-12_dp) then
-    print *, "INFO: integralG() imaginary part:", aimag(s)
+    if (logging_info) then
+        print *, "INFO: integralG() imaginary part:", aimag(s)
+    end if
 end if
 !if (abs(aimag(s)) > 1e-5_dp) then
 !    print *, "aimag(s) =", aimag(s)
@@ -248,9 +255,15 @@ dFdn = dF0dn + Vee + Ven + Vxc
 dFdn = dFdn * L**3
 end subroutine
 
-subroutine radial_potential_fourier(R, V, L, Z, VenG)
+subroutine radial_potential_fourier(R, V, L, Z, VenG, V0)
+! Takes radial potential (given at origin) defined by:
+!   V(R) on a grid R
+!   Z/r for r > maxval(R)
+! and calculates a 3D Fourier transform of it into the VenG grid. 'L' is the
+! length of the box.
 real(dp), intent(in) :: R(:), V(:), L, Z
 real(dp), intent(out) :: VenG(:, :, :)
+real(dp), intent(out) :: V0
 integer :: Ng, i, j, k, idx
 real(dp) :: Rp(size(R)), dk, Rc, w, Vk(0:3*(size(VenG, 1)/2+1)**2)
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
@@ -261,11 +274,19 @@ Ng = size(VenG, 1)
 call assert(size(VenG, 2) == Ng)
 call assert(size(VenG, 3) == Ng)
 dk = 2*pi/L
+
+! V0 =      \int V(r) - Z/r d^3x
+!    = 4*pi*\int_0^Rc (V(r) - Z/r) r^2 dr
+!    = 4*pi*\int_0^Rc V(r) r^2 dr - Z*Rc^2 / 2
+! So these two are equivalent, we use the one that is faster:
+!V0 = -4*pi*integrate(Rp, R**2*(V-Z/R))
+V0 = -4*pi*(integrate(Rp, R**2*V) - Z*Rc**2/2)
+
 ! We prepare the values of the radial Fourier transform on a 3D grid
 Vk(0) = 0
 do i = 1, 3*(Ng/2+1)**2
     w = sqrt(real(i, dp))*dk
-    Vk(i) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + cos(w*Rc))
+    Vk(i) = 4*pi/(L**3 * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + Z*cos(w*Rc))
 end do
 
 ! We fill out the 3D grid using the values from Vk
@@ -274,7 +295,7 @@ do j = 1, Ng
 do k = 1, Ng
     idx = (i-1-Ng*nint((i-1.5_dp)/Ng))**2 + (j-1-Ng*nint((j-1.5_dp)/Ng))**2 &
             + (k-1-Ng*nint((k-1.5_dp)/Ng))**2
-    VenG(i, j, k) = Vk(idx) * Z
+    VenG(i, j, k) = Vk(idx)
 end do
 end do
 end do
@@ -285,20 +306,28 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine free_energy_min(Nelec, L, G2, T_au, VenG, ne, energy_eps, &
-        Eee, Een, Ts, Exc, Etot)
-integer, intent(in) :: Nelec ! Number of electrons
+subroutine free_energy_min(Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
+        Eee, Een, Ts, Exc, Etot, cg_iter)
+! Minimize the electronic free energy using the initial condition 'ne'. Returns
+! the ground state in 'ne'. The free energy is returned in Etot, and it's
+! components are returned in Eee, Een, Ts and Exc. The relation is:
+!
+!     Etot = Ts + Een + Eee + Exc
+!
+real(dp), intent(in) :: Nelec ! Number of electrons
+integer, intent(in) :: Natom ! Number of atoms
 real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
+integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
 
 integer :: Ng
 real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
     psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
 integer :: iter, max_iter
-real(dp) :: mu, last3, brent_eps, free_energy_, &
+real(dp) :: mu, last2, last3, brent_eps, free_energy_, &
     gamma_d, gamma_n, theta, theta_a, theta_b, theta_c, fa, fb, fc
 real(dp) :: f2
 real(dp) :: psi_norm
@@ -306,8 +335,11 @@ integer :: update_type
 !real(dp) :: A, B
 
 brent_eps = 1e-3_dp
-max_iter = 200
+max_iter = 2000
 update_type = update_polak_ribiere
+
+last2 = 0
+last3 = 0
 
 Ng = size(ne, 1)
 
@@ -379,14 +411,22 @@ do iter = 1, max_iter
 !    print "('    Eee  = ', f14.8)", Eee
 !    print "('    Exc  = ', f14.8)", Exc
 !    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u.')", free_energy_
-    free_energies(iter) = free_energy_
+    free_energies(iter) = free_energy_ / Natom
+    if (iter > 1) then
+        last2 = maxval(free_energies(iter-1:iter)) - &
+            minval(free_energies(iter-1:iter))
+    end if
+    if (iter > 2) then
+        last3 = maxval(free_energies(iter-2:iter)) - &
+            minval(free_energies(iter-2:iter))
+    end if
+    print "('# ', i3, ' Etot/atom = ', f18.8, ' eV; last2 = ', es10.2, ' last3 = ',es10.2)", &
+        iter, free_energy_ * Ha2eV / Natom, last2 * Ha2eV, last3 * Ha2eV
     if (iter > 3) then
-        last3 = maxval(free_energies(iter-3:iter)) - &
-            minval(free_energies(iter-3:iter))
         if (last3 < energy_eps) then
             ne = psi**2
             Etot = free_energy_
+            cg_iter = iter
             return
         end if
     end if

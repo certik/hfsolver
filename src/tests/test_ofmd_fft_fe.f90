@@ -21,12 +21,13 @@ implicit none
 ! All variables are in Hartree atomic units
 
 integer :: N = 4
-integer :: i, steps, u
+integer :: i, steps, u, cg_iter
 real(dp) :: dt, L, t, Rcut, eps, sigma, rho
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
 real(dp), allocatable :: R(:), Ven_rad(:), &
     G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
+real(dp) :: V0
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: nen(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:), nen0(:), fullsol(:)
@@ -61,7 +62,7 @@ print *, "Calculated quantities:"
 print *, "L =", L, "a.u."
 print *
 
-call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G)
+call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, V0)
 Nmesh = 10000
 allocate(R2(Nmesh), nen0(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
@@ -118,13 +119,7 @@ do i = 1, steps
     Temp_current = 2*Ekin/(3*N)
     print "(i5, ': E=', f10.4, ' a.u.; Epot=', f10.4, ' a.u.; T=',f10.4,' K')",&
         i, Ekin + Epot, Epot, Temp_current / K2au
-    call velocity_verlet(dt, m, forces, f, V, X)
-    if (any(abs(X/L) > 2)) then
-        print *, "max n = X/L =", maxval(abs(X/L))
-        call stop_error("X is out of range after Verlet: abs(X/L) > 2")
-    end if
-    ! Periodically shift particles to the [0, L]^3 box
-    X = X - L*floor(X/L)
+    call velocity_verlet(dt, m, L, forces, f, V, X)
     t = t + dt
 end do
 call cpu_time(t4)
@@ -169,8 +164,8 @@ contains
     ! Energy calculation
     ! old eps: 3.6749308286427368e-5_dp
     ne=1._dp / L**3
-    call free_energy_min(N, L, G2, Temp, VenG, ne, 1e-9_dp, &
-            Eee, Een, Ts, Exc, Etot)
+    call free_energy_min(real(N, dp), N, L, G2, Temp, VenG, ne, 1e-9_dp, &
+            Eee, Een, Ts, Exc, Etot, cg_iter)
     print *, "Ng =", Ng
     print *, "Rcut =", Rcut
     print *, "T_au =", Temp

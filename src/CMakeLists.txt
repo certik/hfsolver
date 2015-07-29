@@ -117,6 +117,13 @@ if(WITH_MPI)
     )
 endif()
 
+if(WITH_MKL)
+    set(SRC ${SRC}
+        c_mkl.c
+        mkl.f90
+    )
+endif()
+
 add_library(hfsolver ${SRC})
 
 add_subdirectory(feast)

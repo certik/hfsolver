@@ -27,19 +27,26 @@ end interface
 
 contains
 
-subroutine velocity_verlet(dt, m, forces, f, V, X)
+subroutine velocity_verlet(dt, m, L, forces, f, V, X)
 ! Propagates f, V, X: t -> t+dt
 ! On input, f, V, X are given at time t, on output they are given at time t+dt.
-! X(i, j) is i-th particle, j comp. (j=1, 2, 3)
+! f(i, j), V(i, j), X(i, j) is i-th particle, j comp. (j=1, 2, 3)
 real(dp), intent(in) :: dt ! time step
 real(dp), intent(in) :: m(:) ! m(i) the mass of i-th particle
+real(dp), intent(in) :: L ! Length of the box for applying periodic BC
 ! Callback that calculates forces from positions
 procedure(forces_func) :: forces
-real(dp), intent(inout) :: f(:, :) ! f(t) -> f(t+dt)
-real(dp), intent(inout) :: V(:, :) ! V(t) -> V(t+dt)
-real(dp), intent(inout) :: X(:, :) ! X(t) -> X(t+dt)
+real(dp), intent(inout) :: f(:, :) ! f(t) -> f(t+dt)  Forces
+real(dp), intent(inout) :: V(:, :) ! V(t) -> V(t+dt)  Velocities
+real(dp), intent(inout) :: X(:, :) ! X(t) -> X(t+dt)  Positions
 real(dp) :: f_next(3, size(f, 2))
 X = X + V*dt + f*dt**2/(2*spread(m, 1, 3))
+if (any(abs(X/L) > 2)) then
+    print *, "max n = X/L =", maxval(abs(X/L))
+    call stop_error("X is out of range after Verlet: abs(X/L) > 2")
+end if
+! Periodically shift particles to the [0, L]^3 box
+X = X - L*floor(X/L)
 call forces(X, f_next)
 V = V + (f + f_next)*dt/(2*spread(m, 1, 3))
 f = f_next

@@ -23,6 +23,7 @@ real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), dFdn(:, :, :)
 real(dp), allocatable :: VenG0(:, :, :)
+real(dp) :: V0
 complex(dp), allocatable :: VenG(:, :, :)
 real(dp) :: L, T_eV, T_au
 integer :: i, j, k
@@ -43,7 +44,7 @@ allocate(VenG0(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(R(10000))
 R = linspace(1._dp/10000, 0.9_dp, 10000)
-call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, VenG0)
+call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, VenG0, V0)
 
 call reciprocal_space_vectors(L, G, G2)
 ne = 1

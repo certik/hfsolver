@@ -30,6 +30,7 @@ integer :: Nex, Ney, Nez
 real(dp) :: fen(3, natom)
 real(dp), allocatable :: ne(:, :, :), R(:), Ven0G(:, :, :), fac(:, :, :), &
     G(:, :, :, :), G2(:, :, :), fullsol(:)
+real(dp) :: V0
 complex(dp), allocatable :: neG(:, :, :)
 real(dp), allocatable, dimension(:, :, :, :) :: nq_pos
 type(fe_data) :: fed
@@ -106,7 +107,7 @@ end do
 call reciprocal_space_vectors(L, G, G2)
 allocate(R(40000))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
-call radial_potential_fourier(R, 1*erf(6*R)/R, L, 1._dp, Ven0G)
+call radial_potential_fourier(R, 1*erf(6*R)/R, L, 1._dp, Ven0G, V0)
 call real2fourier(ne, neG)
 fen = 0
 do i = 1, natom

@@ -16,6 +16,6 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
 elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     # ifort
     set(common "-warn all")
-    set(CMAKE_Fortran_FLAGS_RELEASE_INIT "${common} -xHOST -O3 -no-prec-div -static")
+    set(CMAKE_Fortran_FLAGS_RELEASE_INIT "${common} -xHOST -O3 -no-prec-div")
     set(CMAKE_Fortran_FLAGS_DEBUG_INIT   "${common} -check all")
 endif ()

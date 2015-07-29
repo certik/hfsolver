@@ -65,8 +65,10 @@ ADDTEST(test_random)
 ADDTEST(test_linregress)
 
 ADDTEST(test_md)
+set_tests_properties(test_md PROPERTIES LABELS MD)
 ADDTEST(analyze_md)
 set_tests_properties(analyze_md PROPERTIES DEPENDS test_md)
+set_tests_properties(analyze_md PROPERTIES LABELS MD)
 
 ADDTEST(test_ewald)
 ADDTEST(test_ewald2)
@@ -90,6 +92,10 @@ if(WITH_FFTW)
     add_executable(test_fftw_c test_fftw_c.c)
     target_link_libraries(test_fftw_c ${LIBS})
     add_test(test_fftw_c ${PROJECT_BINARY_DIR}/test_fftw_c)
+endif()
+
+if(WITH_MKL)
+    ADDTEST(test_mkl)
 endif()
 
 if(WITH_UMFPACK)

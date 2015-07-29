@@ -16,7 +16,7 @@ implicit none
 
 integer :: natom, ntypat
 ! Various NaCl lattice constants in A
-real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
+real(dp), parameter :: Llist(5) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
 ! Madelung constant for this system
 real(dp), parameter :: alpha = 1.9352066351335044_dp
 ! Components of the correct force (multiplied by L^2)

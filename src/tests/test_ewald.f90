@@ -12,7 +12,7 @@ implicit none
 
 integer :: natom, ntypat
 ! Various NaCl lattice constants in A
-real(dp), parameter :: Llist(*) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
+real(dp), parameter :: Llist(5) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
 real(dp) :: ucvol
 integer, allocatable :: typat(:)
 real(dp) :: gmet(3, 3), rmet(3, 3), gprim(3, 3)
