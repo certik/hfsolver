@@ -17,17 +17,17 @@ C
 C     WRITTEN BY DAISUKE TAKAHASHI
 C
 C The maximum supported number of processors is 65536.
-      PARAMETER (MAXNPU=65536)
+C     PARAMETER (MAXNPU=65536)
 C The maximum supported 2-D transform length is 65536.
-      PARAMETER (NDA2=65536)
+C     PARAMETER (NDA2=65536)
 C The maximum supported 3-D transform length is 4096.
       PARAMETER (NDA3=4096)
 C The parameter NBLK is a blocking parameter.
       PARAMETER (NBLK=16)
 C The parameter NB is a blocking parameter for NVIDIA GPUs.
-      parameter (NB=128)
+C     parameter (NB=128)
 C The parameter NP is a padding parameter to avoid cache conflicts in
 C the FFT routines.
       PARAMETER (NP=8)
 C Size of L2 cache
-      PARAMETER (L2SIZE=2097152)
+C     PARAMETER (L2SIZE=2097152)
