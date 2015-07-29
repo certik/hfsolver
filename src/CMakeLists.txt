@@ -127,7 +127,10 @@ endif()
 add_library(hfsolver ${SRC})
 
 add_subdirectory(feast)
+add_subdirectory(ffte)
 add_subdirectory(tests)
+
+target_link_libraries(hfsolver PUBLIC hfsolver::ffte)
 
 install(TARGETS hfsolver
         RUNTIME DESTINATION bin
