@@ -12,6 +12,7 @@ use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real, logging_info
 use interp3d, only: trilinear
 use poisson3d_assembly, only: func2quad
+use ffte, only: zfft3d
 implicit none
 
 ! All variables are in Hartree atomic units
@@ -59,6 +60,7 @@ allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(fnn(3, N), q(N), fen(3, N))
 allocate(ne_aux(Ng, Ng, Ng, K+2))
+call zfft3d(neG, Ng, Ng, Ng, 0)
 
 q = Z
 m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
