@@ -6,6 +6,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
 use utils, only: assert, init_random
 use ffte, only: ffte_fft3_inplace => fft3_inplace, &
     ffte_ifft3_inplace => ifft3_inplace
+use openmp, only: omp_get_wtime
 implicit none
 
 complex(dp), allocatable :: x3(:, :, :), x3d(:, :, :)
@@ -74,23 +75,23 @@ end do
 end do
 end do
 x3d = x3
-call cpu_time(t1)
+t1 = omp_get_wtime()
 call ffte_fft3_inplace(x3d)
-call cpu_time(t2)
+t2 = omp_get_wtime()
 print *, "time:", (t2-t1)*1000, "ms"
-call cpu_time(t1)
+t1 = omp_get_wtime()
 call ifft3_inplace(x3d)
-call cpu_time(t2)
+t2 = omp_get_wtime()
 print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
 x3d = x3
-call cpu_time(t1)
+t1 = omp_get_wtime()
 call fft3_inplace(x3d)
-call cpu_time(t2)
+t2 = omp_get_wtime()
 print *, "time:", (t2-t1)*1000, "ms"
-call cpu_time(t1)
+t1 = omp_get_wtime()
 call ffte_ifft3_inplace(x3d)
-call cpu_time(t2)
+t2 = omp_get_wtime()
 print *, "time:", (t2-t1)*1000, "ms"
 call assert(all(abs(x3 - x3d/n**3) < 5e-15_dp))
 deallocate(x3, x3d)
