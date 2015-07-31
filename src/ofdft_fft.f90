@@ -406,7 +406,7 @@ do iter = 1, max_iter
     call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
 !    print *, "Iteration:", iter
-    psi_norm = integral(L, psi**2)
+!    psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
 !    print *, "mu =", mu
 !    print *, "|ksi| =", sqrt(gamma_n)
