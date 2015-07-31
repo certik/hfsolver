@@ -67,7 +67,8 @@ do i = 1, natom
     VenG = VenG - Ven0G * exp(-i_ * &
         (G(:,:,:,1)*X(1,i) + G(:,:,:,2)*X(2,i) + G(:,:,:,3)*X(3,i)))
 end do
-call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
+    calc_value=.true., calc_derivative=.false.)
 Etot_conv = sum(four_gaussians)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts

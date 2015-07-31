@@ -64,7 +64,8 @@ x = L/2 + L/64
 y = L/2
 z_ = L/2
 VenG = -VenG0 * exp(-i_*(G(:,:,:,1)*x+G(:,:,:,2)*y+G(:,:,:,3)*z_))
-call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
+    calc_value=.true., calc_derivative=.false.)
 Etot_conv = sum(one_gaussian)
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
