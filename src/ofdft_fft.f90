@@ -170,6 +170,26 @@ Fxc = integral(L, exc_density * ne)
 F_ = Ts + Fen + Fee + Fxc
 end subroutine
 
+subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
+real(dp), dimension(:, :, :), intent(in) :: G2, psi, eta
+real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
+complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
+call real2fourier(psi**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C1)
+
+call real2fourier(psi*eta, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C2)
+
+call real2fourier(eta**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C3)
+end subroutine
+
 real(dp) function free_energy_theta(L, G2, T_au, VenG, psi, eta, theta) &
         result(F_)
 ! Shows how to use calc_F. Typically you want to precalculate C1, C2, C3 and
@@ -382,10 +402,13 @@ real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
 real(dp) :: t1, t2
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
+logical :: func_use_fft
 
 brent_eps = 1e-3_dp
 max_iter = 2000
 update_type = update_polak_ribiere
+func_use_fft = .true.
 
 last2 = 0
 last3 = 0
@@ -438,11 +461,21 @@ do iter = 1, max_iter
     !print *, "theta? =", 0.5_dp * atan(B/A)
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
-    if (iter < 2) then
-        call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+    if (iter == 1) then
+        t1 = clock()
+        if (func_use_fft) then
+            call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+            call brent(func_fft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
+        else
+            call fourier2real(VenG, Ven)
+            call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
+            call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+            call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+            free_energy_, verbose=.false.)
+        end if
     else
+        call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
     end if
     ! TODO: We probably don't need to recalculate free_energy_ here:
@@ -504,9 +537,13 @@ call stop_error("free_energy_minimization: The maximum number of iterations exce
 
 contains
 
-    real(dp) function func(theta) result(energy)
+    real(dp) function func_nofft(theta) result(energy)
     real(dp), intent(in) :: theta
-    energy = theta
+    call calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, energy)
+    end function
+
+    real(dp) function func_fft(theta) result(energy)
+    real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi, calc_value=.true., calc_derivative=.false.)
