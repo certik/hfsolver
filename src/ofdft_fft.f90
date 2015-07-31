@@ -32,6 +32,9 @@ interface integralG
     module procedure integralG_complex, integralG_real
 end interface
 
+integer :: fft_counter
+real(dp) :: fft_time
+
 contains
 
 subroutine reciprocal_space_vectors(L, G, G2)
@@ -58,10 +61,15 @@ subroutine real2fourier(x, xG)
 real(dp), intent(in) :: x(:, :, :)
 complex(dp), intent(out) :: xG(:, :, :)
 integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
 Ng = size(x, 1)
 xG = x
 call fft3_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
 xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 subroutine fourier2real(xG, x)
@@ -74,6 +82,8 @@ complex(dp), intent(in) :: xG(:, :, :)
 real(dp), intent(out) :: x(:, :, :)
 complex(dp) :: tmp(size(xG,1), size(xG,2), size(xG,3))
 integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
 Ng = size(x, 1)
 tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
@@ -85,6 +95,9 @@ if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
 end if
 ! TODO: make this strict:
 !call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 real(dp) function integral(L, f) result(r)
@@ -402,7 +415,7 @@ real(dp) :: f2
 real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
-real(dp) :: t1, t2
+real(dp) :: t1, t2, t11, t12
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
 logical :: func_use_fft
 
@@ -455,6 +468,8 @@ allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
     t1 = clock()
+    fft_counter = 0
+    fft_time = 0
     !Hpsi = Hpsi/(2*psi)
     ! Formula (36) in Jiang & Yang
     !A = integral(L, psi*Hpsi*psi) - integral(L, eta*Hpsi*eta)
@@ -462,8 +477,8 @@ do iter = 1, max_iter
     !print *, "theta? =", 0.5_dp * atan(B/A)
     theta_a = 0
     theta_b = mod(theta, 2*pi)
+    t11 = clock()
     if (iter == 1) then
-        t1 = clock()
         if (func_use_fft) then
             call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
             call brent(func_fft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
@@ -479,6 +494,7 @@ do iter = 1, max_iter
         call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
     end if
+    t12 = clock()
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
@@ -532,7 +548,8 @@ do iter = 1, max_iter
     phi_prime = phi - 1._dp / Nelec * integral(L, phi * psi) * psi
     eta = sqrt(Nelec / integral(L, phi_prime**2)) * phi_prime
     t2 = clock()
-    print *, "time:", t2-t1
+    print "('time: ', f6.3, ' fft: ', f6.3, ' (', f5.2, '%) # fft: ', i3, ' line search', f6.3)", &
+        t2-t1, fft_time, fft_time / (t2-t1) * 100, fft_counter, t12-t11
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 
