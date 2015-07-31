@@ -127,11 +127,9 @@ real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, ne
 real(dp), dimension(size(Ven,1), size(Ven,2), size(Ven,3)) :: y, &
     Vee, Vxc, dF0dn
 real(dp) :: beta, dydn
-integer :: i, j, k, Ng
 psi_ = psi*cos(theta)+eta*sin(theta)
 ne = psi_**2
 
-Ng = size(Ven, 1)
 call xc_pz2(ne, Vxc)
 beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
@@ -143,6 +141,61 @@ Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
 dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * &
     (dF0dn + Vee + Ven + Vxc) * L**3 * psi_)
 end subroutine
+
+subroutine calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
+! Calculates F[psi(theta)] efficiently (no FFT needed, just integrals)
+! See the function find_theta() for an example how to prepare the C1, C2 and C3
+! constants and how to use this subroutine.
+real(dp), intent(in) :: L, T_au, psi(:, :, :), eta(:, :, :)
+real(dp), intent(in) :: C1(:, :, :), C2(:, :, :), C3(:, :, :)
+real(dp), intent(in) :: theta
+real(dp), intent(in) :: Ven(:, :, :)
+real(dp), intent(out) :: F_
+real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, ne, y, &
+    Vee, exc_density, Vxc
+real(dp) :: beta, Fee, Fen, Ts, Fxc
+psi_ = psi*cos(theta)+eta*sin(theta)
+ne = psi_**2
+
+call xc_pz(ne, exc_density, Vxc)
+beta = 1/T_au
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
+if (any(y < 0)) call stop_error("Density must be positive")
+Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
+
+Ts = integral(L, ne / beta * f(y))
+Fen = integral(L, Ven*ne)
+Fee = integral(L, Vee*ne) / 2
+Fxc = integral(L, exc_density * ne)
+F_ = Ts + Fen + Fee + Fxc
+end subroutine
+
+real(dp) function free_energy_theta(L, G2, T_au, VenG, psi, eta, theta) &
+        result(F_)
+! Shows how to use calc_F. Typically you want to precalculate C1, C2, C3 and
+! store them.
+real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
+complex(dp), intent(in) :: VenG(:, :, :)
+real(dp), intent(in) :: theta
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
+complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
+    neG, VeeG
+call fourier2real(VenG, Ven)
+call real2fourier(psi**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C1)
+call real2fourier(psi*eta, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C2)
+call real2fourier(eta**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C3)
+
+call calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
+end function
 
 subroutine find_theta(L, G2, T_au, VenG, psi, eta)
 ! It prints the values of dF/dtheta using efficient evaluation
