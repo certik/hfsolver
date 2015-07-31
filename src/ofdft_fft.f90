@@ -187,10 +187,12 @@ call cpu_time(t2)
 print *, "time: ", t2-t1
 end subroutine
 
-subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
+    calc_value, calc_derivative)
 real(dp), intent(in) :: L, G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
+logical, intent(in) :: calc_value, calc_derivative
 
 ! dFdn returns "delta F / delta n", the functional derivative with respect to
 ! the density "n". Use the relation
@@ -199,11 +201,12 @@ real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 real(dp), intent(out) :: dFdn(:, :, :)
 
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
-    exc_density, Vee, Ven, Vxc, dF0dn
+    exc_density, Ven_ee, Vxc, dF0dn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
     neG, VeeG
 real(dp) :: beta, dydn
 integer :: i, j, k, Ng
+call assert(calc_value .or. calc_derivative)
 Ng = size(VenG, 1)
 
 call real2fourier(ne, neG)
@@ -211,22 +214,12 @@ call real2fourier(ne, neG)
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
 
-! Hartree energy
-!Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
-Eee = integralG(L, VeeG*conjg(neG)) / 2
-! Electron-nucleus energy
-!Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
-Een = integralG(L, VenG*conjg(neG))
-
-! Kinetic energy using Perrot parametrization
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
 ! ne.
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
-F0 = ne / beta * f(y)
-Ts = integral(L, F0)
-! Exchange and correlation potential
+
 do k = 1, Ng
 do j = 1, Ng
 do i = 1, Ng
@@ -234,25 +227,35 @@ do i = 1, Ng
 end do
 end do
 end do
-Exc = integral(L, exc_density * ne)
-Etot = Ts + Een + Eee + Exc
 
-! Calculate the derivative
-dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
-! F0 = ne / beta * f(y)
-! d F0 / d n =
-dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
+if (calc_value) then
+    ! Hartree energy
+    !Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
+    Eee = integralG(L, VeeG*conjg(neG)) / 2
+    ! Electron-nucleus energy
+    !Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
+    Een = integralG(L, VenG*conjg(neG))
 
-call fourier2real(VenG, Ven)
-call fourier2real(VeeG, Vee)
+    ! Kinetic energy using Perrot parametrization
+    F0 = ne / beta * f(y)
+    Ts = integral(L, F0)
+    ! Exchange and correlation potential
+    Exc = integral(L, exc_density * ne)
+    Etot = Ts + Een + Eee + Exc
+end if
 
-!print *, dF0dn
-!print *, Vee
-!print *, Ven
-!print *, Vxc
-!print *, "---------"
-dFdn = dF0dn + Vee + Ven + Vxc
-dFdn = dFdn * L**3
+if (calc_derivative) then
+    ! Calculate the derivative
+    dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
+    ! F0 = ne / beta * f(y)
+    ! d F0 / d n =
+    dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
+
+    call fourier2real(VenG+VeeG, Ven_ee)
+
+    dFdn = dF0dn + Ven_ee + Vxc
+    dFdn = dFdn * L**3
+end if
 end subroutine
 
 subroutine radial_potential_fourier(R, V, L, Z, VenG, V0)
@@ -362,7 +365,8 @@ psi_norm = integral(L, psi**2)
 print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, Hpsi)
+call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
+    Hpsi, calc_value=.false., calc_derivative=.true.)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * integral(L, 0.5_dp * psi * Hpsi)
@@ -400,7 +404,7 @@ do iter = 1, max_iter
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
-        free_energy_, Hpsi)
+        free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
 !    print *, "Iteration:", iter
     psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
@@ -460,7 +464,7 @@ contains
     energy = theta
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
-        energy, Hpsi)
+        energy, Hpsi, calc_value=.true., calc_derivative=.false.)
     end function
 
 end subroutine
