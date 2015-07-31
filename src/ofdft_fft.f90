@@ -166,7 +166,7 @@ real(dp), intent(in) :: Ven(:, :, :)
 real(dp), intent(out) :: F_
 real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, ne, y, &
     Vee, exc_density, Vxc
-real(dp) :: beta, Fee, Fen, Ts, Fxc
+real(dp) :: beta
 psi_ = psi*cos(theta)+eta*sin(theta)
 ne = psi_**2
 
@@ -176,11 +176,7 @@ y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
 Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
 
-Ts = integral(L, ne / beta * f(y))
-Fen = integral(L, Ven*ne)
-Fee = integral(L, Vee*ne) / 2
-Fxc = integral(L, exc_density * ne)
-F_ = Ts + Fen + Fee + Fxc
+F_ = integral(L, ne / beta * f(y) + (Ven+Vee/2+exc_density)*ne)
 end subroutine
 
 subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
