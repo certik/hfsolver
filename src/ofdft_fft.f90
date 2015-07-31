@@ -12,8 +12,8 @@ use constants, only: pi, i_, Ha2eV
 use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz
-use utils, only: stop_error, assert
-use fourier, only: fft3_inplace, ifft3_inplace
+use utils, only: stop_error, assert, clock
+use ffte, only: fft3_inplace, ifft3_inplace
 use integration, only: integrate_trapz_1
 implicit none
 private
@@ -333,6 +333,7 @@ real(dp) :: f2
 real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
+real(dp) :: t1, t2
 
 brent_eps = 1e-3_dp
 max_iter = 2000
@@ -380,6 +381,7 @@ theta = pi/2
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
+    t1 = clock()
     !Hpsi = Hpsi/(2*psi)
     ! Formula (36) in Jiang & Yang
     !A = integral(L, psi*Hpsi*psi) - integral(L, eta*Hpsi*eta)
@@ -446,6 +448,8 @@ do iter = 1, max_iter
     phi = ksi + gamma_n / gamma_d * phi
     phi_prime = phi - 1._dp / Nelec * integral(L, phi * psi) * psi
     eta = sqrt(Nelec / integral(L, phi_prime**2)) * phi_prime
+    t2 = clock()
+    print *, "time:", t2-t1
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 
