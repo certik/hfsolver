@@ -284,9 +284,7 @@ real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
     neG, VeeG
 real(dp) :: beta, dydn
-integer :: i, j, k, Ng
 call assert(calc_value .or. calc_derivative)
-Ng = size(VenG, 1)
 
 call real2fourier(ne, neG)
 
@@ -299,13 +297,7 @@ beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
 
-do k = 1, Ng
-do j = 1, Ng
-do i = 1, Ng
-    call xc_pz(ne(i, j, k), exc_density(i, j, k), Vxc(i, j, k))
-end do
-end do
-end do
+call xc_pz(ne, exc_density, Vxc)
 
 if (calc_value) then
     ! Hartree energy
