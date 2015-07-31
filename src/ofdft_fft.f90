@@ -13,8 +13,7 @@ use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz, xc_pz2
 use utils, only: stop_error, assert, clock
-use ffte, only: fft3_inplace, ifft3_inplace
-!use fourier, only: fft3_inplace, ifft3_inplace
+use fourier, only: fft3_inplace, ifft3_inplace
 use integration, only: integrate_trapz_1
 implicit none
 private
