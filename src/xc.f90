@@ -95,25 +95,21 @@ real(dp), parameter :: A =  0.0311_dp
 real(dp), parameter :: B = -0.048_dp
 real(dp), parameter :: C =  0.0020_dp
 real(dp), parameter :: D = -0.0116_dp
-real(dp) :: ex, ec, Vx, Vc, rs
-
-if (abs(n) < tiny(1._dp)) then
-    exc = 0
-    Vxc = 0
-    return
-end if
+real(dp) :: ex, ec, Vx, Vc, rs, sqrt_rs, log_rs
 
 ex = -3/(4*pi) * (3*pi**2*n)**(1.0_dp/3)
 Vx = 4*ex/3
 
 rs = (3/(4*pi*n))**(1.0_dp/3)
 if (rs >= 1) then
-    ec = gam / (1+beta1*sqrt(rs)+beta2*rs)
-    Vc = ec * (1+7*beta1*sqrt(rs)/6 + 4*beta2*rs/3) / &
-        (1+beta1*sqrt(rs) + beta2*rs)
+    sqrt_rs = sqrt(rs)
+    ec = gam / (1+beta1*sqrt_rs+beta2*rs)
+    Vc = ec * (1+7*beta1*sqrt_rs/6 + 4*beta2*rs/3) / &
+        (1+beta1*sqrt_rs + beta2*rs)
 else
-    ec = A*log(rs) + B + C*rs*log(rs) + D*rs
-    Vc = A*log(rs) + (B-A/3) + 2*C*rs*log(rs)/3 + (2*D-C)*rs/3
+    log_rs = log(rs)
+    ec = A*log_rs + B + C*rs*log_rs + D*rs
+    Vc = A*log_rs + (B-A/3) + 2*C*rs*log_rs/3 + (2*D-C)*rs/3
 end if
 
 exc = ex + ec
