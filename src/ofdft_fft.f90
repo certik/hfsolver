@@ -11,7 +11,7 @@ use types, only: dp
 use constants, only: pi, i_, Ha2eV
 use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
-use xc, only: xc_pz
+use xc, only: xc_pz, xc_pz2
 use utils, only: stop_error, assert, clock
 use ffte, only: fft3_inplace, ifft3_inplace
 use integration, only: integrate_trapz_1
@@ -122,34 +122,26 @@ real(dp), intent(in) :: C1(:, :, :), C2(:, :, :), C3(:, :, :)
 real(dp), intent(in) :: theta
 real(dp), intent(in) :: Ven(:, :, :)
 real(dp), intent(out) :: dFdtheta
-real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, dFdn, &
-    ne
+real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, ne
 
 real(dp), dimension(size(Ven,1), size(Ven,2), size(Ven,3)) :: y, &
-    exc_density, Vee, Vxc, dF0dn
+    Vee, Vxc, dF0dn
 real(dp) :: beta, dydn
 integer :: i, j, k, Ng
 psi_ = psi*cos(theta)+eta*sin(theta)
 ne = psi_**2
 
 Ng = size(Ven, 1)
-do k = 1, Ng
-do j = 1, Ng
-do i = 1, Ng
-    call xc_pz(ne(i, j, k), exc_density(i, j, k), Vxc(i, j, k))
-end do
-end do
-end do
+call xc_pz2(ne, Vxc)
 beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
 dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
 dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
 Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
-dFdn = dF0dn + Vee + Ven + Vxc
-dFdn = dFdn * L**3
 
-dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * dFdn * psi_)
+dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * &
+    (dF0dn + Vee + Ven + Vxc) * L**3 * psi_)
 end subroutine
 
 subroutine find_theta(L, G2, T_au, VenG, psi, eta)
