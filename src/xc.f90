@@ -77,7 +77,7 @@ contains
 
 end subroutine
 
-subroutine xc_pz(n, exc, Vxc)
+elemental subroutine xc_pz(n, exc, Vxc)
 ! Calculates XC LDA density and potential from the charge density "n".
 ! Uses the Perdew Zunger [1] parametrization.
 !
