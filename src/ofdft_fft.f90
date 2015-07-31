@@ -207,22 +207,8 @@ real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(in) :: theta
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
-complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG
 call fourier2real(VenG, Ven)
-call real2fourier(psi**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C1)
-call real2fourier(psi*eta, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C2)
-call real2fourier(eta**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C3)
-
+call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
 call calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
 end function
 
@@ -232,23 +218,10 @@ real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp) :: theta, dFdtheta
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
-complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG
 integer :: i
 real(dp) :: t1, t2
 call fourier2real(VenG, Ven)
-call real2fourier(psi**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C1)
-call real2fourier(psi*eta, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C2)
-call real2fourier(eta**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C3)
+call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
 print *, "dFdtheta:"
 theta = 0
 call cpu_time(t1)
