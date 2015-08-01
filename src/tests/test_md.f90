@@ -17,11 +17,11 @@ real(dp) :: Temp, Ekin, Epot, Temp_current, t1, t2, t3, t4
 steps = 800
 dt = 1e-14_dp * s2au
 m = 39.948_dp * u2au ! Using Argon mass in atomic mass units [u]
-sigma = 3.4_dp * ang2bohr
-eps = 120 * K2au
+sigma = 3.405_dp * ang2bohr
+eps = 119.8_dp * K2au
 Rcut = 2.25_dp*sigma
-rho = 1.374_dp / density2gcm3
-Temp = 94.4_dp * K2au
+rho = 1.415_dp / density2gcm3
+Temp = 85._dp * K2au
 
 L = (sum(m) / rho)**(1._dp/3)
 rho = sum(m) / L**3
@@ -38,6 +38,7 @@ print *
 print *, "Calculated quantities:"
 print *, "L =", L/sigma, "sigma = ", L, "a.u."
 print *
+print "('rho', f10.5)", N / (L / ang2bohr)**3
 
 call init_random()
 call random_number(X)

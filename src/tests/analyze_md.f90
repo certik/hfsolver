@@ -30,7 +30,7 @@ eps = 120 * K2au
 Rcut = 2.25_dp*sigma
 rho = 1.374_dp / density2gcm3
 Temp = 94.4_dp * K2au
-L = 65.537399673372406_dp
+L = 64.898197812246224_dp
 
 print *, "Loading data..."
 open(newunit=u, file="md_results.txt", status="old", form="unformatted")
@@ -113,13 +113,13 @@ call static_structure_factor(R, gr, N, L, k_grid, Sk)
 
 open(newunit=u, file="g_r.txt", status="replace")
 do i = 1, size(R)
-    write (u, *)  R(i), gr(i)
+    write (u, *)  R(i) / ang2bohr, gr(i)
 end do
 close(u)
 
 open(newunit=u, file="Sk.txt", status="replace")
 do i = 1, size(k_grid)
-    write (u, *)  k_grid(i), Sk(i)
+    write (u, *)  k_grid(i) * ang2bohr, Sk(i)
 end do
 close(u)
 
