@@ -222,16 +222,17 @@ real(dp), intent(in) :: R(:), gr(:), L
 integer, intent(in) :: N
 real(dp), intent(out) :: k_grid(:), Sk(:)
 integer :: i
-real(dp) :: Rp(size(R)), dk, w
+real(dp) :: Rp(size(R)), dk, w, rho
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
 Rp = (R(size(R)) - R(1)) / (size(R)-1)
 dk = 2*pi/L
 
-do i = 1, size(k_grid)!3*(Ng/2+1)**2
+rho = real(N, dp) / L**3
+do i = 1, size(k_grid)
     w = sqrt(real(i, dp))*dk
     k_grid(i) = w
-    Sk(i) = 1 + 4*pi*N/(L**3 * w) * integrate(Rp, sin(w*R)*(gr-1))
+    Sk(i) = 1 + rho * 4*pi / w * integrate(Rp, R*sin(w*R)*(gr-1))
 end do
 end subroutine
 
