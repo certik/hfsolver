@@ -1,10 +1,12 @@
 module md
 use types, only: dp
+use constants, only: pi
 use utils, only: stop_error, assert
 implicit none
 private
 public velocity_verlet, minimize_energy, unfold_positions, &
-    calc_min_distance, positions_random, positions_fcc
+    calc_min_distance, positions_random, positions_fcc, &
+    pair_correlation_function
 
 interface
     subroutine forces_func(X, f)
@@ -177,6 +179,42 @@ end do
 end do
 end do
 call assert(idx == size(X, 2))
+end subroutine
+
+subroutine pair_correlation_function(L, X, R, gr)
+! Calculates the pair correlation function
+real(dp), intent(in) :: L ! Length of the box: [0, L]^3
+ ! Positions X(i, j, k) i-th component, j-th particle, k-th MD step
+real(dp), intent(in) :: X(:, :, :)
+real(dp), intent(out) :: R(:) ! Radial mesh
+real(dp), intent(out) :: gr(:) ! Pair correlation function on the mesh R
+real(dp) :: dr, r_ij, d(3), Xj(3)
+integer :: i, j, k, N, steps, s, Nintervals
+Nintervals = size(R)
+N = size(X, 2)
+steps = size(X, 3)
+dr = L/2 / (Nintervals+1)
+gr = 0
+do s = 1, steps
+    do i = 1, N
+    do j = 1, i-1
+        Xj = X(:, j, s)-X(:, i, s)+[L/2, L/2, L/2]
+        Xj = Xj - L*floor(Xj/L)
+        d = [L/2, L/2, L/2] - Xj
+        r_ij = sqrt(sum(d**2))
+        if (r_ij > L/2) cycle
+        k = int(r_ij / dr)
+        call assert(k >= 1 .and. k <= Nintervals)
+        gr(k) = gr(k) + 1
+    end do
+    end do
+end do
+
+do i = 1, Nintervals
+    R(i) = dr*i
+end do
+
+gr = gr * L**3 / (4*pi*R**2*dr * N*(N-1)/2 * steps)
 end subroutine
 
 end module

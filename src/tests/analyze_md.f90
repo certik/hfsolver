@@ -1,7 +1,7 @@
 program analyze_md
 use types, only: dp
 use constants, only: ang2bohr, K2au, density2gcm3, u2au, s2au
-use md, only: unfold_positions
+use md, only: unfold_positions, pair_correlation_function
 use random, only: randn
 use utils, only: init_random
 use optimize, only: linregress
@@ -15,8 +15,8 @@ real(dp) :: dt, f(3, N), m(N), Rcut, eps, sigma, rho, &
     N0list_r(Daverages)
 real(dp) :: Temp, Ekin, Epot, s, L
 real(dp), allocatable :: X(:, :, :), V(:, :, :), xx(:), yy(:), velcorr(:), &
-    Xu(:, :, :), com(:, :), Temp_current(:), t(:)
-real(dp) :: slope, intercept, r, stderr_slope, stderr_intercept
+    Xu(:, :, :), com(:, :), Temp_current(:), t(:), R(:), gr(:)
+real(dp) :: slope, intercept, r_, stderr_slope, stderr_intercept
 
 
 steps = 800
@@ -79,7 +79,7 @@ do i = 1, Nsteps
     velcorr(i) = s
 end do
 call linregress(xx(51:), yy(51:)*(0.529177249_dp*1e-8)**2, &
-    slope, intercept, r, stderr_slope, stderr_intercept)
+    slope, intercept, r_, stderr_slope, stderr_intercept)
 slope = slope / 6
 stderr_slope = stderr_slope / 6
 print *, "Diffusion:"
@@ -94,11 +94,22 @@ close(u)
 
 print *, "Temperature"
 call linregress(t(400:)*1e12_dp, Temp_current(400:), &
-    slope, intercept, r, stderr_slope, stderr_intercept)
+    slope, intercept, r_, stderr_slope, stderr_intercept)
 print *, "Slope:"
 call print_valerr(slope, stderr_slope)
 print *, "intercept:"
 call print_valerr(intercept, stderr_intercept)
+
+print *, "Pair correlation function"
+allocate(R(200))
+allocate(gr(size(R)))
+call pair_correlation_function(L, X, R, gr)
+
+open(newunit=u, file="g_r.txt", status="replace")
+do i = 1, size(R)
+    write (u, *)  R(i), gr(i)
+end do
+close(u)
 
 contains
 
