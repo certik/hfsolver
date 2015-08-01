@@ -6,7 +6,7 @@ implicit none
 private
 public velocity_verlet, minimize_energy, unfold_positions, &
     calc_min_distance, positions_random, positions_fcc, &
-    pair_correlation_function
+    pair_correlation_function, static_structure_factor
 
 interface
     subroutine forces_func(X, f)
@@ -216,5 +216,29 @@ end do
 
 gr = gr * L**3 / (4*pi*R**2*dr * N*(N-1)/2 * steps)
 end subroutine
+
+subroutine static_structure_factor(R, gr, N, L, k_grid, Sk)
+real(dp), intent(in) :: R(:), gr(:), L
+integer, intent(in) :: N
+real(dp), intent(out) :: k_grid(:), Sk(:)
+integer :: i
+real(dp) :: Rp(size(R)), dk, w
+! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
+! the mesh step (rmax-rmin)/N:
+Rp = (R(size(R)) - R(1)) / (size(R)-1)
+dk = 2*pi/L
+
+do i = 1, size(k_grid)!3*(Ng/2+1)**2
+    w = sqrt(real(i, dp))*dk
+    k_grid(i) = w
+    Sk(i) = 1 + 4*pi*N/(L**3 * w) * integrate(Rp, sin(w*R)*(gr-1))
+end do
+end subroutine
+
+real(dp) pure function integrate(Rp, f) result(s)
+use integration, only: integrate_trapz_1
+real(dp), intent(in) :: Rp(:), f(:)
+s = integrate_trapz_1(Rp, f)
+end function
 
 end module
