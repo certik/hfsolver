@@ -11,8 +11,8 @@ use types, only: dp
 use constants, only: pi, i_, Ha2eV
 use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
-use xc, only: xc_pz
-use utils, only: stop_error, assert
+use xc, only: xc_pz, xc_pz2
+use utils, only: stop_error, assert, clock
 use fourier, only: fft3_inplace, ifft3_inplace
 use integration, only: integrate_trapz_1
 implicit none
@@ -30,6 +30,9 @@ logical :: logging_info = .true.
 interface integralG
     module procedure integralG_complex, integralG_real
 end interface
+
+integer :: fft_counter
+real(dp) :: fft_time
 
 contains
 
@@ -57,10 +60,15 @@ subroutine real2fourier(x, xG)
 real(dp), intent(in) :: x(:, :, :)
 complex(dp), intent(out) :: xG(:, :, :)
 integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
 Ng = size(x, 1)
 xG = x
 call fft3_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
 xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 subroutine fourier2real(xG, x)
@@ -73,6 +81,8 @@ complex(dp), intent(in) :: xG(:, :, :)
 real(dp), intent(out) :: x(:, :, :)
 complex(dp) :: tmp(size(xG,1), size(xG,2), size(xG,3))
 integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
 Ng = size(x, 1)
 tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
@@ -84,6 +94,9 @@ if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
 end if
 ! TODO: make this strict:
 !call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 real(dp) function integral(L, f) result(r)
@@ -122,35 +135,82 @@ real(dp), intent(in) :: C1(:, :, :), C2(:, :, :), C3(:, :, :)
 real(dp), intent(in) :: theta
 real(dp), intent(in) :: Ven(:, :, :)
 real(dp), intent(out) :: dFdtheta
-real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, dFdn, &
-    ne
+real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, ne
 
 real(dp), dimension(size(Ven,1), size(Ven,2), size(Ven,3)) :: y, &
-    exc_density, Vee, Vxc, dF0dn
+    Vee, Vxc, dF0dn
 real(dp) :: beta, dydn
-integer :: i, j, k, Ng
 psi_ = psi*cos(theta)+eta*sin(theta)
 ne = psi_**2
 
-Ng = size(Ven, 1)
-do k = 1, Ng
-do j = 1, Ng
-do i = 1, Ng
-    call xc_pz(ne(i, j, k), exc_density(i, j, k), Vxc(i, j, k))
-end do
-end do
-end do
+call xc_pz2(ne, Vxc)
 beta = 1/T_au
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
 dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
 dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
 Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
-dFdn = dF0dn + Vee + Ven + Vxc
-dFdn = dFdn * L**3
 
-dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * dFdn * psi_)
+dFdtheta = integral(L, (-psi*sin(theta)+eta*cos(theta)) * &
+    (dF0dn + Vee + Ven + Vxc) * L**3 * psi_)
 end subroutine
+
+subroutine calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
+! Calculates F[psi(theta)] efficiently (no FFT needed, just integrals)
+! See the function find_theta() for an example how to prepare the C1, C2 and C3
+! constants and how to use this subroutine.
+real(dp), intent(in) :: L, T_au, psi(:, :, :), eta(:, :, :)
+real(dp), intent(in) :: C1(:, :, :), C2(:, :, :), C3(:, :, :)
+real(dp), intent(in) :: theta
+real(dp), intent(in) :: Ven(:, :, :)
+real(dp), intent(out) :: F_
+real(dp), dimension(size(psi, 1), size(psi, 2), size(psi, 3)) :: psi_, ne, y, &
+    Vee, exc_density, Vxc
+real(dp) :: beta
+psi_ = psi*cos(theta)+eta*sin(theta)
+ne = psi_**2
+
+call xc_pz(ne, exc_density, Vxc)
+beta = 1/T_au
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
+if (any(y < 0)) call stop_error("Density must be positive")
+Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
+
+F_ = integral(L, ne / beta * f(y) + (Ven+Vee/2+exc_density)*ne)
+end subroutine
+
+subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
+real(dp), dimension(:, :, :), intent(in) :: G2, psi, eta
+real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
+complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
+call real2fourier(psi**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C1)
+
+call real2fourier(psi*eta, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C2)
+
+call real2fourier(eta**2, neG)
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+call fourier2real(VeeG, C3)
+end subroutine
+
+real(dp) function free_energy_theta(L, G2, T_au, VenG, psi, eta, theta) &
+        result(F_)
+! Shows how to use calc_F. Typically you want to precalculate C1, C2, C3 and
+! store them.
+real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
+complex(dp), intent(in) :: VenG(:, :, :)
+real(dp), intent(in) :: theta
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
+call fourier2real(VenG, Ven)
+call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
+call calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
+end function
 
 subroutine find_theta(L, G2, T_au, VenG, psi, eta)
 ! It prints the values of dF/dtheta using efficient evaluation
@@ -158,23 +218,10 @@ real(dp), intent(in) :: L, G2(:, :, :), T_au, psi(:, :, :), eta(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp) :: theta, dFdtheta
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
-complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG
 integer :: i
 real(dp) :: t1, t2
 call fourier2real(VenG, Ven)
-call real2fourier(psi**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C1)
-call real2fourier(psi*eta, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C2)
-call real2fourier(eta**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C3)
+call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
 print *, "dFdtheta:"
 theta = 0
 call cpu_time(t1)
@@ -187,10 +234,12 @@ call cpu_time(t2)
 print *, "time: ", t2-t1
 end subroutine
 
-subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn)
+subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
+    calc_value, calc_derivative)
 real(dp), intent(in) :: L, G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
+logical, intent(in) :: calc_value, calc_derivative
 
 ! dFdn returns "delta F / delta n", the functional derivative with respect to
 ! the density "n". Use the relation
@@ -199,60 +248,53 @@ real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 real(dp), intent(out) :: dFdn(:, :, :)
 
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
-    exc_density, Vee, Ven, Vxc, dF0dn
+    exc_density, Ven_ee, Vxc, dF0dn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
     neG, VeeG
 real(dp) :: beta, dydn
-integer :: i, j, k, Ng
-Ng = size(VenG, 1)
+call assert(calc_value .or. calc_derivative)
 
 call real2fourier(ne, neG)
 
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
 
-! Hartree energy
-!Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
-Eee = integralG(L, VeeG*conjg(neG)) / 2
-! Electron-nucleus energy
-!Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
-Een = integralG(L, VenG*conjg(neG))
-
-! Kinetic energy using Perrot parametrization
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
 ! ne.
 y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
-F0 = ne / beta * f(y)
-Ts = integral(L, F0)
-! Exchange and correlation potential
-do k = 1, Ng
-do j = 1, Ng
-do i = 1, Ng
-    call xc_pz(ne(i, j, k), exc_density(i, j, k), Vxc(i, j, k))
-end do
-end do
-end do
-Exc = integral(L, exc_density * ne)
-Etot = Ts + Een + Eee + Exc
 
-! Calculate the derivative
-dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
-! F0 = ne / beta * f(y)
-! d F0 / d n =
-dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
+call xc_pz(ne, exc_density, Vxc)
 
-call fourier2real(VenG, Ven)
-call fourier2real(VeeG, Vee)
+if (calc_value) then
+    ! Hartree energy
+    !Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
+    Eee = integralG(L, VeeG*conjg(neG)) / 2
+    ! Electron-nucleus energy
+    !Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
+    Een = integralG(L, VenG*conjg(neG))
 
-!print *, dF0dn
-!print *, Vee
-!print *, Ven
-!print *, Vxc
-!print *, "---------"
-dFdn = dF0dn + Vee + Ven + Vxc
-dFdn = dFdn * L**3
+    ! Kinetic energy using Perrot parametrization
+    F0 = ne / beta * f(y)
+    Ts = integral(L, F0)
+    ! Exchange and correlation potential
+    Exc = integral(L, exc_density * ne)
+    Etot = Ts + Een + Eee + Exc
+end if
+
+if (calc_derivative) then
+    ! Calculate the derivative
+    dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
+    ! F0 = ne / beta * f(y)
+    ! d F0 / d n =
+    dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
+
+    call fourier2real(VenG+VeeG, Ven_ee)
+
+    dFdn = dF0dn + Ven_ee + Vxc
+    dFdn = dFdn * L**3
+end if
 end subroutine
 
 subroutine radial_potential_fourier(R, V, L, Z, VenG, V0)
@@ -333,10 +375,14 @@ real(dp) :: f2
 real(dp) :: psi_norm
 integer :: update_type
 !real(dp) :: A, B
+real(dp) :: t1, t2, t11, t12
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
+logical :: func_use_fft
 
 brent_eps = 1e-3_dp
 max_iter = 2000
 update_type = update_polak_ribiere
+func_use_fft = .true.
 
 last2 = 0
 last3 = 0
@@ -361,7 +407,8 @@ psi_norm = integral(L, psi**2)
 print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, Hpsi)
+call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
+    Hpsi, calc_value=.false., calc_derivative=.true.)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * integral(L, 0.5_dp * psi * Hpsi)
@@ -380,6 +427,9 @@ theta = pi/2
 allocate(free_energies(max_iter))
 gamma_n = 0
 do iter = 1, max_iter
+    t1 = clock()
+    fft_counter = 0
+    fft_time = 0
     !Hpsi = Hpsi/(2*psi)
     ! Formula (36) in Jiang & Yang
     !A = integral(L, psi*Hpsi*psi) - integral(L, eta*Hpsi*eta)
@@ -387,20 +437,31 @@ do iter = 1, max_iter
     !print *, "theta? =", 0.5_dp * atan(B/A)
     theta_a = 0
     theta_b = mod(theta, 2*pi)
-    call bracket(func, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
-    if (iter < 2) then
-        call brent(func, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+    t11 = clock()
+    if (iter == 1) then
+        if (func_use_fft) then
+            call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+            call brent(func_fft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
+        else
+            call fourier2real(VenG, Ven)
+            call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
+            call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+            call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+            free_energy_, verbose=.false.)
+        end if
     else
+        call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
         call parabola_vertex(theta_a, fa, theta_b, fb, theta_c, fc, theta, f2)
     end if
+    t12 = clock()
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
-        free_energy_, Hpsi)
+        free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
 !    print *, "Iteration:", iter
-    psi_norm = integral(L, psi**2)
+!    psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
 !    print *, "mu =", mu
 !    print *, "|ksi| =", sqrt(gamma_n)
@@ -446,17 +507,24 @@ do iter = 1, max_iter
     phi = ksi + gamma_n / gamma_d * phi
     phi_prime = phi - 1._dp / Nelec * integral(L, phi * psi) * psi
     eta = sqrt(Nelec / integral(L, phi_prime**2)) * phi_prime
+    t2 = clock()
+    print "('time: ', f6.3, ' fft: ', f6.3, ' (', f5.2, '%) # fft: ', i3, ' line search', f6.3)", &
+        t2-t1, fft_time, fft_time / (t2-t1) * 100, fft_counter, t12-t11
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 
 contains
 
-    real(dp) function func(theta) result(energy)
+    real(dp) function func_nofft(theta) result(energy)
     real(dp), intent(in) :: theta
-    energy = theta
+    call calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, energy)
+    end function
+
+    real(dp) function func_fft(theta) result(energy)
+    real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
-        energy, Hpsi)
+        energy, Hpsi, calc_value=.true., calc_derivative=.false.)
     end function
 
 end subroutine

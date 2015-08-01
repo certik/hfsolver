@@ -8,7 +8,7 @@ implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
     stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random, &
-    zeros, mesh_exp, linspace
+    zeros, mesh_exp, linspace, clock
 
 interface str
     module procedure str_int, str_real, str_real_n
@@ -421,6 +421,15 @@ else
     else
         call stop_error("mesh_exp: N >= 1 required")
     end if
+end if
+end function
+
+real(dp) function clock() result(r)
+use openmp, only: omp_get_wtime, with_openmp
+if (with_openmp()) then
+    r = omp_get_wtime()
+else
+    call cpu_time(r)
 end if
 end function
 

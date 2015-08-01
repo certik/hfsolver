@@ -51,6 +51,14 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
             "${CMAKE_Fortran_FLAGS_DEBUG}   -fopenmp")
         set(CMAKE_Fortran_FLAGS_RELEASE
             "${CMAKE_Fortran_FLAGS_RELEASE} -fopenmp")
+        set(CMAKE_C_FLAGS_DEBUG
+            "${CMAKE_C_FLAGS_DEBUG}   -fopenmp")
+        set(CMAKE_C_FLAGS_RELEASE
+            "${CMAKE_C_FLAGS_RELEASE} -fopenmp")
+        set(CMAKE_CXX_FLAGS_DEBUG
+            "${CMAKE_CXX_FLAGS_DEBUG}   -fopenmp")
+        set(CMAKE_CXX_FLAGS_RELEASE
+            "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG
             "${CMAKE_EXE_LINKER_FLAGS_DEBUG}   -fopenmp")
         set(CMAKE_EXE_LINKER_FLAGS_RELEASE

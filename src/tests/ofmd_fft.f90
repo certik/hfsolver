@@ -6,7 +6,7 @@ use md, only: velocity_verlet, positions_random, &
                 calc_min_distance, positions_fcc
 use ewald_sums, only: ewald_box
 use random, only: randn
-use utils, only: init_random, stop_error, assert, linspace
+use utils, only: init_random, stop_error, assert, linspace, clock
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real, logging_info
@@ -38,6 +38,7 @@ real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 integer :: cg_iter
 real(dp), dimension(:,:,:,:), allocatable :: ne_aux
+real(dp) :: mdt1, mdt2
 
 logging_info = .false. ! Turn of the INFO warnings
 
@@ -117,6 +118,7 @@ close(u)
 t = 0
 call cpu_time(t3)
 do i = 1, steps
+    mdt1 = clock()
     print *, "Starting MD iteration:", i
 
     if (i > 10) then
@@ -176,6 +178,7 @@ do i = 1, steps
     print *, f(:, 3)
     print *, f(:, 4)
 
+    mdt2 = clock()
     open(newunit=u, file="ofmd_results.txt", position="append", status="old")
     call write_results_line(u)
     close(u)
@@ -283,16 +286,18 @@ contains
 
     subroutine write_results_header(u)
     integer, intent(in) :: u
-    write(u, '(11a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", &
+    write(u, '(12a17)') "Time [a.u.]", "Fe [eV]", "Unn [eV]", "K [eV]", &
         "F [eV]", "T [eV]", "Ts [eV]", "Een [eV]", "Eee [eV]", "Exc [eV]", &
-        "CG iter"
+        "CG iter", "MD step time [s]"
     end subroutine
 
     subroutine write_results_line(u)
     integer, intent(in) :: u
-    write(u, '(10f17.6, i17)') t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
+    write(u, '(10f17.6, i17, f17.6)') &
+        t, Etot*Ha2eV/N, Enn*Ha2eV/N, Ekin*Ha2eV/N, &
         (Etot + Enn + Ekin) * Ha2eV / N, Temp_current * Ha2eV, Ts * Ha2eV / N, &
-        Een * Ha2eV / N, Eee * Ha2eV / N, Exc * Ha2eV / N, cg_iter
+        Een * Ha2eV / N, Eee * Ha2eV / N, Exc * Ha2eV / N, cg_iter, &
+        mdt2 - mdt1
     end subroutine
 
 end program
