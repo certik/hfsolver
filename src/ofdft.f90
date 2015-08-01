@@ -3,7 +3,7 @@ module ofdft
 ! Routines for orbital free density functional theory. These routines are
 ! independent of any particular discretization.
 
-use types, only: dp
+use types, only: dp, sp
 use constants, only: pi
 implicit none
 private
@@ -64,6 +64,59 @@ else
         f = f * 2._dp/3 / y**(1._dp/3)
     end if
 end if
+end function
+
+real(dp) elemental function f_sp(yd, deriv) result(rd)
+! The same as f(), but uses single precision internally, which is faster.
+real(dp), intent(in) :: yd ! must be positive
+! if deriv == .true. compute df/dy instead. Default .false.
+logical, intent(in), optional :: deriv
+real(sp), parameter :: y0 = 3*real(pi, sp)/(4*sqrt(2._sp))
+real(sp), parameter :: c(8) = [-0.8791880215_sp, 0.1989718742_sp, &
+    0.1068697043e-2_sp, -0.8812685726e-2_sp, 0.1272183027e-1_sp, &
+    -0.9772758583e-2_sp, 0.3820630477e-2_sp, -0.5971217041e-3_sp]
+real(sp), parameter :: d(9) = [0.7862224183_sp, -0.1882979454e1_sp, &
+    0.5321952681_sp, 0.2304457955e1_sp, -0.1614280772e2_sp, &
+    0.5228431386e2_sp, -0.9592645619e2_sp, 0.9462230172e2_sp, &
+    -0.3893753937e2_sp]
+real(sp) :: u, r, y
+integer :: i
+logical :: deriv_
+deriv_ = .false.
+if (present(deriv)) deriv_ = deriv
+
+y = real(yd, sp)
+if (.not. deriv_) then
+    if (y <= y0) then
+        r = log(y)
+        do i = 0, 7
+            r = r + c(i+1) * y**i
+        end do
+    else
+        u = y**(2._sp / 3)
+        r = 0
+        do i = 0, 8
+            r = r + d(i+1) / u**(2*i-1)
+        end do
+        ! Note: Few terms in [1] have "y" instead of "u" in them for y > y0, but
+        ! that is obviously a typo.
+    end if
+else
+    if (y <= y0) then
+        r = 1 / y
+        do i = 0, 6
+            r = r + (i+1) * c(i+2) * y**i
+        end do
+    else
+        u = y**(2._sp / 3)
+        r = 0
+        do i = 0, 8
+            r = r - (2*i-1) * d(i+1) / u**(2*i)
+        end do
+        r = r * 2._sp/3 / y**(1._sp/3)
+    end if
+end if
+rd = r
 end function
 
 subroutine read_pseudo(filename, R, V, Z, Ediff)

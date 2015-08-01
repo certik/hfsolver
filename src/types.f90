@@ -1,10 +1,11 @@
 module types
 implicit none
 private
-public dp, hp, ivector, dvector, zvector
+public sp, dp, hp, ivector, dvector, zvector
 
-integer, parameter :: dp=kind(0.d0), &          ! double precision
-                      hp=selected_real_kind(15) ! high precision
+integer, parameter :: dp=kind(0.d0), &             ! double precision
+                      hp=selected_real_kind(15), & ! high precision
+                      sp = kind(0.)                ! single precision
 
 type ivector                       ! allocatable integer vector
    integer, pointer :: vec(:) => null()
