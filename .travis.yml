@@ -31,13 +31,7 @@ before_install:
       sudo apt-get install -qq libfftw3-dev;
     fi
 before_script:
-  # Print CPU info for debugging purposes:
-  - cat /proc/cpuinfo
-  - gfortran -v
-  - /usr/bin/f95 -v
-  - cmake -DCMAKE_INSTALL_PREFIX="$VIRTUAL_ENV" -DWITH_LIBINT=${TEST_LIBINT} -DWITH_FFTW=${TEST_FFTW} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DWITH_PYTHON=${TEST_PYTHON} -DWITH_OPENMP=${TEST_OPENMP} .
-  - make
-  - make install
+  - bin/install_travis.sh
 script:
   - bin/test_travis.sh
 notifications:
