@@ -1,6 +1,13 @@
 language: python
+sudo: false
 python:
   - 2.7
+addons:
+  apt:
+    packages:
+    - gfortran
+    - liblapack-dev
+    - libfftw3-dev
 env:
   # Test all fast tests in Debug build:
   - BUILD_TYPE="Debug" TEST_OPENMP="yes"
@@ -13,22 +20,17 @@ env:
   # Test all Python tests in Debug build:
   - BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq gfortran liblapack-dev
   - if [[ "${TEST_LIBINT}" == "yes" ]]; then
       git clone https://github.com/qsnake/libint.git;
       pushd libint;
-      ./configure --prefix=/usr > conf_log;
+      ./configure --prefix=$HOME/usr > conf_log;
       make;
-      sudo make install;
+      make install;
       popd;
     fi
   - if [[ "${TEST_PYTHON}" == "yes" ]]; then
       pip install -q --use-mirrors cython==0.17.1 numpy==1.6.2 sympy==0.7.1;
       pip install -q --use-mirrors matplotlib==1.1.1;
-    fi
-  - if [[ "${TEST_FFTW}" == "yes" ]]; then
-      sudo apt-get install -qq libfftw3-dev;
     fi
 before_script:
   - bin/install_travis.sh
