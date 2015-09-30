@@ -34,9 +34,9 @@ r = b - csr_matvec(Ap, Aj, Ax, x)
 z = precond(r)
 p = z
 r2old = dot_product(r, z)
-print "('Conjugate Gradient solver (using ', i0, ' threads)')", &
-    omp_get_max_threads()
 if (verbose_) then
+    print "('Conjugate Gradient solver (using ', i0, ' threads)')", &
+        omp_get_max_threads()
     print *, "Iter    Residual ||A x - b||"
 end if
 call cpu_time(t1)
@@ -54,20 +54,20 @@ do i = 1, maxiter
     if (res_norm < tol) then
         t2_omp = omp_get_wtime()
         call cpu_time(t2)
-        print *, "solve_cg() statistics:"
-        if (with_openmp()) then
-            print "('     Time (OpenMP walltime) [s]:     ', f11.6)", &
-                t2_omp-t1_omp
-        end if
-        print "('     Total CPU time on all cores [s]:', f11.6)", t2-t1
-        if (with_openmp()) then
-            print "('     Speedup:  ', f7.2, 'x')", (t2-t1) / (t2_omp-t1_omp)
-        end if
-        print "('     # threads:', i4)", omp_get_max_threads()
-        print *, "    # iterations:", i
-        print *, "    Matrix size:", size(x0)
-        print *, "    # non-zeros:", size(Ax)
         if (verbose_) then
+            print *, "solve_cg() statistics:"
+            if (with_openmp()) then
+                print "('     Time (OpenMP walltime) [s]:     ', f11.6)", &
+                    t2_omp-t1_omp
+            end if
+            print "('     Total CPU time on all cores [s]:', f11.6)", t2-t1
+            if (with_openmp()) then
+                print "('     Speedup:  ', f7.2, 'x')", (t2-t1) / (t2_omp-t1_omp)
+            end if
+            print "('     # threads:', i4)", omp_get_max_threads()
+            print *, "    # iterations:", i
+            print *, "    Matrix size:", size(x0)
+            print *, "    # non-zeros:", size(Ax)
             r = csr_matvec(Ap, Aj, Ax, x) - b
             write(*, '(1x,a,es10.2)') "Solution vector residual ||A x - b||/||bv||: ",  sqrt(dot_product(r, r) / dot_product(b, b))
         end if
