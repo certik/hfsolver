@@ -369,6 +369,9 @@ do iter = 1, max_iter
 !    print "('    Exc  = ', f14.8)", Exc
 !    print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+    mu = sum(Hpsi)/size(Hpsi)
+    print *, "mu = ", mu
+    print *, "max(abs(H-mu)) = ", maxval(abs(Hpsi - mu))
     free_energies(iter) = free_energy_
     if (iter > 3) then
         last3 = maxval(free_energies(iter-3:iter)) - &
