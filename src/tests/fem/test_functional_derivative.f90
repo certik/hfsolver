@@ -5,7 +5,7 @@ program test_functional_derivative
 
 use types, only: dp
 use ofdft_fe, only: free_energy2, fe_data, initialize_fe, &
-    free_energy2_low_level, free_energy
+    free_energy2_low_level, free_energy, free_energy_min_low_level
 use ofdft_fft, only: reciprocal_space_vectors, radial_potential_fourier, &
     real2fourier
 use constants, only: Ha2eV, pi, i_
@@ -15,7 +15,7 @@ use isolve, only: solve_cg
 use interp3d, only: trilinear
 use feutils, only: quad_lobatto
 use md, only: positions_fcc
-use converged_energies, only: one_gaussian, four_gaussians
+use converged_energies, only: one_gaussian, four_gaussians_min
 use poisson3d_assembly, only: func2quad, integral, assemble_3d_coo_rhs, &
     assemble_3d_coo_rhs_spectral
 use fe_mesh, only: c2fullc_3d, fe2quad_3d, fe2quad_3d_lobatto
@@ -30,7 +30,7 @@ integer :: Nex, Ney, Nez
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
 type(fe_data) :: fed
 
-real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
+real(dp), allocatable, dimension(:, :, :, :) :: Hn, &
     psi, Venq, &
     nenq_neutral
 complex(dp), allocatable, dimension(:, :, :, :) :: cpsi, cpsi2, cpsi3
@@ -43,22 +43,23 @@ real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
 real(dp) :: Nelec
 integer :: i
 real(dp) :: conv_energies(4)
+real(dp) :: mu
 
 Rcut = 0.3_dp
-p = 8
-Nex = 8
-Ney = 8
-Nez = 8
+p = 6
+Nex = 4
+Ney = 4
+Nez = 4
 L = 2
 T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
-Nq = 9
+Nq = 7
 if (natom == 1) then
     X(:, 1) = [L/2 + L/64, L/2, L/2]
-    conv_energies = one_gaussian
+    conv_energies = one_gaussian ! These are not minimized
 else
     call positions_fcc(X, L)
-    conv_energies = four_gaussians
+    conv_energies = four_gaussians_min
 end if
 call initialize_fe(L, Nex, Ney, Nez, p, Nq, quad_lobatto, fed)
 
@@ -74,7 +75,7 @@ max_iter = 200
 
 allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
-allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Hn(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(cpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(cpsi2(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
@@ -117,14 +118,18 @@ print *, "Initial norm of psi:", psi_norm
 psi = sqrt(Nelec / psi_norm) * psi
 psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "norm of psi:", psi_norm
-! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
-! save space:
+
+call free_energy_min_low_level(Nelec, T_au, nenq_pos, nq_pos, 1e-12_dp, &
+        fed, Eee, Een, Ts, Exc)
+
+psi = sqrt(nq_pos)
+psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
+print *, "Initial norm of psi:", psi_norm
+
 call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
-    Eee, Een, Ts, Exc, free_energy_, Hn=Hpsi)
-! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
-Hpsi = Hpsi * 2*psi
+    Eee, Een, Ts, Exc, free_energy_, Hn=Hn)
 
 DOF = fed%Nb
 
@@ -148,11 +153,15 @@ print *, abs(Een - conv_energies(2))
 print *, abs(Eee - conv_energies(3))
 print *, abs(Exc - conv_energies(4))
 print *, abs(Etot - Etot_conv)
-call assert(abs(Ts - conv_energies(1)) < 1e-8_dp)
-call assert(abs(Een - conv_energies(2)) < 1e-8_dp)
-call assert(abs(Eee - conv_energies(3)) < 1e-8_dp)
-call assert(abs(Exc - conv_energies(4)) < 1e-7_dp)
-call assert(abs(Etot - Etot_conv) < 1e-7_dp)
+call assert(abs(Ts - conv_energies(1)) < 1e-4_dp)
+call assert(abs(Een - conv_energies(2)) < 5e-4_dp)
+call assert(abs(Eee - conv_energies(3)) < 5e-5_dp)
+call assert(abs(Exc - conv_energies(4)) < 5e-5_dp)
+call assert(abs(Etot - Etot_conv) < 1e-4_dp)
+
+mu = sum(Hn)/size(Hn)
+print *, "mu = ", mu
+print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 
 print *
 print *, "------------------------------------------------------------------"
@@ -161,14 +170,14 @@ print *, "Propagation"
 ! Propagate
 
 cpsi = psi
-print *, "E_max =", maxval(abs(Hpsi)), "; dt <", 1/maxval(abs(Hpsi))
-dt = 1/maxval(abs(Hpsi)) / 10 ! set dt 10x smaller than the limit
+print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
+dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
 print *, "dt =", dt
 
 ! Do first step by hand:
 print *, "First step"
 cpsi2 = cpsi
-cpsi = cpsi2 - i_*dt*Hpsi*cpsi2
+cpsi = cpsi2 - i_*dt*Hn*cpsi2
 
 psi = abs(cpsi)
 psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
@@ -181,7 +190,7 @@ print *, "norm of psi:", psi_norm
 do i = 1, 10
     print *, "iter =", i
     cpsi3 = cpsi2; cpsi2 = cpsi
-    cpsi = cpsi3 - 2*i_*dt*Hpsi*cpsi2
+    cpsi = cpsi3 - 2*i_*dt*Hn*cpsi2
     psi = abs(cpsi)
     psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
     print *, "norm of psi:", psi_norm
@@ -189,8 +198,7 @@ do i = 1, 10
     call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
         Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
         fed%phi_v, fed%jac_det, &
-        Eee, Een, Ts, Exc, free_energy_, Hn=Hpsi)
-    Hpsi = Hpsi * 2*psi
+        Eee, Een, Ts, Exc, free_energy_, Hn=Hn)
     Etot = Ts + Een + Eee + Exc
     print *, "Summary of energies [a.u.]:"
     print "('    Ts   = ', f14.8)", Ts
