@@ -30,7 +30,7 @@ integer :: Nex, Ney, Nez
 real(dp), allocatable, dimension(:, :, :, :) :: nenq_pos, nq_pos
 type(fe_data) :: fed
 
-real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
+real(dp), allocatable, dimension(:, :, :, :) :: Hn, &
     psi, Venq, &
     nenq_neutral
 complex(dp), allocatable, dimension(:, :, :, :) :: cpsi, cpsi2, cpsi3
@@ -74,7 +74,7 @@ max_iter = 200
 
 allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
-allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Hn(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(cpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(cpsi2(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
@@ -122,9 +122,7 @@ print *, "norm of psi:", psi_norm
 call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
-    Eee, Een, Ts, Exc, free_energy_, Hn=Hpsi)
-! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
-Hpsi = Hpsi * 2*psi
+    Eee, Een, Ts, Exc, free_energy_, Hn=Hn)
 
 DOF = fed%Nb
 
@@ -161,14 +159,14 @@ print *, "Propagation"
 ! Propagate
 
 cpsi = psi
-print *, "E_max =", maxval(abs(Hpsi)), "; dt <", 1/maxval(abs(Hpsi))
-dt = 1/maxval(abs(Hpsi)) / 10 ! set dt 10x smaller than the limit
+print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
+dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
 print *, "dt =", dt
 
 ! Do first step by hand:
 print *, "First step"
 cpsi2 = cpsi
-cpsi = cpsi2 - i_*dt*Hpsi*cpsi2
+cpsi = cpsi2 - i_*dt*Hn*cpsi2
 
 psi = abs(cpsi)
 psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
@@ -181,7 +179,7 @@ print *, "norm of psi:", psi_norm
 do i = 1, 10
     print *, "iter =", i
     cpsi3 = cpsi2; cpsi2 = cpsi
-    cpsi = cpsi3 - 2*i_*dt*Hpsi*cpsi2
+    cpsi = cpsi3 - 2*i_*dt*Hn*cpsi2
     psi = abs(cpsi)
     psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
     print *, "norm of psi:", psi_norm
@@ -189,8 +187,7 @@ do i = 1, 10
     call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
         Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
         fed%phi_v, fed%jac_det, &
-        Eee, Een, Ts, Exc, free_energy_, Hn=Hpsi)
-    Hpsi = Hpsi * 2*psi
+        Eee, Een, Ts, Exc, free_energy_, Hn=Hn)
     Etot = Ts + Een + Eee + Exc
     print *, "Summary of energies [a.u.]:"
     print "('    Ts   = ', f14.8)", Ts
