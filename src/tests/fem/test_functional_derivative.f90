@@ -43,6 +43,7 @@ real(dp), allocatable :: rhs(:), sol(:), fullsol(:), fullsol2(:)
 real(dp) :: Nelec
 integer :: i
 real(dp) :: conv_energies(4)
+real(dp) :: mu
 
 Rcut = 0.3_dp
 p = 8
@@ -151,6 +152,10 @@ call assert(abs(Een - conv_energies(2)) < 1e-8_dp)
 call assert(abs(Eee - conv_energies(3)) < 1e-8_dp)
 call assert(abs(Exc - conv_energies(4)) < 1e-7_dp)
 call assert(abs(Etot - Etot_conv) < 1e-7_dp)
+
+mu = sum(Hn)/size(Hn)
+print *, "mu = ", mu
+print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 
 print *
 print *, "------------------------------------------------------------------"
