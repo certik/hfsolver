@@ -318,7 +318,7 @@ print *, "norm of psi:", psi_norm
 call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
-    Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+    Eh, Een, Ts, Exc, free_energy_, Hn=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * integral(fed%nodes, fed%elems, fed%wtq3, 0.5_dp * psi * Hpsi)
@@ -355,7 +355,7 @@ do iter = 1, max_iter
         Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, &
         fed%spectral, &
         fed%phi_v, fed%jac_det, &
-        Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+        Eh, Een, Ts, Exc, free_energy_, Hn=Hpsi)
 !    print *, "Iteration:", iter
     psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 !    print *, "Norm of psi:", psi_norm
@@ -369,6 +369,9 @@ do iter = 1, max_iter
 !    print "('    Exc  = ', f14.8)", Exc
 !    print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u.')", free_energy_
+    mu = sum(Hpsi)/size(Hpsi)
+    print *, "mu = ", mu
+    print *, "max(abs(H-mu)) = ", maxval(abs(Hpsi - mu))
     free_energies(iter) = free_energy_
     if (iter > 3) then
         last3 = maxval(free_energies(iter-3:iter)) - &
@@ -399,7 +402,7 @@ contains
         T_au, &
         Venq, psi_**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
         fed%phi_v, fed%jac_det, &
-        Eh, Een, Ts, Exc, energy, Hpsi=Hpsi)
+        Eh, Een, Ts, Exc, energy, Hn=Hpsi)
     end function
 
 end subroutine
@@ -409,7 +412,7 @@ end subroutine
 subroutine free_energy(nodes, elems, in, ib, Nb, Lx, Ly, Lz, xin, xiq, wtq3, &
     T_au, Venq, nq_pos, phihq, Ap, Aj, Ax, matd, spectral, &
     phi_v, jac_det, &
-    Eh, Een, Ts, Exc, Etot, verbose, Hpsi)
+    Eh, Een, Ts, Exc, Etot, verbose, Hn)
 real(dp), intent(in) :: nodes(:, :)
 integer, intent(in) :: elems(:, :), in(:, :, :, :), ib(:, :, :, :), Nb
 real(dp), intent(in) :: Lx, Ly, Lz, T_au
@@ -421,12 +424,14 @@ type(umfpack_numeric), intent(in) :: matd
 real(dp), intent(out) :: Eh, Een, Ts, Exc, Etot
 logical, intent(in) :: spectral
 logical, intent(in), optional :: verbose
-! If Hpsi is present, it
+! If Hn is present, it
 ! returns "delta F / delta n", the functional derivative with respect to the
 ! density "n". Use the relation
 !     d/dpsi = 2 psi d/dn
-! to obtain the derivative with respect to psi (i.e. multiply Hpsi by 2*psi).
-real(dp), intent(out) :: Hpsi(:, :, :, :)
+! to obtain the derivative with respect to psi:
+!     Hpsi = 2*psi*Hn
+! (i.e. multiply Hn by 2*psi).
+real(dp), intent(out) :: Hn(:, :, :, :)
 
 real(dp), allocatable, dimension(:, :, :, :) :: y, F0, exc_density, &
     Vhq, nq_neutral, Vxc, dF0dn
@@ -529,8 +534,8 @@ end do
 end do
 end do
 end do
-Hpsi = dF0dn + Vhq + Venq + Vxc
-Hpsi = Hpsi * Lx*Ly*Lz
+Hn = dF0dn + Vhq + Venq + Vxc
+Hn = Hn * Lx*Ly*Lz
 end subroutine
 
 subroutine free_energy2(Nelec, L, Nex, Ney, Nez, p, T_au, fnen, fn_pos, &
@@ -574,7 +579,7 @@ real(dp), intent(in) :: T_au
 type(fe_data), intent(in) :: fed
 real(dp), intent(out) :: Eh, Een, Ts, Exc
 
-real(dp), allocatable, dimension(:, :, :, :) :: Hpsi, &
+real(dp), allocatable, dimension(:, :, :, :) :: Hn, &
     psi, Venq, &
     nenq_neutral
 integer :: max_iter
@@ -588,7 +593,7 @@ max_iter = 200
 
 allocate(nenq_neutral(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(Venq(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
-allocate(Hpsi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
+allocate(Hn(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 allocate(psi(fed%Nq, fed%Nq, fed%Nq, fed%Ne))
 
 
@@ -632,12 +637,10 @@ print *, "Initial norm of psi:", psi_norm
 psi = sqrt(Nelec / psi_norm) * psi
 psi_norm = integral(fed%nodes, fed%elems, fed%wtq3, psi**2)
 print *, "norm of psi:", psi_norm
-! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
-! save space:
 call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
-    Eh, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+    Eh, Een, Ts, Exc, free_energy_, Hn=Hn)
 end subroutine
 
 

@@ -122,7 +122,7 @@ print *, "norm of psi:", psi_norm
 call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
     Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
     fed%phi_v, fed%jac_det, &
-    Eee, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+    Eee, Een, Ts, Exc, free_energy_, Hn=Hpsi)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 
@@ -189,7 +189,7 @@ do i = 1, 10
     call free_energy(fed%nodes, fed%elems, fed%in, fed%ib, fed%Nb, fed%Lx, fed%Ly, fed%Lz, fed%xin, fed%xiq, fed%wtq3, T_au, &
         Venq, psi**2, fed%phihq, fed%Ap, fed%Aj, fed%Ax, fed%matd, fed%spectral, &
         fed%phi_v, fed%jac_det, &
-        Eee, Een, Ts, Exc, free_energy_, Hpsi=Hpsi)
+        Eee, Een, Ts, Exc, free_energy_, Hn=Hpsi)
     Hpsi = Hpsi * 2*psi
     Etot = Ts + Een + Eee + Exc
     print *, "Summary of energies [a.u.]:"
