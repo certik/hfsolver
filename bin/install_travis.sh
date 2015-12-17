@@ -11,7 +11,7 @@ gfortran -v
 /usr/bin/f95 -v
 
 # Install cmake
-wget -O- http://www.cmake.org/files/v3.3/cmake-3.3.0-Linux-x86_64.tar.gz | tar xz
+wget --no-check-certificate -O- http://www.cmake.org/files/v3.3/cmake-3.3.0-Linux-x86_64.tar.gz | tar xz
 export PATH="`pwd`/cmake-3.3.0-Linux-x86_64/bin/:$PATH"
 
 cmake --version
