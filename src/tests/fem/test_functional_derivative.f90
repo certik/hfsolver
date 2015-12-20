@@ -6,8 +6,6 @@ program test_functional_derivative
 use types, only: dp
 use ofdft_fe, only: free_energy2, fe_data, initialize_fe, &
     free_energy2_low_level, free_energy, free_energy_min_low_level
-use ofdft_fft, only: reciprocal_space_vectors, radial_potential_fourier, &
-    real2fourier
 use constants, only: Ha2eV, pi, i_
 use utils, only: loadtxt, assert, linspace, zeros
 use splines, only: spline3pars, iixmin, poly3
