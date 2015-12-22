@@ -25,7 +25,7 @@ complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp) :: L, T_eV, T_au
 integer :: i
 integer, parameter :: natom = 4
-real(dp) :: X(3, natom), alpha_ne, alpha_nen
+real(dp) :: X(3, natom), alpha_nen
 integer :: cg_iter
 
 Ng = 64
@@ -35,7 +35,6 @@ T_eV = 0.0862_dp
 T_au = T_ev / Ha2eV
 
 alpha_nen = 6
-alpha_ne = 5
 
 Z = 1
 
