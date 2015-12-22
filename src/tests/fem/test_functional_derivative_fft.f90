@@ -7,7 +7,7 @@ use constants, only: i_
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
-    fourier2real
+    fourier2real, real_space_vectors
 use constants, only: Ha2eV
 use utils, only: loadtxt, stop_error, assert, linspace
 use splines, only: spline3pars, iixmin, poly3, spline3ders
@@ -20,7 +20,7 @@ integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
-real(dp), allocatable :: Ven0G(:, :, :), current(:,:,:,:)
+real(dp), allocatable :: Ven0G(:, :, :), current(:,:,:,:), Xn(:,:,:,:)
 real(dp) :: V0
 complex(dp), allocatable, dimension(:,:,:) :: VenG, psi, psi2, psi3, psiG, tmp
 complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
@@ -29,6 +29,7 @@ integer :: i, j
 integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
+real(dp) :: E0, t, omega, current_avg(3), conductivity
 
 Ng = 32
 
@@ -44,11 +45,13 @@ allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng))
 allocate(R(40000), psi2(Ng, Ng, Ng), psi3(Ng, Ng, Ng), psiG(Ng, Ng, Ng))
 allocate(dpsi(Ng, Ng, Ng, 3), current(Ng, Ng, Ng, 3), tmp(Ng, Ng, Ng))
+allocate(Xn(Ng, Ng, Ng, 3))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
 print *, "    Done."
 
+call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
 call positions_fcc(X, L)
 VenG = 0
@@ -104,6 +107,9 @@ print *, "dt =", dt
 ! Do first step by hand:
 print *, "First step"
 psi = sqrt(ne)
+
+t = 0
+
 psi2 = psi
 psi = psi2 - i_*dt*Hn*psi2
 
@@ -115,10 +121,14 @@ ne = real(psi*conjg(psi), dp)
 psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
+E0 = 1e-3_dp
+omega = 0.05
+
 do i = 1, 10
-    print *, "iter =", i
+    t = t + dt
+    print *, "iter =", i, "time =", t
     psi3 = psi2; psi2 = psi
-    psi = psi3 - 2*i_*dt*Hn*psi2
+    psi = psi3 - 2*i_*dt*(Hn + E0*Xn(:,:,:,1)*sin(omega*t))*psi2
     ne = real(psi*conjg(psi), dp)
     call real2fourier(psi, psiG)
     psiG(1,1,1) = 0
@@ -144,6 +154,16 @@ do i = 1, 10
     print "('    Exc  = ', f14.8)", Exc
     print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+
+    do j = 1, 3
+        current_avg(j) = integral(L, current(:, :, :, j))/L**3
+    end do
+    print *, "E field along the 'x' direction =", E0*sin(omega*t)
+    print *, "average current =", current_avg
+    print *, "current normalized =", current_avg / current_avg(1)
+    conductivity = current_avg(1) / E0*sin(omega*t)
+    print *, "conductivity along the 'x' direction =", conductivity
 
 end do
 print *, "Done"
