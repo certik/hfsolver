@@ -21,8 +21,8 @@ real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 real(dp) :: V0
-complex(dp), allocatable :: VenG(:, :, :), cpsi(:, :, :), cpsi2(:, :, :), &
-    cpsi3(:, :, :)
+complex(dp), allocatable :: VenG(:, :, :), psi(:, :, :), psi2(:, :, :), &
+    psi3(:, :, :)
 real(dp) :: L, T_eV, T_au
 integer :: i
 integer, parameter :: natom = 4
@@ -40,8 +40,8 @@ alpha_nen = 6
 Z = 1
 
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
-allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), cpsi(Ng, Ng, Ng))
-allocate(R(40000), cpsi2(Ng, Ng, Ng), cpsi3(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng))
+allocate(R(40000), psi2(Ng, Ng, Ng), psi3(Ng, Ng, Ng))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
@@ -101,23 +101,24 @@ print *, "dt =", dt
 
 ! Do first step by hand:
 print *, "First step"
-cpsi = sqrt(ne)
-cpsi2 = cpsi
-cpsi = cpsi2 - i_*dt*Hn*cpsi2
+psi = sqrt(ne)
+psi2 = psi
+psi = psi2 - i_*dt*Hn*psi2
 
-ne = real(cpsi*conjg(cpsi), dp)
+ne = real(psi*conjg(psi), dp)
 psi_norm = integral(L, ne)
 print *, "Initial norm of psi:", psi_norm
-cpsi = sqrt(natom / psi_norm) * cpsi
-ne = real(cpsi*conjg(cpsi), dp)
+psi = sqrt(natom / psi_norm) * psi
+ne = real(psi*conjg(psi), dp)
 psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
 do i = 1, 10
     print *, "iter =", i
-    cpsi3 = cpsi2; cpsi2 = cpsi
-    cpsi = cpsi3 - 2*i_*dt*Hn*cpsi2
-    ne = real(cpsi*conjg(cpsi), dp)
+    psi3 = psi2; psi2 = psi
+    psi = psi3 - 2*i_*dt*Hn*psi2
+    ne = real(psi*conjg(psi), dp)
+
     psi_norm = integral(L, ne)
     print *, "norm of psi:", psi_norm
 
