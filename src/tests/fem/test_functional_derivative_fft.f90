@@ -20,10 +20,10 @@ integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
-real(dp), allocatable :: Ven0G(:, :, :)
+real(dp), allocatable :: Ven0G(:, :, :), current(:,:,:,:)
 real(dp) :: V0
-complex(dp), allocatable, dimension(:, :, :) :: VenG, psi, psi2, psi3, psiG
-complex(dp), allocatable, dimension(:,:,:,:) :: dpsi, current
+complex(dp), allocatable, dimension(:,:,:) :: VenG, psi, psi2, psi3, psiG, tmp
+complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
 integer :: i, j
 integer, parameter :: natom = 4
@@ -43,7 +43,7 @@ Z = 1
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng))
 allocate(R(40000), psi2(Ng, Ng, Ng), psi3(Ng, Ng, Ng), psiG(Ng, Ng, Ng))
-allocate(dpsi(Ng, Ng, Ng, 3), current(Ng, Ng, Ng, 3))
+allocate(dpsi(Ng, Ng, Ng, 3), current(Ng, Ng, Ng, 3), tmp(Ng, Ng, Ng))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
@@ -123,8 +123,11 @@ do i = 1, 10
     call real2fourier(psi, psiG)
     do j = 1, 3
         call fourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j))
-        current(:,:,:,j) = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) &
-            / (2*natom*i_)
+        tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
+        if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
+            print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
+        end if
+        current(:,:,:,j) = real(tmp, dp)
     end do
 
     psi_norm = integral(L, ne)
