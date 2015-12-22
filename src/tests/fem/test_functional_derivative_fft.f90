@@ -42,7 +42,9 @@ allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(R(40000))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
+print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
+print *, "    Done."
 
 call reciprocal_space_vectors(L, G, G2)
 call positions_fcc(X, L)
