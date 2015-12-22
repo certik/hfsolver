@@ -37,3 +37,6 @@ addtest(test_functional_derivative converged_energies)
 
 set_tests_properties(test_free_energy4 PROPERTIES LABELS slow)
 set_tests_properties(test_functional_derivative PROPERTIES LABELS slow)
+
+addtest(test_functional_derivative_fft converged_energies)
+set_tests_properties(test_functional_derivative_fft PROPERTIES LABELS slow)
