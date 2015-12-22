@@ -18,7 +18,7 @@ real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
-real(dp), allocatable :: ne(:, :, :), Hn(:, :, :), psi(:, :, :)
+real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 real(dp) :: V0
 complex(dp), allocatable :: VenG(:, :, :), cpsi(:, :, :), cpsi2(:, :, :), &
@@ -40,7 +40,7 @@ alpha_nen = 6
 Z = 1
 
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
-allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng), cpsi(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), cpsi(Ng, Ng, Ng))
 allocate(R(40000), cpsi2(Ng, Ng, Ng), cpsi3(Ng, Ng, Ng))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
@@ -88,7 +88,6 @@ mu = sum(Hn)/size(Hn)
 print *, "mu = ", mu
 print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 call assert(all(ne > 0))
-psi = sqrt(ne)
 
 print *
 print *, "------------------------------------------------------------------"
@@ -96,33 +95,33 @@ print *, "Propagation"
 
 ! Propagate
 
-cpsi = psi
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
 print *, "dt =", dt
 
 ! Do first step by hand:
 print *, "First step"
+cpsi = sqrt(ne)
 cpsi2 = cpsi
 cpsi = cpsi2 - i_*dt*Hn*cpsi2
 
-psi = abs(cpsi)
-psi_norm = integral(L, psi**2)
+ne = real(cpsi*conjg(cpsi), dp)
+psi_norm = integral(L, ne)
 print *, "Initial norm of psi:", psi_norm
 cpsi = sqrt(natom / psi_norm) * cpsi
-psi = abs(cpsi)
-psi_norm = integral(L, psi**2)
+ne = real(cpsi*conjg(cpsi), dp)
+psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
 do i = 1, 10
     print *, "iter =", i
     cpsi3 = cpsi2; cpsi2 = cpsi
     cpsi = cpsi3 - 2*i_*dt*Hn*cpsi2
-    psi = abs(cpsi)
-    psi_norm = integral(L, psi**2)
+    ne = real(cpsi*conjg(cpsi), dp)
+    psi_norm = integral(L, ne)
     print *, "norm of psi:", psi_norm
 
-    call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, Etot, Hn, &
+    call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         calc_value=.true., calc_derivative=.true.)
     Etot = Ts + Een + Eee + Exc
     print *, "Summary of energies [a.u.]:"
