@@ -18,14 +18,14 @@ real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
-real(dp), allocatable :: ne(:, :, :), dFdn(:, :, :)
-real(dp), allocatable :: Ven0G(:, :, :), fac(:, :, :)
+real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
+real(dp), allocatable :: Ven0G(:, :, :)
 real(dp) :: V0
-complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
+complex(dp), allocatable :: VenG(:, :, :)
 real(dp) :: L, T_eV, T_au
 integer :: i
 integer, parameter :: natom = 4
-real(dp) :: X(3, natom), alpha_nen
+real(dp) :: X(3, natom), alpha_nen, mu
 integer :: cg_iter
 
 Ng = 64
@@ -38,8 +38,8 @@ alpha_nen = 6
 
 Z = 1
 
-allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
-allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng), neG(Ng, Ng, Ng))
+allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(R(40000))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
@@ -79,5 +79,12 @@ call assert(abs(Een - four_gaussians_min(2)) < 1e-7_dp)
 call assert(abs(Eee - four_gaussians_min(3)) < 1e-8_dp)
 call assert(abs(Exc - four_gaussians_min(4)) < 1e-8_dp)
 call assert(abs(Etot - Etot_conv) < 1e-10_dp)
+
+call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
+    calc_value=.true., calc_derivative=.true.)
+
+mu = sum(Hn)/size(Hn)
+print *, "mu = ", mu
+print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 
 end program
