@@ -29,7 +29,7 @@ integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
 
-Ng = 64
+Ng = 32
 
 L = 2
 T_eV = 0.0862_dp
