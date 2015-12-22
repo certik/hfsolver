@@ -231,10 +231,8 @@ end function
 
 real(dp) function fne(x, y, z) result(n)
 real(dp), intent(in) :: x, y, z
-real(dp), parameter :: alpha = 5, Z_ = natom
-real(dp) :: r
-r = sqrt((x-L/2)**2+(y-L/2)**2+(z-L/2)**2)
-n = Z_*alpha**3/pi**(3._dp/2)*exp(-alpha**2*R**2)
+n = x+y+z ! Silence a compiler "unused dummy argument" warning
+n = natom / L**3
 end function
 
 end program
