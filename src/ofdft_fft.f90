@@ -123,10 +123,8 @@ subroutine fourier2real_real(xG, x)
 complex(dp), intent(in) :: xG(:, :, :)
 real(dp), intent(out) :: x(:, :, :)
 complex(dp) :: tmp(size(xG,1), size(xG,2), size(xG,3))
-integer :: Ng
 real(dp) :: t1, t2
 t1 = clock()
-Ng = size(x, 1)
 tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized

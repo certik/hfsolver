@@ -6,7 +6,8 @@ use types, only: dp
 use constants, only: i_
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
-    reciprocal_space_vectors, free_energy_min, real2fourier, integral
+    reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
+    fourier2real
 use constants, only: Ha2eV
 use utils, only: loadtxt, stop_error, assert, linspace
 use splines, only: spline3pars, iixmin, poly3, spline3ders
@@ -21,10 +22,10 @@ real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
 real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
 real(dp), allocatable :: Ven0G(:, :, :)
 real(dp) :: V0
-complex(dp), allocatable :: VenG(:, :, :), psi(:, :, :), psi2(:, :, :), &
-    psi3(:, :, :)
+complex(dp), allocatable, dimension(:, :, :) :: VenG, psi, psi2, psi3, psiG
+complex(dp), allocatable, dimension(:,:,:,:) :: dpsi, current
 real(dp) :: L, T_eV, T_au
-integer :: i
+integer :: i, j
 integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
@@ -41,7 +42,8 @@ Z = 1
 
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng))
-allocate(R(40000), psi2(Ng, Ng, Ng), psi3(Ng, Ng, Ng))
+allocate(R(40000), psi2(Ng, Ng, Ng), psi3(Ng, Ng, Ng), psiG(Ng, Ng, Ng))
+allocate(dpsi(Ng, Ng, Ng, 3), current(Ng, Ng, Ng, 3))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
@@ -118,6 +120,12 @@ do i = 1, 10
     psi3 = psi2; psi2 = psi
     psi = psi3 - 2*i_*dt*Hn*psi2
     ne = real(psi*conjg(psi), dp)
+    call real2fourier(psi, psiG)
+    do j = 1, 3
+        call fourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j))
+        current(:,:,:,j) = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) &
+            / (2*natom*i_)
+    end do
 
     psi_norm = integral(L, ne)
     print *, "norm of psi:", psi_norm
