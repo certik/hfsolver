@@ -121,6 +121,7 @@ do i = 1, 10
     psi = psi3 - 2*i_*dt*Hn*psi2
     ne = real(psi*conjg(psi), dp)
     call real2fourier(psi, psiG)
+    psiG(1,1,1) = 0
     do j = 1, 3
         call fourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j))
         tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
