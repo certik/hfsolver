@@ -6,7 +6,8 @@ use types, only: dp
 use constants, only: i_
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
-    reciprocal_space_vectors, free_energy_min, real2fourier, integral
+    reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
+    fourier2real
 use constants, only: Ha2eV
 use utils, only: loadtxt, stop_error, assert, linspace
 use splines, only: spline3pars, iixmin, poly3, spline3ders
@@ -18,18 +19,18 @@ real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: Ng
 real(dp) :: Z
 real(dp), allocatable :: R(:), G(:, :, :, :), G2(:, :, :)
-real(dp), allocatable :: ne(:, :, :), Hn(:, :, :), psi(:, :, :)
-real(dp), allocatable :: Ven0G(:, :, :)
+real(dp), allocatable :: ne(:, :, :), Hn(:, :, :)
+real(dp), allocatable :: Ven0G(:, :, :), current(:,:,:,:)
 real(dp) :: V0
-complex(dp), allocatable :: VenG(:, :, :), cpsi(:, :, :), cpsi2(:, :, :), &
-    cpsi3(:, :, :)
+complex(dp), allocatable, dimension(:,:,:) :: VenG, psi, psi2, psi3, psiG, tmp
+complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
-integer :: i
+integer :: i, j
 integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
 
-Ng = 64
+Ng = 32
 
 L = 2
 T_eV = 0.0862_dp
@@ -40,8 +41,9 @@ alpha_nen = 6
 Z = 1
 
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), Hn(Ng, Ng, Ng))
-allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng), cpsi(Ng, Ng, Ng))
-allocate(R(40000), cpsi2(Ng, Ng, Ng), cpsi3(Ng, Ng, Ng))
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), psi(Ng, Ng, Ng))
+allocate(R(40000), psi2(Ng, Ng, Ng), psi3(Ng, Ng, Ng), psiG(Ng, Ng, Ng))
+allocate(dpsi(Ng, Ng, Ng, 3), current(Ng, Ng, Ng, 3), tmp(Ng, Ng, Ng))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
@@ -88,7 +90,6 @@ mu = sum(Hn)/size(Hn)
 print *, "mu = ", mu
 print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 call assert(all(ne > 0))
-psi = sqrt(ne)
 
 print *
 print *, "------------------------------------------------------------------"
@@ -96,33 +97,44 @@ print *, "Propagation"
 
 ! Propagate
 
-cpsi = psi
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
 print *, "dt =", dt
 
 ! Do first step by hand:
 print *, "First step"
-cpsi2 = cpsi
-cpsi = cpsi2 - i_*dt*Hn*cpsi2
+psi = sqrt(ne)
+psi2 = psi
+psi = psi2 - i_*dt*Hn*psi2
 
-psi = abs(cpsi)
-psi_norm = integral(L, psi**2)
+ne = real(psi*conjg(psi), dp)
+psi_norm = integral(L, ne)
 print *, "Initial norm of psi:", psi_norm
-cpsi = sqrt(natom / psi_norm) * cpsi
-psi = abs(cpsi)
-psi_norm = integral(L, psi**2)
+psi = sqrt(natom / psi_norm) * psi
+ne = real(psi*conjg(psi), dp)
+psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
 do i = 1, 10
     print *, "iter =", i
-    cpsi3 = cpsi2; cpsi2 = cpsi
-    cpsi = cpsi3 - 2*i_*dt*Hn*cpsi2
-    psi = abs(cpsi)
-    psi_norm = integral(L, psi**2)
+    psi3 = psi2; psi2 = psi
+    psi = psi3 - 2*i_*dt*Hn*psi2
+    ne = real(psi*conjg(psi), dp)
+    call real2fourier(psi, psiG)
+    psiG(1,1,1) = 0
+    do j = 1, 3
+        call fourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j))
+        tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
+        if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
+            print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
+        end if
+        current(:,:,:,j) = real(tmp, dp)
+    end do
+
+    psi_norm = integral(L, ne)
     print *, "norm of psi:", psi_norm
 
-    call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, Etot, Hn, &
+    call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         calc_value=.true., calc_derivative=.true.)
     Etot = Ts + Een + Eee + Exc
     print *, "Summary of energies [a.u.]:"

@@ -31,6 +31,14 @@ interface integralG
     module procedure integralG_complex, integralG_real
 end interface
 
+interface real2fourier
+    module procedure real2fourier_complex, real2fourier_real
+end interface
+
+interface fourier2real
+    module procedure fourier2real_complex, fourier2real_real
+end interface
+
 integer :: fft_counter
 real(dp) :: fft_time
 
@@ -54,7 +62,24 @@ G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
-subroutine real2fourier(x, xG)
+subroutine real2fourier_complex(x, xG)
+! Calculates Discrete Fourier Transform, with the same normalization as the
+! Fourier Transform for periodic systems (which is Fourier Series).
+complex(dp), intent(in) :: x(:, :, :)
+complex(dp), intent(out) :: xG(:, :, :)
+integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
+Ng = size(x, 1)
+xG = x
+call fft3_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+subroutine real2fourier_real(x, xG)
 ! Calculates Discrete Fourier Transform, with the same normalization as the
 ! Fourier Transform for periodic systems (which is Fourier Series).
 real(dp), intent(in) :: x(:, :, :)
@@ -71,7 +96,25 @@ fft_counter = fft_counter + 1
 fft_time = fft_time + t2-t1
 end subroutine
 
-subroutine fourier2real(xG, x)
+subroutine fourier2real_complex(xG, x)
+! Calculates Inverse Discrete Fourier Transform. xG must follow the same
+! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
+! will be equal to 'x':
+! call real2fourier(x, xG)
+! call fourier2real(xG, x2)
+complex(dp), intent(in) :: xG(:, :, :)
+complex(dp), intent(out) :: x(:, :, :)
+real(dp) :: t1, t2
+t1 = clock()
+x = xG
+call ifft3_inplace(x) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
+! The result is already normalized
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+subroutine fourier2real_real(xG, x)
 ! Calculates Inverse Discrete Fourier Transform. xG must follow the same
 ! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
 ! will be equal to 'x':
@@ -80,10 +123,8 @@ subroutine fourier2real(xG, x)
 complex(dp), intent(in) :: xG(:, :, :)
 real(dp), intent(out) :: x(:, :, :)
 complex(dp) :: tmp(size(xG,1), size(xG,2), size(xG,3))
-integer :: Ng
 real(dp) :: t1, t2
 t1 = clock()
-Ng = size(x, 1)
 tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized
