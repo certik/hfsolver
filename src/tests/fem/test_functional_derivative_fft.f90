@@ -30,6 +30,7 @@ integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
 real(dp) :: E0, t, omega, current_avg(3), conductivity
+integer :: u
 
 Ng = 32
 
@@ -124,7 +125,9 @@ print *, "norm of psi:", psi_norm
 E0 = 1e-3_dp
 omega = 0.05
 
-do i = 1, 10
+open(newunit=u, file="cond.txt", status="replace")
+
+do i = 1, 100
     t = t + dt
     print *, "iter =", i, "time =", t
     psi3 = psi2; psi2 = psi
@@ -164,8 +167,10 @@ do i = 1, 10
     print *, "current normalized =", current_avg / current_avg(1)
     conductivity = current_avg(1) / E0*sin(omega*t)
     print *, "conductivity along the 'x' direction =", conductivity
+    write(u, *) t, conductivity, E0*sin(omega*t), current_avg(1)
 
 end do
 print *, "Done"
+close(u)
 
 end program
