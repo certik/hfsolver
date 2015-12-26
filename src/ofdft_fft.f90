@@ -19,7 +19,7 @@ implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
     radial_potential_fourier, real2fourier, fourier2real, integralG, &
-    logging_info, integral
+    logging_info, integral, real_space_vectors
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
@@ -44,6 +44,22 @@ real(dp) :: fft_time
 
 contains
 
+subroutine real_space_vectors(L, X)
+! Calculates the real space vectors in the box [0, L]^3
+real(dp), intent(in) :: L
+! X(i, j, k, :) is the 3D position vector of the point with index (i, j, k)
+real(dp), intent(out) :: X(:, :, :, :)
+real(dp) :: X1D(size(X, 1))
+integer :: Ng, i, j, k
+Ng = size(X, 1)
+forall(i=1:Ng) X1D(i) = (i-1) * L / Ng
+forall(i=1:Ng, j=1:Ng, k=1:Ng)
+    X(i, j, k, 1) = X1D(i)
+    X(i, j, k, 2) = X1D(j)
+    X(i, j, k, 3) = X1D(k)
+end forall
+end subroutine
+
 subroutine reciprocal_space_vectors(L, G, G2)
 real(dp), intent(in) :: L
 ! G(:, :, :, i) where i=1, 2, 3 are the x, y, z components
@@ -52,6 +68,40 @@ real(dp), intent(out) :: G(:, :, :, :), G2(:, :, :)
 real(dp) :: G1D(size(G, 1))
 integer :: Ng, i, j, k
 Ng = size(G, 1)
+! The FFT frequencies are ordered as follows
+!
+!     G1D(1:Ng) = 2*pi*k/L,
+!
+! where
+!
+!     k = 0, 1, ..., Ng/2-1, -Ng/2, -Ng/2+1, ..., -1 if Ng is even,
+!     k = 0, 1, ..., (Ng-1)/2, -(Ng-1)/2, -(Ng-1)/2+1, ..., -1 if Ng is odd.
+!
+! E.g. for
+!
+!     Ng=8 we get k = 0, 1, 2, 3, -4, -3, -2, -1.
+!     Ng=9 we get k = 0, 1, 2, 3, 4, -4, -3, -2, -1.
+!
+! 'k' can be generated using
+!
+!     forall(i=1:Ng) k(i) = i-1 - Ng*nint((i-0.5_dp)/Ng)    ! if Ng is even
+!     forall(i=1:Ng) k(i) = i-1 - Ng*nint((i-1.5_dp)/Ng)    ! if Ng is odd
+!
+! Note that the Ng/2 frequency can go both ways: +/- Ng/2. Below we take it with
+! the "+" sign:
+!
+!     k = 0, 1, ..., Ng/2-1, +Ng/2, -Ng/2+1, ..., -1 if n is even
+!
+! E.g. for
+!
+!     Ng=8 we get k = 0, 1, 2, 3, 4, -3, -2, -1.
+!     Ng=9 we get k = 0, 1, 2, 3, 4, -4, -3, -2, -1.
+!
+! These can be generated using (this holds for 'Ng' both even and odd):
+!
+!     forall(i=1:Ng) k(i) = i-1 - Ng*nint((i-1.5_dp)/Ng)
+!
+! That is the formula that we use below:
 forall(i=1:Ng) G1D(i) = 2*pi/L * (i-1-Ng*nint((i-1.5_dp)/Ng))
 forall(i=1:Ng, j=1:Ng, k=1:Ng)
     G(i, j, k, 1) = G1D(i)
