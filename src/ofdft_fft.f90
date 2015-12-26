@@ -19,7 +19,7 @@ implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
     radial_potential_fourier, real2fourier, fourier2real, integralG, &
-    logging_info, integral
+    logging_info, integral, real_space_vectors
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
@@ -43,6 +43,22 @@ integer :: fft_counter
 real(dp) :: fft_time
 
 contains
+
+subroutine real_space_vectors(L, X)
+! Calculates the real space vectors in the box [0, L]^3
+real(dp), intent(in) :: L
+! X(i, j, k, :) is the 3D position vector of the point with index (i, j, k)
+real(dp), intent(out) :: X(:, :, :, :)
+real(dp) :: X1D(size(X, 1))
+integer :: Ng, i, j, k
+Ng = size(X, 1)
+forall(i=1:Ng) X1D(i) = (i-1) * L / Ng
+forall(i=1:Ng, j=1:Ng, k=1:Ng)
+    X(i, j, k, 1) = X1D(i)
+    X(i, j, k, 2) = X1D(j)
+    X(i, j, k, 3) = X1D(k)
+end forall
+end subroutine
 
 subroutine reciprocal_space_vectors(L, G, G2)
 real(dp), intent(in) :: L
