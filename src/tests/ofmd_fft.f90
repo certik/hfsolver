@@ -21,7 +21,7 @@ integer, parameter :: K = 5
 real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
 integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
 
-integer :: N = 4
+integer :: N
 integer :: i, j, steps, u
 real(dp) :: dt, L, t, rho, scf_eps
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
