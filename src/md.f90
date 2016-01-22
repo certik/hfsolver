@@ -6,6 +6,7 @@ implicit none
 private
 public velocity_verlet, minimize_energy, unfold_positions, &
     calc_min_distance, positions_random, positions_fcc, &
+    positions_bcc, &
     pair_correlation_function, static_structure_factor
 
 interface
@@ -174,6 +175,30 @@ do k = 1, N
     do m = 1, 4
         idx = idx + 1
         X(:, idx) = a * (atoms(:, m)+[i, j, k]-0.75_dp)
+    end do
+end do
+end do
+end do
+call assert(idx == size(X, 2))
+end subroutine
+
+subroutine positions_bcc(X, L)
+! Initializes X with BCC positions of nuclei. If the number of atoms does not
+! fit the BCC lattice, it stops with an error.
+real(dp), intent(out) :: X(:, :) ! X(:, i) are coordinates of the i-th atom
+real(dp), intent(in) :: L
+real(dp) :: a
+integer :: N, i, j, k, m, idx
+N = nint(L / (2*L**3/size(X, 2))**(1._dp/3))
+if (2*N**3 /= size(X, 2)) call stop_error("Lattice does not match atom count")
+a = L / N
+idx = 0
+do i = 1, N
+do j = 1, N
+do k = 1, N
+    do m = 0, 1
+        idx = idx + 1
+        X(:, idx) = a * ([i, j, k]-0.25_dp-m/2._dp)
     end do
 end do
 end do
