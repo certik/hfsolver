@@ -3,7 +3,7 @@ use, intrinsic :: iso_fortran_env, only: output_unit
 use types, only: dp
 use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, positions_random, &
-                calc_min_distance, positions_fcc
+                calc_min_distance, positions_fcc, positions_bcc
 use ewald_sums, only: ewald_box
 use random, only: randn
 use utils, only: init_random, stop_error, assert, linspace, clock
@@ -84,7 +84,7 @@ call reciprocal_space_vectors(L, G, G2)
 ! Make it deterministic for now
 !call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
-call positions_fcc(X, L)
+call positions_bcc(X, L)
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
