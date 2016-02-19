@@ -6,7 +6,7 @@ use md, only: velocity_verlet, positions_random, &
                 calc_min_distance, positions_fcc, positions_bcc
 use ewald_sums, only: ewald_box
 use random, only: randn
-use utils, only: init_random, stop_error, assert, linspace, clock
+use utils, only: init_random, stop_error, assert, linspace, clock, loadtxt
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real, logging_info
@@ -45,7 +45,7 @@ logging_info = .false. ! Turn of the INFO warnings
 call read_input("OFMD.input", Temp, rho, Nspecies, N, Am, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
 call read_pseudo("fem/D.pseudo", R, Ven_rad, Z, Ediff)
-allocate(X(3, N), V(3, N), f(3, N), m(N))
+allocate(V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(fnn(3, N), q(N), fen(3, N))
@@ -84,7 +84,10 @@ call reciprocal_space_vectors(L, G, G2)
 ! Make it deterministic for now
 !call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
-call positions_bcc(X, L)
+!call positions_bcc(X, L)
+call loadtxt("pos.txt", X)
+call assert(size(X, 1) == 3)
+call assert(size(X, 2) == 128)
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
