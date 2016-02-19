@@ -25,7 +25,7 @@ real(dp) :: V0
 complex(dp), allocatable, dimension(:,:,:) :: VenG, psi, psi2, psi3, psiG, tmp
 complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
-integer :: i, j
+integer :: i, j, u
 integer, parameter :: natom = 128
 real(dp) :: alpha_nen, mu, dt, psi_norm, Ediff
 integer :: cg_iter
@@ -118,7 +118,10 @@ print *, "norm of psi:", psi_norm
 E0 = 1e-3_dp
 omega = 0.05
 
-do i = 1, 10
+open(newunit=u, file="log.txt", status="replace")
+close(u)
+
+do i = 1, 100
     t = t + dt
     print *, "iter =", i, "time =", t
     psi3 = psi2; psi2 = psi
@@ -158,6 +161,10 @@ do i = 1, 10
     print *, "current normalized =", current_avg / current_avg(1)
     conductivity = current_avg(1) / E0*sin(omega*t)
     print *, "conductivity along the 'x' direction =", conductivity
+    open(newunit=u, file="log.txt", position="append", status="old")
+    write(u, *) E0*sin(omega*t), current_avg, conductivity
+    close(u)
+
 
 end do
 print *, "Done"
