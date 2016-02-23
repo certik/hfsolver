@@ -25,15 +25,14 @@ complex(dp), allocatable, dimension(:,:,:) :: VenG, tmp
 complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
 integer :: i, u
-integer :: natom = 4
+integer :: natom = 128
 real(dp) :: alpha_nen, mu, dt, psi_norm, Ediff
 integer :: cg_iter
 real(dp) :: E0, t, omega
 
-Ng = 16
+Ng = 64
 
-!L = 8.1049178668765851_dp
-L = 1._dp
+L = 8.1049178668765851_dp
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
 
@@ -49,7 +48,7 @@ print *, "Load initial position"
 !call assert(size(X, 1) == 3)
 !call assert(size(X, 2) == natom)
 allocate(X(3, natom))
-call positions_fcc(X, L)
+call positions_bcc(X, L)
 print *, "Radial nuclear potential FFT"
 call read_pseudo("D.pseudo", R, Ven_rad, Z, Ediff)
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, V0)
@@ -66,10 +65,10 @@ end do
 ! Minimization
 
 ne = natom / L**3
-call free_energy_min(real(natom, dp), natom, L, G2, T_au, VenG, ne, &
-    1e-12_dp, Eee, Een, Ts, Exc, Etot, cg_iter)
+!call free_energy_min(real(natom, dp), natom, L, G2, T_au, VenG, ne, &
+!    1e-12_dp, Eee, Een, Ts, Exc, Etot, cg_iter)
 
-Etot_conv = -204.88460758_dp
+!Etot_conv = -204.88460758_dp
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
@@ -77,8 +76,8 @@ print "('    Eee  = ', f14.8)", Eee
 print "('    Exc  = ', f14.8)", Exc
 print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
-print *, "Errors:"
-print *, abs(Etot - Etot_conv)
+!print *, "Errors:"
+!print *, abs(Etot - Etot_conv)
 !call assert(abs(Etot - Etot_conv) < 1e-8_dp)
 
 call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
@@ -97,6 +96,7 @@ print *, "Propagation"
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
+dt = 1e-4_dp
 print *, "dt =", dt
 
 ! Do first step by hand:
