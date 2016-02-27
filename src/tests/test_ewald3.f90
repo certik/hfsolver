@@ -9,7 +9,7 @@ program test_ewald3
 
 use types, only: dp
 use constants, only: ang2bohr, kJmol2Ha
-use ewald_sums, only: ewald_box, fred2fcart
+use ewald_sums, only: ewald_box, fred2fcart, ewald_fft1, min_distance
 use utils, only: assert, init_random
 implicit none
 
@@ -25,7 +25,7 @@ real(dp), parameter :: stress2 = -5.7797035916557675_dp
 
 real(dp) :: stress(6)
 real(dp), allocatable :: xred(:, :), forces(:, :), q(:)
-real(dp) :: L, alpha, E_ewald, E_madelung
+real(dp) :: L, alpha, E_ewald, E_ewald_fft, E_madelung
 integer :: i, j
 
 alpha = 1.74756459463318219064_dp ! Madelung constant for NaCl
@@ -49,15 +49,21 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
     call ewald_box(L, xred*L, q, E_ewald, forces, stress)
-
     E_ewald = E_ewald / (natom/ntypat)
+
+    call ewald_fft1(L, xred*L, q, 64, 0.25_dp*L, E_ewald_fft)
+    E_ewald_fft = E_ewald_fft / (natom/ntypat)
+
     E_madelung = -2*alpha/L
 
     print *, "a =", L/ang2bohr*100, "pm"
-    print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
-    print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
-    print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Madelung: ", E_madelung / kJmol2Ha, "kJ/mol"
+    print *, "Ewald:    ", E_ewald / kJmol2Ha, "kJ/mol"
+    print *, "Ewald FFT:", E_ewald_fft / kJmol2Ha, "kJ/mol"
+    print *, "error:    ", abs(E_ewald - E_madelung), "a.u."
+    print *, "error FFT:", abs(E_ewald_fft - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
+    call assert(abs(E_ewald_fft - E_madelung) < 1e-10_dp)
     call assert(all(abs(forces) < 1e-17_dp))
     call assert(all(abs(stress - (stress0/L)*[1, 1, 1, 0, 0, 0]) < 1e-15_dp))
 end do
@@ -81,18 +87,26 @@ xred(:, 8) = [0, 0, 1] / 2._dp
 xred(:, 5:8) = xred(:, 5:8) - spread([3, 3, 3] / 8._dp, 2, 4)
 xred(:, 6:8) = xred(:, 6:8) - floor(xred(:, 6:8))
 
+print *, "half of xred min distance:", min_distance(xred, 1._dp)/2
+
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
     call ewald_box(L, xred*L, q, E_ewald, forces, stress)
-
     E_ewald = E_ewald / (natom/ntypat)
+
+    call ewald_fft1(L, xred*L, q, 64, 0.10825_dp*L, E_ewald_fft)
+    E_ewald_fft = E_ewald_fft / (natom/ntypat)
+
     E_madelung = -2*alpha/L
 
     print *, "a =", L/ang2bohr*100, "pm"
-    print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol"
-    print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol"
-    print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Madelung: ", E_madelung / kJmol2Ha, "kJ/mol"
+    print *, "Ewald:    ", E_ewald / kJmol2Ha, "kJ/mol"
+    print *, "Ewald FFT:", E_ewald_fft / kJmol2Ha, "kJ/mol"
+    print *, "error:    ", abs(E_ewald - E_madelung), "a.u."
+    print *, "error FFT:", abs(E_ewald_fft - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 1e-14_dp)
+    call assert(abs(E_ewald_fft - E_madelung) < 5e-6_dp)
     call assert(all(abs(stress - [stress1, stress1, stress1, &
         stress2, stress2, stress2]/L) < 1e-10_dp))
     do j = 1, 4

@@ -14,7 +14,7 @@ program test_ewald4
 
 use types, only: dp
 use constants, only: ang2bohr, kJmol2Ha
-use ewald_sums, only: ewald_box, fred2fcart
+use ewald_sums, only: ewald_box, ewald_fft1, fred2fcart
 use utils, only: assert, init_random
 implicit none
 
@@ -25,7 +25,7 @@ real(dp), parameter :: stress0 = 1.213077816502878_dp
 
 real(dp) :: stress(6)
 real(dp), allocatable :: xred(:, :), forces(:, :), q(:)
-real(dp) :: L, E_ewald, E_madelung
+real(dp) :: L, E_ewald, E_ewald_fft, E_madelung
 integer :: i
 
 natom = 2
@@ -38,15 +38,21 @@ q = [1, 1]
 do i = 1, size(Llist)
     L = Llist(i)
     call ewald_box(L, xred*L, q, E_ewald, forces, stress)
-
     E_ewald = E_ewald / (natom/ntypat)
+
+    call ewald_fft1(L, xred*L, q, 64, 0.25_dp*L, E_ewald_fft)
+    E_ewald_fft = E_ewald_fft / (natom/ntypat)
+
     E_madelung = -2*alpha/L
 
     print *, "a =", L/ang2bohr*100, "pm"
-    print *, "Madelung:", E_madelung / kJmol2Ha, "kJ/mol =", E_madelung, "a.u."
-    print *, "Ewald:   ", E_ewald / kJmol2Ha, "kJ/mol =", E_ewald, "a.u."
-    print *, "error:   ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Madelung: ", E_madelung / kJmol2Ha, "kJ/mol =", E_madelung, "a.u."
+    print *, "Ewald:    ", E_ewald / kJmol2Ha, "kJ/mol =", E_ewald, "a.u."
+    print *, "Ewald FFT:", E_ewald_fft / kJmol2Ha, "kJ/mol =",E_ewald_fft,"a.u."
+    print *, "Ewald error:     ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Ewald FFT error: ", abs(E_ewald_fft - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 5e-14_dp)
+    call assert(abs(E_ewald_fft - E_madelung) < 1e-10_dp)
     call assert(all(abs(forces) < 1e-15_dp))
     call assert(all(abs(stress - (-stress0/L)*[1, 1, 1, 0, 0, 0]) < 1e-15_dp))
 end do

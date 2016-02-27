@@ -5,7 +5,7 @@ program test_ewald6
 
 use types, only: dp
 use constants, only: ang2bohr, kJmol2Ha
-use ewald_sums, only: direct_sum, ewald_box
+use ewald_sums, only: direct_sum, ewald_box, ewald_fft1, min_distance
 use utils, only: assert
 implicit none
 
@@ -17,7 +17,7 @@ real(dp) :: eew
 real(dp), allocatable :: xred(:, :), fcart(:, :), q(:), &
     forces(:, :)
 
-real(dp) :: L, alpha, E_ewald, E_madelung, E_direct, rel
+real(dp) :: L, alpha, E_ewald, E_ewald_fft, E_madelung, E_direct, rel
 integer :: i, j, ncut
 
 alpha = 1.8285774522233_dp ! Madelung constant
@@ -41,12 +41,16 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 ! We shift the y-position here, this makes the dipole moment non-zero
 xred(2, 2) = 1._dp/4
 
+print *, "half of xred min distance:", min_distance(xred, 1._dp)/2
 
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
 
     call ewald_box(L, xred*L, q, eew, forces, stress)
     E_ewald = eew / (natom/ntypat)
+
+    call ewald_fft1(L, xred*L, q, 128, 0.125_dp*L, eew)
+    E_ewald_fft = eew / (natom/ntypat)
 
     ncut = 20
     call direct_sum(q, xred*L, L, ncut, eew, fcart)
@@ -56,10 +60,13 @@ do i = 1, size(Llist)
     print *, "a =", L/ang2bohr*100, "pm"
     print *, "Madelung:    ", E_madelung / kJmol2Ha, "kJ/mol"
     print *, "Ewald:       ", E_ewald / kJmol2Ha, "kJ/mol"
+    print *, "Ewald FFT:   ", E_ewald_fft / kJmol2Ha, "kJ/mol"
     print *, "Direct:      ", E_direct / kJmol2Ha, "kJ/mol"
-    print *, "Ewald error: ", abs(E_ewald - E_madelung), "a.u."
-    print *, "Direct error:", abs(E_direct - E_madelung), "a.u."
+    print *, "Ewald error:    ", abs(E_ewald - E_madelung), "a.u."
+    print *, "Ewald FFT error:", abs(E_ewald_fft - E_madelung), "a.u."
+    print *, "Direct error:   ", abs(E_direct - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 2e-14_dp)
+    call assert(abs(E_ewald_fft - E_madelung) < 1e-10_dp)
     call assert(abs(E_direct - E_madelung) < 1e-8_dp)
     print *, "Forces errors:"
     do j = 1, natom

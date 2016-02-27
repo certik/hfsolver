@@ -3,7 +3,8 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public ewald, ewald2, direct_sum, fred2fcart, sred2scart, ewald_box
+public ewald, ewald2, direct_sum, fred2fcart, sred2scart, ewald_box, &
+    ewald_fft1, min_distance
 
 contains
 
@@ -540,5 +541,126 @@ call fred2fcart(forces, grewtn, gprim)
 forces = -forces
 stress = -stress * ucvol
 end subroutine
+
+subroutine ewald_fft1(L, x, q, Ng, rc, E)
+use ofdft_fft, only: reciprocal_space_vectors, real2fourier, &
+    real_space_vectors, fourier2real
+real(dp), intent(in) :: L ! Length of the box
+real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
+real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
+integer, intent(in) :: Ng
+real(dp), intent(in) :: rc
+real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
+integer :: N, ii, i, j, k
+real(dp) :: Ig, v0, Isph, rho_minus, r, Xj(3), d(3)
+real(dp), allocatable :: rho_tilde_minus(:, :, :)
+complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
+
+rho_minus = -sum(q)/L**3
+
+!Ig = 10976 / (17875*rc)
+!Isph = 14*pi*rc**2/75
+!v0 = 12/(5*rc)
+
+Ig = (517399110137._dp/809268832200._dp)/rc
+Isph = 91*pi*rc**2/690
+v0 = 11/(4*rc)
+
+
+N = size(q)
+E = 0
+
+do i = 1, N
+    E = E + 1/2._dp * q(i)**2 * (Ig-v0) + q(i) * Isph * rho_minus
+end do
+
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), Xn(Ng, Ng, Ng, 3))
+allocate(rho_tilde_minus(Ng,Ng,Ng), rho_tilde_minusG(Ng,Ng,Ng))
+
+call real_space_vectors(L, Xn)
+call reciprocal_space_vectors(L, G, G2)
+
+rho_tilde_minus = rho_minus
+do ii = 1, N
+    do k = 1, Ng
+    do j = 1, Ng
+    do i = 1, Ng
+        Xj = x(:, ii)-Xn(i,j,k,:)+[L/2, L/2, L/2]
+        Xj = Xj - L*floor(Xj/L)
+        d = [L/2, L/2, L/2] - Xj
+        r = sqrt(sum(d**2))
+        rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) &
+            + q(ii)*g3_fn(r, rc)
+    end do
+    end do
+    end do
+end do
+
+call real2fourier(rho_tilde_minus, rho_tilde_minusG)
+
+do k = 1, Ng
+do j = 1, Ng
+do i = 1, Ng
+    if (i == 1 .and. j == 1 .and. k == 1) cycle
+    E = E + 2*pi*abs(rho_tilde_minusG(i,j,k))**2/G2(i,j,k)*L**3
+end do
+end do
+end do
+
+contains
+
+    real(dp) function g_fn(r, rc) result(g)
+    real(dp), intent(in) :: r, rc
+    if (r > rc) then
+        g = 0
+    else
+        g = -21*(r-rc)**3*(6*r**2+3*r*rc+rc**2)/(5*pi*rc**8)
+    end if
+    end function
+
+    real(dp) function g2_fn(r, rc) result(g)
+    real(dp), intent(in) :: r, rc
+    real(dp), parameter :: C = 0.4410888872766044004562838172_dp
+    if (r >= rc) then
+        g = 0
+    else
+        ! Bump function
+        g = exp(-1/(1-(r/rc)**2)) / (C*rc**3)
+    end if
+    end function
+
+    real(dp) function g3_fn(r, rc) result(g)
+    real(dp), intent(in) :: r, rc
+    if (r >= rc) then
+        g = 0
+    else
+        g = 21*(r - rc)**10*(48620*r**9 + 24310*r**8*rc + 11440*r**7*rc**2 + &
+        5005*r**6*rc**3 + 2002*r**5*rc**4 + 715*r**4*rc**5 + 220*r**3*rc**6 + &
+        55*r**2*rc**7 + 10*r*rc**8 + rc**9)/(4*pi*rc**22)
+    end if
+    end function
+
+end subroutine
+
+
+real(dp) function min_distance(X, L) result(rmin)
+! Finds the minimum distance between two atoms (takes into account periodic BC).
+real(dp), intent(in) :: X(:, :) ! X(:, i) is (x, y, z) coordinates of i-th par.
+real(dp), intent(in) :: L ! length of the unit cell (box)
+real(dp) :: r, d(3), Xj(3)
+integer :: N, i, j
+N = size(X, 2)
+rmin = huge(1.0_dp)
+do i = 1, N
+    do j = 1, i-1
+        Xj = X(:, j)-X(:, i)+[L/2, L/2, L/2]
+        Xj = Xj - L*floor(Xj/L)
+        d = [L/2, L/2, L/2] - Xj
+        r = sqrt(sum(d**2))
+        if (r < rmin) rmin = r
+    end do
+end do
+end function
 
 end module
