@@ -12,8 +12,7 @@ implicit none
 integer :: natom, ntypat
 ! Various NaCl lattice constants in A
 real(dp), parameter :: Llist(5) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
-real(dp) :: ucvol
-real(dp) :: gmet(3, 3), rmet(3, 3), gprim(3, 3), stress(6)
+real(dp) :: stress(6)
 real(dp) :: eew
 real(dp), allocatable :: xred(:, :), fcart(:, :), q(:), &
     forces(:, :)
@@ -45,27 +44,6 @@ xred(2, 2) = 1._dp/4
 
 do i = 1, size(Llist)
     L = Llist(i) * ang2bohr
-
-    rmet = 0
-    rmet(1, 1) = L**2
-    rmet(2, 2) = L**2
-    rmet(3, 3) = L**2
-
-    ! gmet = inv(rmet)
-    gmet = 0
-    gmet(1, 1) = 1/L**2
-    gmet(2, 2) = 1/L**2
-    gmet(3, 3) = 1/L**2
-
-    ! ucvol = sqrt(det(rmet))
-    ucvol = L**3
-
-    ! Reciprocal primitive vectors (without 2*pi) in cartesian coordinates.
-    ! gmet = matmul(transpose(gprim), gprim)
-    gprim = 0
-    gprim(1, 1) = 1 / L
-    gprim(2, 2) = 1 / L
-    gprim(3, 3) = 1 / L
 
     call ewald_box(L, xred*L, q, eew, forces, stress)
     E_ewald = eew / (natom/ntypat)
