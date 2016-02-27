@@ -3,7 +3,8 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public ewald, ewald2, direct_sum, fred2fcart, sred2scart, ewald_box
+public ewald, ewald2, direct_sum, fred2fcart, sred2scart, ewald_box, &
+    fft_neutralized
 
 contains
 
@@ -539,6 +540,15 @@ call fred2fcart(forces, grewtn, gprim)
 ! Make forces out of gradients:
 forces = -forces
 stress = -stress * ucvol
+end subroutine
+
+subroutine fft_neutralized(L, x, q, E)
+real(dp), intent(in) :: L ! Length of the box
+real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
+real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
+real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
+
+E = 5
 end subroutine
 
 end module
