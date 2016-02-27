@@ -424,8 +424,8 @@ subroutine direct_sum(q, r, L, ncut, E, forces)
 ! correct Ewald energy and forces, see [1] for more details.
 !
 ! The summation is converging very slowly, but the subroutine is simple to
-! implement, so it is used for testing correctness of faster more advanced
-! methods. The convergence is achieved by increasing 'ncut'.
+! implement and maintain, so it is used for testing the correctness of faster
+! more advanced methods. The convergence is achieved by increasing 'ncut'.
 !
 ! [1] Roberts, J. E., Schnitker, J. (1994). How the unit cell surface charge
 ! distribution affects the energetics of ion–solvent interactions in
