@@ -5,7 +5,7 @@ program test_ewald6
 
 use types, only: dp
 use constants, only: ang2bohr, kJmol2Ha
-use ewald_sums, only: direct_sum, ewald_box
+use ewald_sums, only: direct_sum, ewald_box, fft_neutralized
 use utils, only: assert
 implicit none
 
@@ -51,6 +51,8 @@ do i = 1, size(Llist)
     ncut = 20
     call direct_sum(q, xred*L, L, ncut, eew, fcart)
     E_direct = eew / (natom/ntypat)
+
+    call fft_neutralized(L, xred*L, q, eew, forces, stress)
 
     E_madelung = -2*alpha/L
     print *, "a =", L/ang2bohr*100, "pm"
