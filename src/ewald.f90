@@ -554,7 +554,7 @@ real(dp), allocatable :: rho_tilde_minus(:, :, :)
 complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 
-rho_minus = sum(q)/L**3
+rho_minus = -sum(q)/L**3
 rc = L/10
 Ng = 64
 
