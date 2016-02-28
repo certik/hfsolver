@@ -17,7 +17,7 @@ real(dp) :: eew
 real(dp), allocatable :: xred(:, :), fcart(:, :), q(:), &
     forces(:, :)
 
-real(dp) :: L, alpha, E_ewald, E_madelung, E_direct, rel
+real(dp) :: L, alpha, E_ewald, E_madelung, E_direct, rel, E_fft
 integer :: i, j, ncut
 
 alpha = 1.8285774522233_dp ! Madelung constant
@@ -52,13 +52,15 @@ do i = 1, size(Llist)
     call direct_sum(q, xred*L, L, ncut, eew, fcart)
     E_direct = eew / (natom/ntypat)
 
-    call fft_neutralized(L, xred*L, q, eew, forces, stress)
+    call fft_neutralized(L, xred*L, q, eew)
+    E_fft = eew / (natom/ntypat)
 
     E_madelung = -2*alpha/L
     print *, "a =", L/ang2bohr*100, "pm"
     print *, "Madelung:    ", E_madelung / kJmol2Ha, "kJ/mol"
     print *, "Ewald:       ", E_ewald / kJmol2Ha, "kJ/mol"
     print *, "Direct:      ", E_direct / kJmol2Ha, "kJ/mol"
+    print *, "FFT:         ", E_fft / kJmol2Ha, "kJ/mol"
     print *, "Ewald error: ", abs(E_ewald - E_madelung), "a.u."
     print *, "Direct error:", abs(E_direct - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 2e-14_dp)
