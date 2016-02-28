@@ -630,11 +630,12 @@ contains
 
     real(dp) function g2_fn(r, rc) result(g)
     real(dp), intent(in) :: r, rc
+    real(dp), parameter :: C = 0.4410888872766044004562838172_dp
     if (r >= rc) then
         g = 0
     else
         ! Bump function
-        g = exp(-1/(1-(r/rc)**2))
+        g = exp(-1/(1-(r/rc)**2)) / (C*rc**3)
     end if
     end function
 
