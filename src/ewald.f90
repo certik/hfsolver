@@ -555,8 +555,8 @@ complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 
 rho_minus = -sum(q)/L**3
-print *, rho_minus
-rc = L/10
+!rc = L/2
+rc = 0.5_dp
 Ng = 64
 
 Ig = 10976 / (17875*rc)
