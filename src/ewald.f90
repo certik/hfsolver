@@ -628,6 +628,16 @@ contains
     end if
     end function
 
+    real(dp) function g2_fn(r, rc) result(g)
+    real(dp), intent(in) :: r, rc
+    if (r >= rc) then
+        g = 0
+    else
+        ! Bump function
+        g = exp(-1/(1-(r/rc)**2))
+    end if
+    end function
+
 end subroutine
 
 end module
