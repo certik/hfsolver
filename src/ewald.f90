@@ -555,6 +555,7 @@ complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 
 rho_minus = -sum(q)/L**3
+print *, rho_minus
 rc = L/10
 Ng = 64
 
@@ -568,6 +569,8 @@ E = 0
 do i = 1, N
     E = E + 1/2._dp * q(i)**2 * (Ig-v0) + q(i) * Isph
 end do
+
+print *, E
 
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), Xn(Ng, Ng, Ng, 3))
 allocate(rho_tilde_minus(Ng,Ng,Ng), rho_tilde_minusG(Ng,Ng,Ng))
@@ -598,6 +601,8 @@ do i = 1, Ng
 end do
 end do
 end do
+
+print *, E
 
 contains
 

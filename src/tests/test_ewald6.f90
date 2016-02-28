@@ -11,7 +11,7 @@ implicit none
 
 integer :: natom, ntypat
 ! Various NaCl lattice constants in A
-real(dp), parameter :: Llist(5) = [5.6402_dp, 5.5_dp, 4.5_dp, 6.5_dp, 10._dp]
+real(dp), parameter :: Llist(1) = [2/sqrt(3._dp)]
 real(dp) :: stress(6)
 real(dp) :: eew
 real(dp), allocatable :: xred(:, :), fcart(:, :), q(:), &
@@ -23,19 +23,17 @@ integer :: i, j, ncut
 alpha = 1.8285774522233_dp ! Madelung constant
 
 ! Conventional cell:
-natom = 4
+natom = 2
 ntypat = 1
 allocate(xred(3, natom), fcart(3, natom), q(natom), forces(3, natom))
 ! Na^+
-xred(:, 1) = [1._dp/2, 1._dp/2, 1._dp/2]
-xred(:, 1) = [1._dp/2, 0._dp, 0._dp]
-xred(:, 1) = [0._dp, 1._dp/2, 0._dp]
-xred(:, 1) = [0._dp, 0._dp, 1._dp/2]
-q = [1, 1, 1, 1]*1._dp
+xred(:, 1) = [0._dp, 0._dp, 0._dp]
+xred(:, 2) = [1._dp/2, 1._dp/2, 1._dp/2]
+q = [1, 1]*1._dp
 
 
 do i = 1, size(Llist)
-    L = Llist(i) * ang2bohr
+    L = Llist(i)
 
     call ewald_box(L, xred*L, q, eew, forces, stress)
     E_ewald = eew / (natom/ntypat)
@@ -48,20 +46,9 @@ do i = 1, size(Llist)
     E_fft = eew / (natom/ntypat)
 
     E_madelung = -2*alpha/L
-    print *, "a =", L/ang2bohr*100, "pm"
-    print *, "Madelung:    ", E_madelung / kJmol2Ha, "kJ/mol"
-    print *, "Ewald:       ", E_ewald / kJmol2Ha, "kJ/mol"
-    print *, "Direct:      ", E_direct / kJmol2Ha, "kJ/mol"
-    print *, "FFT:         ", E_fft / kJmol2Ha, "kJ/mol"
-    print *, "Ewald error: ", abs(E_ewald - E_madelung), "a.u."
-    print *, "Direct error:", abs(E_direct - E_madelung), "a.u."
-!    call assert(abs(E_ewald - E_madelung) < 2e-14_dp)
-!    call assert(abs(E_direct - E_madelung) < 1e-8_dp)
-!    print *, "Forces errors:"
-!    do j = 1, natom
-!        rel = sqrt(sum((fcart(:, j)-forces(:, j))**2)/sum(forces(:, j)**2))
-!        print *, j, rel
-!        call assert(rel < 1e-5_dp)
-!    end do
+    print *, "a =", L, "a.u."
+    print *, "Ewald:       ", E_ewald, "Hartree/atom"
+    print *, "FFT:         ", E_fft, "Hartree/atom"
+    print *, "FFT error:", abs(E_ewald - E_fft), "a.u."
 end do
 end program
