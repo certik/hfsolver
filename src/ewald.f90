@@ -543,7 +543,8 @@ stress = -stress * ucvol
 end subroutine
 
 subroutine fft_neutralized(L, x, q, E)
-use ofdft_fft, only: reciprocal_space_vectors, real2fourier, real_space_vectors
+use ofdft_fft, only: reciprocal_space_vectors, real2fourier, &
+    real_space_vectors, fourier2real
 real(dp), intent(in) :: L ! Length of the box
 real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
 real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
@@ -593,12 +594,17 @@ do ii = 1, N
     end do
     end do
 end do
-print *, "charge density along diagonal"
-do i = 1, Ng
-    print *, i, sqrt(sum(Xn(i,i,i,:)**2)), rho_tilde_minus(i,i,i)
-end do
 
 call real2fourier(rho_tilde_minus, rho_tilde_minusG)
+!rho_tilde_minusG = rho_tilde_minusG*4*pi/G2
+!rho_tilde_minusG(1,1,1) = 0
+!call fourier2real(rho_tilde_minusG, rho_tilde_minus)
+
+!print *, "charge density along diagonal"
+!print *, "potential along diagonal"
+!do i = 1, Ng
+!    print *, i, sqrt(sum(Xn(i,i,i,:)**2)), rho_tilde_minus(i,i,i)
+!end do
 
 do k = 1, Ng
 do j = 1, Ng
