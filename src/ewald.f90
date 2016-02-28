@@ -549,7 +549,7 @@ real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
 real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
 real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
 integer :: N, ii, i, j, k, Ng
-real(dp) :: rc, Ig, v0, Isph, rho_minus, d
+real(dp) :: rc, Ig, v0, Isph, rho_minus, r, Xj(3), d(3)
 real(dp), allocatable :: rho_tilde_minus(:, :, :)
 complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
@@ -583,9 +583,12 @@ do ii = 1, N
     do k = 1, Ng
     do j = 1, Ng
     do i = 1, Ng
-        d = sqrt(sum((x(:, ii)-Xn(i,j,k,:))**2))
+        Xj = x(:, ii)-Xn(i,j,k,:)+[L/2, L/2, L/2]
+        Xj = Xj - L*floor(Xj/L)
+        d = [L/2, L/2, L/2] - Xj
+        r = sqrt(sum(d**2))
         rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) &
-            + q(ii)*g_fn(d, rc)
+            + q(ii)*g_fn(r, rc)
     end do
     end do
     end do
