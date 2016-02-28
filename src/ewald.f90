@@ -610,7 +610,7 @@ do k = 1, Ng
 do j = 1, Ng
 do i = 1, Ng
     if (i == 1 .and. j == 1 .and. k == 1) cycle
-    E = E + 2*pi*abs(rho_tilde_minusG(i,j,k))**2/G2(i,j,k)
+    E = E + 2*pi*abs(rho_tilde_minusG(i,j,k))**2/G2(i,j,k)*L**3
 end do
 end do
 end do
