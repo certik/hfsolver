@@ -547,8 +547,23 @@ real(dp), intent(in) :: L ! Length of the box
 real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
 real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
 real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
+integer :: N, i
+real(dp) :: rc, Ig, v0, Isph, rho_minus
 
-E = 5
+rho_minus = sum(q)/L**3
+rc = L/10
+
+Ig = 10976 / (17875*rc)
+Isph = 14*rho_minus*pi*rc**2/75
+v0 = 12/(5*rc)
+
+N = size(q)
+E = 0
+
+do i = 1, N
+    E = E + 1/2._dp * q(i)**2 * (Ig-v0) + q(i) * Isph
+end do
+
 end subroutine
 
 end module
