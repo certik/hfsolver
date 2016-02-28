@@ -4,7 +4,6 @@ program test_ewald6
 ! ewald_box() as the correct converged results.
 
 use types, only: dp
-use constants, only: ang2bohr, kJmol2Ha
 use ewald_sums, only: direct_sum, ewald_box, fft_neutralized
 use utils, only: assert
 implicit none
@@ -17,8 +16,8 @@ real(dp) :: eew
 real(dp), allocatable :: xred(:, :), fcart(:, :), q(:), &
     forces(:, :)
 
-real(dp) :: L, alpha, E_ewald, E_madelung, E_direct, rel, E_fft
-integer :: i, j, ncut
+real(dp) :: L, alpha, E_ewald, E_madelung, E_direct, E_fft
+integer :: i, ncut
 
 alpha = 1.8285774522233_dp ! Madelung constant
 
@@ -49,6 +48,7 @@ do i = 1, size(Llist)
     print *, "a =", L, "a.u."
     print *, "Ewald:       ", E_ewald, "Hartree/atom"
     print *, "FFT:         ", E_fft, "Hartree/atom"
+    print *, "Ewald error:", abs(E_ewald - (-1.5758343085)), "a.u."
     print *, "FFT error:", abs(E_ewald - E_fft), "a.u."
 end do
 end program
