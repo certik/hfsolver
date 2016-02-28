@@ -590,6 +590,10 @@ do ii = 1, N
     end do
     end do
 end do
+print *, "charge density along diagonal"
+do i = 1, Ng
+    print *, i, sqrt(sum(Xn(i,i,i,:)**2)), rho_tilde_minus(i,i,i)
+end do
 
 call real2fourier(rho_tilde_minus, rho_tilde_minusG)
 
