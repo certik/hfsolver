@@ -23,23 +23,15 @@ integer :: i, j, ncut
 alpha = 1.8285774522233_dp ! Madelung constant
 
 ! Conventional cell:
-natom = 8
-ntypat = 2
+natom = 4
+ntypat = 1
 allocate(xred(3, natom), fcart(3, natom), q(natom), forces(3, natom))
-! Cl^-
-xred(:, 1) = [0._dp, 0._dp, 0._dp]
-xred(:, 2) = [1._dp/2, 1._dp/2, 0._dp]
-xred(:, 3) = [1._dp/2, 0._dp, 1._dp/2]
-xred(:, 4) = [0._dp, 1._dp/2, 1._dp/2]
 ! Na^+
-xred(:, 5) = [1._dp/2, 1._dp/2, 1._dp/2]
-xred(:, 6) = [1._dp/2, 0._dp, 0._dp]
-xred(:, 7) = [0._dp, 1._dp/2, 0._dp]
-xred(:, 8) = [0._dp, 0._dp, 1._dp/2]
-q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
-
-! We shift the y-position here, this makes the dipole moment non-zero
-xred(2, 2) = 1._dp/4
+xred(:, 1) = [1._dp/2, 1._dp/2, 1._dp/2]
+xred(:, 1) = [1._dp/2, 0._dp, 0._dp]
+xred(:, 1) = [0._dp, 1._dp/2, 0._dp]
+xred(:, 1) = [0._dp, 0._dp, 1._dp/2]
+q = [1, 1, 1, 1]*1._dp
 
 
 do i = 1, size(Llist)
@@ -63,13 +55,13 @@ do i = 1, size(Llist)
     print *, "FFT:         ", E_fft / kJmol2Ha, "kJ/mol"
     print *, "Ewald error: ", abs(E_ewald - E_madelung), "a.u."
     print *, "Direct error:", abs(E_direct - E_madelung), "a.u."
-    call assert(abs(E_ewald - E_madelung) < 2e-14_dp)
-    call assert(abs(E_direct - E_madelung) < 1e-8_dp)
-    print *, "Forces errors:"
-    do j = 1, natom
-        rel = sqrt(sum((fcart(:, j)-forces(:, j))**2)/sum(forces(:, j)**2))
-        print *, j, rel
-        call assert(rel < 1e-5_dp)
-    end do
+!    call assert(abs(E_ewald - E_madelung) < 2e-14_dp)
+!    call assert(abs(E_direct - E_madelung) < 1e-8_dp)
+!    print *, "Forces errors:"
+!    do j = 1, natom
+!        rel = sqrt(sum((fcart(:, j)-forces(:, j))**2)/sum(forces(:, j)**2))
+!        print *, j, rel
+!        call assert(rel < 1e-5_dp)
+!    end do
 end do
 end program
