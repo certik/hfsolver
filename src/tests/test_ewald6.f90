@@ -28,6 +28,8 @@ allocate(xred(3, natom), fcart(3, natom), q(natom), forces(3, natom))
 ! Na^+
 xred(:, 1) = [0._dp, 0._dp, 0._dp]
 xred(:, 2) = [1._dp/2, 1._dp/2, 1._dp/2]
+!xred(:, 3) = [2._dp/2, 1._dp/2, 1._dp/2]
+!q = [2, -1, -1]*1._dp
 q = [1, 1]*1._dp
 
 

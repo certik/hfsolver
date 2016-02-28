@@ -558,17 +558,22 @@ real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 rho_minus = -sum(q)/L**3
 !rc = L/2
 rc = 0.5_dp
-Ng = 64
+Ng = 4
 
-Ig = 10976 / (17875*rc)
-Isph = 14*rho_minus*pi*rc**2/75
-v0 = 12/(5*rc)
+!Ig = 10976 / (17875*rc)
+!Isph = 14*pi*rc**2/75
+!v0 = 12/(5*rc)
+
+Ig = (517399110137._dp/809268832200._dp)/rc
+Isph = 91*pi*rc**2/690
+v0 = 11/(4*rc)
+
 
 N = size(q)
 E = 0
 
 do i = 1, N
-    E = E + 1/2._dp * q(i)**2 * (Ig-v0) + q(i) * Isph
+    E = E + 1/2._dp * q(i)**2 * (Ig-v0) + q(i) * Isph * rho_minus
 end do
 
 print *, E
@@ -589,7 +594,7 @@ do ii = 1, N
         d = [L/2, L/2, L/2] - Xj
         r = sqrt(sum(d**2))
         rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) &
-            + q(ii)*g_fn(r, rc)
+            + q(ii)*g3_fn(r, rc)
     end do
     end do
     end do
@@ -636,6 +641,17 @@ contains
     else
         ! Bump function
         g = exp(-1/(1-(r/rc)**2)) / (C*rc**3)
+    end if
+    end function
+
+    real(dp) function g3_fn(r, rc) result(g)
+    real(dp), intent(in) :: r, rc
+    if (r >= rc) then
+        g = 0
+    else
+        g = 21*(r - rc)**10*(48620*r**9 + 24310*r**8*rc + 11440*r**7*rc**2 + &
+        5005*r**6*rc**3 + 2002*r**5*rc**4 + 715*r**4*rc**5 + 220*r**3*rc**6 + &
+        55*r**2*rc**7 + 10*r*rc**8 + rc**9)/(4*pi*rc**22)
     end if
     end function
 
