@@ -543,15 +543,20 @@ stress = -stress * ucvol
 end subroutine
 
 subroutine fft_neutralized(L, x, q, E)
+use ofdft_fft, only: reciprocal_space_vectors, real2fourier
 real(dp), intent(in) :: L ! Length of the box
 real(dp), intent(in) :: x(:, :) ! x(:, i) position of i-th ion in [0, L]^3
 real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
 real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
-integer :: N, i
+integer :: N, i, j, k, Ng
 real(dp) :: rc, Ig, v0, Isph, rho_minus
+real(dp), allocatable :: rho_tilde_minus(:, :, :)
+complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
+real(dp), allocatable :: G(:, :, :, :), G2(:, :, :)
 
 rho_minus = sum(q)/L**3
 rc = L/10
+Ng = 64
 
 Ig = 10976 / (17875*rc)
 Isph = 14*rho_minus*pi*rc**2/75
@@ -562,6 +567,21 @@ E = 0
 
 do i = 1, N
     E = E + 1/2._dp * q(i)**2 * (Ig-v0) + q(i) * Isph
+end do
+
+allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
+allocate(rho_tilde_minus(Ng,Ng,Ng), rho_tilde_minusG(Ng,Ng,Ng))
+
+call reciprocal_space_vectors(L, G, G2)
+call real2fourier(rho_tilde_minus, rho_tilde_minusG)
+
+do i = 1, Ng
+do j = 1, Ng
+do k = 1, Ng
+    if (i == 1 .and. j == 1 .and. k == 1) cycle
+    E = E + 2*pi*abs(rho_tilde_minusG(i,j,k))**2/G2(i,j,k)
+end do
+end do
 end do
 
 end subroutine
