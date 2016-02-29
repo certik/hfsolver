@@ -594,7 +594,7 @@ do ii = 1, N
         d = [L/2, L/2, L/2] - Xj
         r = sqrt(sum(d**2))
         rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) &
-            + q(ii)*g3_fn(r, rc)*sign(q(ii), 1._dp)
+            + q(ii)*g3_fn(r, rc)
     end do
     end do
     end do
