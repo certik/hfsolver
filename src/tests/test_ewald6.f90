@@ -22,15 +22,23 @@ integer :: i, ncut
 alpha = 1.8285774522233_dp ! Madelung constant
 
 ! Conventional cell:
-natom = 2
-ntypat = 1
+natom = 8
+ntypat = 2
 allocate(xred(3, natom), fcart(3, natom), q(natom), forces(3, natom))
-! Na^+
+! Cl^-
 xred(:, 1) = [0._dp, 0._dp, 0._dp]
-xred(:, 2) = [1._dp/2, 1._dp/2, 1._dp/2]
-!xred(:, 3) = [2._dp/2, 1._dp/2, 1._dp/2]
-!q = [2, -1, -1]*1._dp
-q = [1, 1]*1._dp
+xred(:, 2) = [1._dp/2, 1._dp/2, 0._dp]
+xred(:, 3) = [1._dp/2, 0._dp, 1._dp/2]
+xred(:, 4) = [0._dp, 1._dp/2, 1._dp/2]
+! Na^+
+xred(:, 5) = [1._dp/2, 1._dp/2, 1._dp/2]
+xred(:, 6) = [1._dp/2, 0._dp, 0._dp]
+xred(:, 7) = [0._dp, 1._dp/2, 0._dp]
+xred(:, 8) = [0._dp, 0._dp, 1._dp/2]
+q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
+
+xred(2, 2) = 1._dp/4
+
 
 
 do i = 1, size(Llist)
@@ -48,6 +56,7 @@ do i = 1, size(Llist)
 
     E_madelung = -2*alpha/L
     print *, "a =", L, "a.u."
+    print *, "Madelung:    ", E_madelung, "Hartree/atom"
     print *, "Ewald:       ", E_ewald, "Hartree/atom"
     print *, "FFT:         ", E_fft, "Hartree/atom"
     print *, "Ewald error:", abs(E_ewald - (-1.5758343085)), "a.u."

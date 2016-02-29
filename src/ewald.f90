@@ -556,9 +556,15 @@ complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 
 rho_minus = -sum(q)/L**3
+N = size(q)
 !rc = L/2
-rc = 0.5_dp
-Ng = 64
+!do i = 1, N
+!do j = i+1, N
+!    print *, sqrt(sum((x(:,i)-x(:,j))**2))/2
+!end do
+!end do
+rc = 0.144_dp
+Ng = 256
 
 !Ig = 10976 / (17875*rc)
 !Isph = 14*pi*rc**2/75
@@ -569,7 +575,6 @@ Isph = 91*pi*rc**2/690
 v0 = 11/(4*rc)
 
 
-N = size(q)
 E = 0
 
 do i = 1, N
