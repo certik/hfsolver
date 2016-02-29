@@ -557,8 +557,8 @@ real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 
 rho_minus = -sum(q)/L**3
 !rc = L/2
-rc = 0.05_dp
-Ng = 64
+rc = 0.11_dp
+Ng = 256
 
 !Ig = 10976 / (17875*rc)
 !Isph = 14*pi*rc**2/75
