@@ -557,8 +557,8 @@ real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
 
 rho_minus = -sum(q)/L**3
 !rc = L/2
-rc = 0.5_dp
-Ng = 4
+rc = 0.05_dp
+Ng = 64
 
 !Ig = 10976 / (17875*rc)
 !Isph = 14*pi*rc**2/75
@@ -594,7 +594,7 @@ do ii = 1, N
         d = [L/2, L/2, L/2] - Xj
         r = sqrt(sum(d**2))
         rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) &
-            + q(ii)*g3_fn(r, rc)
+            + q(ii)*g3_fn(r, rc)*sign(q(ii), 1._dp)
     end do
     end do
     end do

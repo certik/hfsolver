@@ -22,15 +22,15 @@ integer :: i, ncut
 alpha = 1.8285774522233_dp ! Madelung constant
 
 ! Conventional cell:
-natom = 2
-ntypat = 1
+natom = 3
+ntypat = 2
 allocate(xred(3, natom), fcart(3, natom), q(natom), forces(3, natom))
 ! Na^+
 xred(:, 1) = [0._dp, 0._dp, 0._dp]
 xred(:, 2) = [1._dp/2, 1._dp/2, 1._dp/2]
-!xred(:, 3) = [2._dp/2, 1._dp/2, 1._dp/2]
-!q = [2, -1, -1]*1._dp
-q = [1, 1]*1._dp
+xred(:, 3) = [1._dp/4, 1._dp/2, 1._dp/2]
+q = [2, -1, -1]*1._dp
+!q = [1, 1]*1._dp
 
 
 do i = 1, size(Llist)
