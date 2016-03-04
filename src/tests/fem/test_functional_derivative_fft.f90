@@ -30,7 +30,7 @@ real(dp) :: alpha_nen, mu, dt, psi_norm, Ediff
 integer :: cg_iter
 real(dp) :: E0, t, omega
 
-Ng = 64
+Ng = 32
 
 L = 8.1049178668765851_dp
 T_eV = 34.5_dp
@@ -145,6 +145,9 @@ do i = 1, 100
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 
+    open(newunit=u, file="log.txt", position="append", status="old")
+    write(u, *) i, Etot
+    close(u)
 
 end do
 print *, "Done"
