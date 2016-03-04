@@ -121,7 +121,7 @@ omega = 0.05
 open(newunit=u, file="log.txt", status="replace")
 close(u)
 
-do i = 1, 100
+do i = 1, 90
     t = t + dt
     print *, "iter =", i, "time =", t
     psi = psi - dt*Hn*psi
@@ -151,5 +151,9 @@ do i = 1, 100
 
 end do
 print *, "Done"
+
+print *, Etot
+print *, "error:", abs(Etot - (-202.33221751678599_dp))
+call assert(abs(Etot - (-202.33221751678599_dp)) < 1e-10)
 
 end program
