@@ -121,7 +121,7 @@ omega = 0.05
 open(newunit=u, file="log.txt", status="replace")
 close(u)
 
-do i = 1, 90
+do i = 1, 200
     t = t + dt
     print *, "iter =", i, "time =", t
     psi = psi - dt*Hn*psi
@@ -156,8 +156,11 @@ do i = 1, 90
 end do
 print *, "Done"
 
-print *, Etot
-print *, "error:", abs(Etot - (-202.33221751678599_dp))
-call assert(abs(Etot - (-202.33221751678599_dp)) < 1e-10)
+print *, "Etot:", Etot, abs(Etot - (-202.33221751678599_dp))
+print *, "mu:", mu, abs(mu - (57.451855553630587_dp))
+print *, "mu_Hn:", mu_Hn, abs(mu_Hn - (57.451855553630587_dp))
+call assert(abs(Etot - (-202.33221751678599_dp)) < 1e-11)
+call assert(abs(mu - (57.451855553630587_dp)) < 1e-11)
+call assert(abs(mu - mu_Hn) < 1e-11)
 
 end program
