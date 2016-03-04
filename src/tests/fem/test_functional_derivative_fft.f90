@@ -26,7 +26,7 @@ complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
 integer :: i, u
 integer :: natom = 128
-real(dp) :: alpha_nen, mu, dt, psi_norm, Ediff
+real(dp) :: alpha_nen, mu, mu_Hn, dt, psi_norm, Ediff
 integer :: cg_iter
 real(dp) :: E0, t, omega
 
@@ -136,6 +136,10 @@ do i = 1, 90
     call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         calc_value=.true., calc_derivative=.true.)
     Etot = Ts + Een + Eee + Exc
+
+    mu = 1._dp / natom * integral(L, ne * Hn)
+    mu_Hn = sum(Hn)/size(Hn)
+    print *, mu, mu_Hn
     print *, "Summary of energies [a.u.]:"
     print "('    Ts   = ', f14.8)", Ts
     print "('    Een  = ', f14.8)", Een
@@ -146,7 +150,7 @@ do i = 1, 90
 
 
     open(newunit=u, file="log.txt", position="append", status="old")
-    write(u, *) i, Etot
+    write(u, *) i, Etot, mu, mu_Hn
     close(u)
 
 end do
