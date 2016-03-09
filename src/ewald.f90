@@ -581,7 +581,7 @@ allocate(rho_tilde_minus(Ng,Ng,Ng), rho_tilde_minusG(Ng,Ng,Ng))
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
 
-rho_tilde_minus = rho_minus
+rho_tilde_minus = 0
 do ii = 1, N
     do k = 1, Ng
     do j = 1, Ng
