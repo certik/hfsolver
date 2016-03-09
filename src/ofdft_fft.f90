@@ -19,7 +19,7 @@ implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
     radial_potential_fourier, real2fourier, fourier2real, integralG, &
-    logging_info, integral, real_space_vectors
+    logging_info, integral, real_space_vectors, radial_density_fourier
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
@@ -429,6 +429,44 @@ do k = 1, Ng
     idx = (i-1-Ng*nint((i-1.5_dp)/Ng))**2 + (j-1-Ng*nint((j-1.5_dp)/Ng))**2 &
             + (k-1-Ng*nint((k-1.5_dp)/Ng))**2
     VenG(i, j, k) = Vk(idx)
+end do
+end do
+end do
+end subroutine
+
+subroutine radial_density_fourier(R, ne, L, neG)
+! Takes radial density (given at origin) defined by:
+!   ne(R) on a grid R
+!   0 for r > maxval(R)
+! and calculates a 3D Fourier transform of it into the neG grid. 'L' is the
+! length of the box.
+real(dp), intent(in) :: R(:), ne(:), L
+real(dp), intent(out) :: neG(:, :, :)
+integer :: Ng, i, j, k, idx
+real(dp) :: Rp(size(R)), dk, Rc, w, nk(0:3*(size(neG, 1)/2+1)**2)
+! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
+! the mesh step (rmax-rmin)/N:
+Rp = (R(size(R)) - R(1)) / (size(R)-1)
+Rc = R(size(R))
+Ng = size(neG, 1)
+call assert(size(neG, 2) == Ng)
+call assert(size(neG, 3) == Ng)
+dk = 2*pi/L
+
+! We prepare the values of the radial Fourier transform on a 3D grid
+nk(0) = 0
+do i = 1, 3*(Ng/2+1)**2
+    w = sqrt(real(i, dp))*dk
+    nk(i) = 4*pi/(L**3 * w**2) * w*integrate(Rp, R*sin(w*R)*ne)
+end do
+
+! We fill out the 3D grid using the values from nk
+do i = 1, Ng
+do j = 1, Ng
+do k = 1, Ng
+    idx = (i-1-Ng*nint((i-1.5_dp)/Ng))**2 + (j-1-Ng*nint((j-1.5_dp)/Ng))**2 &
+            + (k-1-Ng*nint((k-1.5_dp)/Ng))**2
+    neG(i, j, k) = nk(idx)
 end do
 end do
 end do
