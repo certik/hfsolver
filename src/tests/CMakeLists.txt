@@ -78,6 +78,7 @@ ADDTEST(test_ewald4)
 ADDTEST(test_ewald5)
 ADDTEST(test_ewald6)
 ADDPROG(ewald_conv4)
+ADDPROG(ewald_convN)
 
 ADDPROG(test_ofmd_fft_fe)
 ADDPROG(ofmd_fft)
