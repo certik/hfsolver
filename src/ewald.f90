@@ -551,7 +551,7 @@ real(dp), intent(in) :: q(:) ! r(i) charge of i-th ion
 integer, intent(in) :: Ng
 real(dp), intent(in) :: rc
 real(dp), intent(out) :: E ! ion-ion electrostatic potential energy
-integer :: N, ii, i, j, k
+integer :: N, ii, i, j, k, i_, j_, k_, Ng_rc, Ng0(3)
 real(dp) :: Ig, v0, Isph, rho_minus, r, Xj(3), d(3)
 real(dp), allocatable :: rho_tilde_minus(:, :, :)
 complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
@@ -582,16 +582,20 @@ call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
 
 rho_tilde_minus = 0
+Ng_rc = int(Ng*rc/L) + 2
 do ii = 1, N
-    do k = 1, Ng
-    do j = 1, Ng
-    do i = 1, Ng
+    Ng0 = int(Ng*x(:, ii)/L)
+    do k_ = Ng0(3)-Ng_rc, Ng0(3)+Ng_rc
+    do j_ = Ng0(2)-Ng_rc, Ng0(2)+Ng_rc
+    do i_ = Ng0(1)-Ng_rc, Ng0(1)+Ng_rc
+        i = i_ - int(Ng*floor(real(i_-1, dp)/Ng))
+        j = j_ - int(Ng*floor(real(j_-1, dp)/Ng))
+        k = k_ - int(Ng*floor(real(k_-1, dp)/Ng))
         Xj = x(:, ii)-Xn(i,j,k,:)+[L/2, L/2, L/2]
         Xj = Xj - L*floor(Xj/L)
         d = [L/2, L/2, L/2] - Xj
         r = sqrt(sum(d**2))
-        rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) &
-            + q(ii)*g3_fn(r, rc)
+        rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) + q(ii)*g3_fn(r, rc)
     end do
     end do
     end do
