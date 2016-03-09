@@ -556,6 +556,16 @@ real(dp) :: Ig, v0, Isph, rho_minus, r, Xj(3), d(3)
 real(dp), allocatable :: rho_tilde_minus(:, :, :)
 complex(dp), allocatable :: rho_tilde_minusG(:, :, :)
 real(dp), allocatable :: G(:, :, :, :), G2(:, :, :), Xn(:,:,:,:)
+! The accuracy to which the value of the Gaussian vanishes at r=rc
+!real(dp), parameter :: eps = 1e-16_dp ! eps = exp(-alpha*(r/rc)**2) for r=rc
+!real(dp), parameter :: alpha = -log(eps)
+real(dp), parameter :: alpha = 37
+
+real(dp), parameter :: gauss_const = 1/(pi**(3._dp/2) * erf(sqrt(alpha)) / alpha**(3._dp/2) - 2*pi*exp(-alpha)/alpha)
+
+print *, "alpha=", alpha
+print *, "gauss_const=", gauss_const
+print *, "rc = ", rc
 
 rho_minus = -sum(q)/L**3
 
@@ -563,9 +573,13 @@ rho_minus = -sum(q)/L**3
 !Isph = 14*pi*rc**2/75
 !v0 = 12/(5*rc)
 
-Ig = (517399110137._dp/809268832200._dp)/rc
-Isph = 91*pi*rc**2/690
-v0 = 11/(4*rc)
+!Ig = (517399110137._dp/809268832200._dp)/rc
+!Isph = 91*pi*rc**2/690
+!v0 = 11/(4*rc)
+
+Ig = 2.01032020759_dp / rc
+Isph = 0.0849079095403_dp * rc**2
+v0 = 6.86366251761_dp / rc
 
 
 N = size(q)
@@ -595,7 +609,8 @@ do ii = 1, N
         Xj = Xj - L*floor(Xj/L)
         d = [L/2, L/2, L/2] - Xj
         r = sqrt(sum(d**2))
-        rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) + q(ii)*g3_fn(r, rc)
+        rho_tilde_minus(i,j,k) = rho_tilde_minus(i,j,k) + &
+            q(ii)*g4_fn(r, rc, alpha, gauss_const)
     end do
     end do
     end do
@@ -642,6 +657,15 @@ contains
         g = 21*(r - rc)**10*(48620*r**9 + 24310*r**8*rc + 11440*r**7*rc**2 + &
         5005*r**6*rc**3 + 2002*r**5*rc**4 + 715*r**4*rc**5 + 220*r**3*rc**6 + &
         55*r**2*rc**7 + 10*r*rc**8 + rc**9)/(4*pi*rc**22)
+    end if
+    end function
+
+    real(dp) function g4_fn(r, rc, alpha, C) result(g)
+    real(dp), intent(in) :: r, rc, alpha, C
+    if (r >= rc) then
+        g = 0
+    else
+        g = C*exp(-alpha*(r/rc)**2) / rc**3
     end if
     end function
 
