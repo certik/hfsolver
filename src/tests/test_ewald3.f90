@@ -94,7 +94,7 @@ do i = 1, size(Llist)
     call ewald_box(L, xred*L, q, E_ewald, forces, stress)
     E_ewald = E_ewald / (natom/ntypat)
 
-    call ewald_fft1(L, xred*L, q, 64, 0.10825_dp*L, E_ewald_fft)
+    call ewald_fft1(L, xred*L, q, 96, 0.10825_dp*L, E_ewald_fft)
     E_ewald_fft = E_ewald_fft / (natom/ntypat)
 
     E_madelung = -2*alpha/L
