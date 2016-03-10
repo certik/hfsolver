@@ -35,7 +35,7 @@ do i = 1, 6
     E_ewald = E_ewald / (natom/ntypat)
 
     call cpu_time(t3)
-    call ewald_fft1(L, xred*L, q, 16*i, 0.40824_dp, E_ewald_fft)
+    call ewald_fft1(L, xred*L, q, 32*i, 0.40824_dp, E_ewald_fft)
     call cpu_time(t4)
     E_ewald_fft = E_ewald_fft / (natom/ntypat)
     print *, i, natom, t2-t1, t4-t3
