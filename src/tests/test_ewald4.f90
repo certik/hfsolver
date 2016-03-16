@@ -52,7 +52,7 @@ do i = 1, size(Llist)
     print *, "Ewald error:     ", abs(E_ewald - E_madelung), "a.u."
     print *, "Ewald FFT error: ", abs(E_ewald_fft - E_madelung), "a.u."
     call assert(abs(E_ewald - E_madelung) < 5e-14_dp)
-    call assert(abs(E_ewald_fft - E_madelung) < 5e-10_dp)
+    call assert(abs(E_ewald_fft - E_madelung) < 5e-12_dp)
     call assert(all(abs(forces) < 1e-15_dp))
     call assert(all(abs(stress - (-stress0/L)*[1, 1, 1, 0, 0, 0]) < 1e-15_dp))
 end do
