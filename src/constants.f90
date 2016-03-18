@@ -52,7 +52,7 @@ real(dp), parameter :: kJmol2Ha = 1000 * J2Ha / Na
 real(dp), parameter :: density2gcm3 = me*1e3_dp / (bohr2ang*1e-8_dp)**3
 
 ! Converts u (atomic mass unit) to a.u.
-real(dp), parameter :: u2au = 1 / (Na * me * 1e3)
+real(dp), parameter :: u2au = 1 / (Na * me * 1e3_dp)
 
 ! Converts s to a.u.
 real(dp), parameter :: s2au = 1 / (J2Ha*hbar)

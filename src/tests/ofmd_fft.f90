@@ -21,7 +21,7 @@ integer, parameter :: K = 5
 real(dp), parameter :: kappa = 1.82_dp, alpha = 0.018_dp
 integer, parameter :: c0 = -6, c1 = 14, c2 = -8, c3 = -3, c4 = 4, c5 = -1
 
-integer :: N = 4
+integer :: N
 integer :: i, j, steps, u
 real(dp) :: dt, L, t, rho, scf_eps
 real(dp), allocatable :: V(:, :), X(:, :), f(:, :), m(:)
@@ -31,7 +31,7 @@ real(dp), allocatable :: Ven0G(:, :, :)
 complex(dp), allocatable :: VenG(:, :, :), neG(:, :, :)
 real(dp), allocatable :: ne(:, :, :), R2(:)
 real(dp) :: Temp, Ekin, Temp_current, t3, t4
-real(dp) :: Ediff, Z
+real(dp) :: Ediff, Z, Am
 real(dp) :: Een_correction
 real(dp) :: Eee, Een, Ts, Exc, Etot, Enn
 real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
@@ -42,7 +42,7 @@ real(dp) :: mdt1, mdt2
 
 logging_info = .false. ! Turn of the INFO warnings
 
-call read_input("OFMD.input", Temp, rho, Nspecies, N, start, dynamics, &
+call read_input("OFMD.input", Temp, rho, Nspecies, N, Am, start, dynamics, &
             functional, Ng, scf_eps, steps, dt)
 call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
@@ -52,7 +52,7 @@ allocate(fnn(3, N), q(N), fen(3, N))
 allocate(ne_aux(Ng, Ng, Ng, -K:1))
 
 q = Z
-m = 26.9_dp * u2au ! Using Hydrogen mass in atomic mass units [u]
+m = Am * u2au ! Using Hydrogen mass in atomic mass units [u]
 L = (sum(m) / rho)**(1._dp/3)
 print *, "----------------------------------------------------------------"
 print *, "Input Summary:"
@@ -264,12 +264,15 @@ contains
     Ekin = sum(m*sum(V**2, dim=1))/2
     end function
 
-    subroutine read_input(filename, T, density, Nspecies, N, start, dynamics, &
-            functional, Ng, scf_eps, steps, dt)
+    subroutine read_input(filename, T, density, Nspecies, N, Am, start, &
+        dynamics, functional, Ng, scf_eps, steps, dt)
     ! Reads the input file, returns values in a.u.
     character(len=*), intent(in) :: filename
-    real(dp), intent(out) :: T, density, dt, scf_eps
+    real(dp), intent(out) :: T, density, dt, scf_eps, Am
     integer, intent(out) :: Nspecies, N, start, dynamics, functional, Ng, steps
+    integer :: AN
+    real(dp) :: AZ
+    character(len=10) :: A
     integer :: u
     real(dp) :: skip
     open(newunit=u, file=filename, status="old")
@@ -277,11 +280,14 @@ contains
     read(u, *) start
     read(u, *) dynamics, functional, Ng, skip, skip, scf_eps
     read(u, *) steps, dt
+    read(u, *) A, AZ, Am, AN
     close(u)
     ! Convert to atomic units:
     T = T / Ha2eV
     density = density / density2gcm3
     scf_eps = scf_eps / Ha2eV
+
+    if (AN /= N) call stop_error("Inconsistent number of atoms")
     end subroutine
 
     subroutine write_results_header(u)
