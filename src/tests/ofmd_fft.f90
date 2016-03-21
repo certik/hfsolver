@@ -38,13 +38,14 @@ real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 integer :: cg_iter
 real(dp), dimension(:,:,:,:), allocatable :: ne_aux
+character(len=10) :: atom_name
 real(dp) :: mdt1, mdt2
 
 logging_info = .false. ! Turn of the INFO warnings
 
-call read_input("OFMD.input", Temp, rho, Nspecies, N, Am, start, dynamics, &
-            functional, Ng, scf_eps, steps, dt)
-call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
+call read_input("OFMD.input", Temp, rho, Nspecies, N, Am, atom_name, start, &
+    dynamics, functional, Ng, scf_eps, steps, dt)
+call read_pseudo("fem/" // trim(atom_name) // ".pseudo", R, Ven_rad, Z, Ediff)
 allocate(X(3, N), V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
@@ -264,15 +265,15 @@ contains
     Ekin = sum(m*sum(V**2, dim=1))/2
     end function
 
-    subroutine read_input(filename, T, density, Nspecies, N, Am, start, &
-        dynamics, functional, Ng, scf_eps, steps, dt)
+    subroutine read_input(filename, T, density, Nspecies, N, Am, Aname, &
+        start, dynamics, functional, Ng, scf_eps, steps, dt)
     ! Reads the input file, returns values in a.u.
     character(len=*), intent(in) :: filename
     real(dp), intent(out) :: T, density, dt, scf_eps, Am
+    character(len=*), intent(out) :: Aname
     integer, intent(out) :: Nspecies, N, start, dynamics, functional, Ng, steps
     integer :: AN
     real(dp) :: AZ
-    character(len=10) :: A
     integer :: u
     real(dp) :: skip
     open(newunit=u, file=filename, status="old")
@@ -280,7 +281,7 @@ contains
     read(u, *) start
     read(u, *) dynamics, functional, Ng, skip, skip, scf_eps
     read(u, *) steps, dt
-    read(u, *) A, AZ, Am, AN
+    read(u, *) Aname, AZ, Am, AN
     close(u)
     ! Convert to atomic units:
     T = T / Ha2eV
