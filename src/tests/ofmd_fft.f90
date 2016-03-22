@@ -68,6 +68,9 @@ print "(' dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
     dt/s2au, dt/s2au * 1e12_dp
 print "(' SCF_eps =', es10.2, ' a.u. = ', es10.2, ' eV')", scf_eps, &
     scf_eps * Ha2eV
+print *, "Initial position:", start
+print *, "Atomic mass:", Am, "u"
+print *, "Atomic name: ", trim(atom_name)
 print *, "----------------------------------------------------------------"
 print *
 print *, "Calculated quantities:"
@@ -77,6 +80,7 @@ print *
 print *, "Converting aperiodic radial Ven to periodic cartesian Ven"
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, Een_correction)
 print *, "  Done."
+print *, "Atomic charge Z =", Z
 Nmesh = 10000
 allocate(R2(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
@@ -85,16 +89,20 @@ call reciprocal_space_vectors(L, G, G2)
 
 select case(start)
     case (0)
+        print *, "Initial position: pos.txt"
         call loadtxt("pos.txt", X)
         call assert(size(X, 1) == 3)
         call assert(size(X, 2) == N)
     case (3)
+        print *, "Initial position: FCC"
         allocate(X(3, N))
         call positions_fcc(X, L)
     case (4)
+        print *, "Initial position: BCC"
         allocate(X(3, N))
         call positions_bcc(X, L)
     case (5)
+        print *, "Initial position: random"
         ! Make it deterministic for now
         !call init_random()
         sigma = 1
