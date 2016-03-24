@@ -40,3 +40,6 @@ set_tests_properties(test_functional_derivative PROPERTIES LABELS slow)
 
 addtest(test_functional_derivative_fft converged_energies)
 set_tests_properties(test_functional_derivative_fft PROPERTIES LABELS slow)
+
+addtest(test_functional_derivative_min_fft)
+set_tests_properties(test_functional_derivative_min_fft PROPERTIES LABELS slow)

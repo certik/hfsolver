@@ -3,10 +3,10 @@ use, intrinsic :: iso_fortran_env, only: output_unit
 use types, only: dp
 use constants, only: i_, K2au, density2gcm3, u2au, s2au, Ha2eV
 use md, only: velocity_verlet, positions_random, &
-                calc_min_distance, positions_fcc
+                calc_min_distance, positions_fcc, positions_bcc
 use ewald_sums, only: ewald_box
 use random, only: randn
-use utils, only: init_random, stop_error, assert, linspace, clock
+use utils, only: init_random, stop_error, assert, linspace, clock, loadtxt
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy_min, radial_potential_fourier, &
     reciprocal_space_vectors, real2fourier, fourier2real, logging_info
@@ -37,15 +37,17 @@ real(dp) :: Eee, Een, Ts, Exc, Etot, Enn
 real(dp), allocatable :: fnn(:, :), q(:), fen(:, :)
 integer :: dynamics, functional, Ng, Nspecies, start, Nmesh
 integer :: cg_iter
+real(dp) :: sigma
 real(dp), dimension(:,:,:,:), allocatable :: ne_aux
+character(len=10) :: atom_name
 real(dp) :: mdt1, mdt2
 
 logging_info = .false. ! Turn of the INFO warnings
 
-call read_input("OFMD.input", Temp, rho, Nspecies, N, Am, start, dynamics, &
-            functional, Ng, scf_eps, steps, dt)
-call read_pseudo("fem/Al.pseudo", R, Ven_rad, Z, Ediff)
-allocate(X(3, N), V(3, N), f(3, N), m(N))
+call read_input("OFMD.input", Temp, rho, Nspecies, N, Am, atom_name, start, &
+    dynamics, functional, Ng, scf_eps, steps, dt)
+call read_pseudo("fem/" // trim(atom_name) // ".pseudo", R, Ven_rad, Z, Ediff)
+allocate(V(3, N), f(3, N), m(N))
 allocate(Ven0G(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), neG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(fnn(3, N), q(N), fen(3, N))
@@ -66,6 +68,9 @@ print "(' dt =', f8.2, ' a.u. = ', es10.2, ' s = ', es10.2, ' ps')", dt, &
     dt/s2au, dt/s2au * 1e12_dp
 print "(' SCF_eps =', es10.2, ' a.u. = ', es10.2, ' eV')", scf_eps, &
     scf_eps * Ha2eV
+print *, "Initial position:", start
+print *, "Atomic mass:", Am, "u"
+print *, "Atomic name: ", trim(atom_name)
 print *, "----------------------------------------------------------------"
 print *
 print *, "Calculated quantities:"
@@ -75,16 +80,38 @@ print *
 print *, "Converting aperiodic radial Ven to periodic cartesian Ven"
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, Een_correction)
 print *, "  Done."
+print *, "Atomic charge Z =", Z
 Nmesh = 10000
 allocate(R2(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
 
 call reciprocal_space_vectors(L, G, G2)
 
-! Make it deterministic for now
-!call init_random()
-!call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
-call positions_fcc(X, L)
+select case(start)
+    case (0)
+        print *, "Initial position: pos.txt"
+        call loadtxt("pos.txt", X)
+        call assert(size(X, 1) == 3)
+        call assert(size(X, 2) == N)
+    case (3)
+        print *, "Initial position: FCC"
+        allocate(X(3, N))
+        call positions_fcc(X, L)
+    case (4)
+        print *, "Initial position: BCC"
+        allocate(X(3, N))
+        call positions_bcc(X, L)
+    case (5)
+        print *, "Initial position: random"
+        ! Make it deterministic for now
+        !call init_random()
+        sigma = 1
+        allocate(X(3, N))
+        call positions_random(X, L, 2**(1._dp/6)*sigma, 10)
+    case default
+        call stop_error("Invalid initial condition.")
+end select
+
 print *, "Positions:"
 do i = 1, N
     print *, i, X(:, i)
@@ -264,15 +291,15 @@ contains
     Ekin = sum(m*sum(V**2, dim=1))/2
     end function
 
-    subroutine read_input(filename, T, density, Nspecies, N, Am, start, &
-        dynamics, functional, Ng, scf_eps, steps, dt)
+    subroutine read_input(filename, T, density, Nspecies, N, Am, Aname, &
+        start, dynamics, functional, Ng, scf_eps, steps, dt)
     ! Reads the input file, returns values in a.u.
     character(len=*), intent(in) :: filename
     real(dp), intent(out) :: T, density, dt, scf_eps, Am
+    character(len=*), intent(out) :: Aname
     integer, intent(out) :: Nspecies, N, start, dynamics, functional, Ng, steps
     integer :: AN
     real(dp) :: AZ
-    character(len=10) :: A
     integer :: u
     real(dp) :: skip
     open(newunit=u, file=filename, status="old")
@@ -280,7 +307,7 @@ contains
     read(u, *) start
     read(u, *) dynamics, functional, Ng, skip, skip, scf_eps
     read(u, *) steps, dt
-    read(u, *) A, AZ, Am, AN
+    read(u, *) Aname, AZ, Am, AN
     close(u)
     ! Convert to atomic units:
     T = T / Ha2eV
