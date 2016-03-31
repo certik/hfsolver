@@ -163,7 +163,7 @@ do i = 1, 10
     print *, "E field along the 'x' direction =", Ex
     print *, "average current =", current_avg
     print *, "current normalized =", current_avg / current_avg(1)
-    conductivity = current_avg(1) / Ex * sin(omega*t)**2
+    conductivity = current_avg(1) / Ex
     print *, "conductivity along the 'x' direction =", conductivity
 
 end do
