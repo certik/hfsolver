@@ -29,7 +29,7 @@ integer :: i, j
 integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
-real(dp) :: E0, t, omega, current_avg(3), conductivity
+real(dp) :: Ex, E0, t, omega, current_avg(3), conductivity
 
 Ng = 32
 
@@ -128,7 +128,8 @@ do i = 1, 10
     t = t + dt
     print *, "iter =", i, "time =", t
     psi3 = psi2; psi2 = psi
-    psi = psi3 - 2*i_*dt*(Hn + E0*Xn(:,:,:,1)*sin(omega*t))*psi2
+    Ex = E0 * sin(omega*t)
+    psi = psi3 - 2*i_*dt*(Hn + Xn(:,:,:,1)*Ex)*psi2
     ne = real(psi*conjg(psi), dp)
     call real2fourier(psi, psiG)
     psiG(1,1,1) = 0
@@ -159,10 +160,10 @@ do i = 1, 10
     do j = 1, 3
         current_avg(j) = integral(L, current(:, :, :, j))/L**3
     end do
-    print *, "E field along the 'x' direction =", E0*sin(omega*t)
+    print *, "E field along the 'x' direction =", Ex
     print *, "average current =", current_avg
     print *, "current normalized =", current_avg / current_avg(1)
-    conductivity = current_avg(1) / E0*sin(omega*t)
+    conductivity = current_avg(1) / Ex * sin(omega*t)**2
     print *, "conductivity along the 'x' direction =", conductivity
 
 end do
