@@ -3,7 +3,7 @@ program test_functional_derivative_fft
 ! The same as test_functional_derivative but using FFT
 
 use types, only: dp
-use constants, only: i_
+use constants, only: i_, pi
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
@@ -29,7 +29,7 @@ integer :: i, j
 integer, parameter :: natom = 4
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter, u
-real(dp) :: Ex, E0, t, omega, current_avg(3), conductivity
+real(dp) :: Ex, E0, t, omega, current_avg(3), conductivity, td, tw
 
 Ng = 32
 
@@ -128,11 +128,14 @@ omega = 0.05
 open(newunit=u, file="cond.txt", status="replace")
 close(u)
 
-do i = 1, 10
+td = 2
+tw = 0.1_dp
+
+do i = 1, 1000
     t = t + dt
     print *, "iter =", i, "time =", t
     psi3 = psi2; psi2 = psi
-    Ex = E0 * sin(omega*t)
+    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
     psi = psi3 - 2*i_*dt*(Hn + Xn(:,:,:,1)*Ex)*psi2
     ne = real(psi*conjg(psi), dp)
     call real2fourier(psi, psiG)
@@ -167,7 +170,7 @@ do i = 1, 10
     print *, "E field along the 'x' direction =", Ex
     print *, "average current =", current_avg
     print *, "current normalized =", current_avg / current_avg(1)
-    conductivity = current_avg(1) / Ex
+    conductivity = current_avg(1) / E0
     print *, "conductivity along the 'x' direction =", conductivity
 
     open(newunit=u, file="cond.txt", position="append", status="old")
