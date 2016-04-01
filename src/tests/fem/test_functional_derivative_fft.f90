@@ -99,6 +99,7 @@ print *, "Propagation"
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
+dt = dt / 10
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -118,14 +119,14 @@ ne = real(psi*conjg(psi), dp)
 psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
-E0 = 1e-3_dp
+E0 = 1e-1_dp
 
 
 open(newunit=u, file="cond.txt", status="replace")
 close(u)
 
-td = 0.5
-tw = 0.1_dp
+td = 0.05
+tw = 0.01_dp
 
 do i = 1, 1000
     t = t + dt
@@ -172,7 +173,7 @@ do i = 1, 1000
     print *, "conductivity along the 'x' direction =", conductivity
 
     open(newunit=u, file="cond.txt", position="append", status="old")
-    write(u, *) i, t, Etot, Ex, conductivity, current_avg
+    write(u, *) i, t, Etot*Ha2eV / natom, Ex, conductivity, current_avg
     close(u)
 
 end do
