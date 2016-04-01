@@ -13,7 +13,6 @@ use utils, only: loadtxt, stop_error, assert, linspace
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc
-use converged_energies, only: four_gaussians_min
 implicit none
 real(dp) :: Eee, Een, Ts, Exc, Etot, Etot_conv
 integer :: Ng
@@ -68,7 +67,7 @@ ne = natom / L**3
 call free_energy_min(real(natom, dp), natom, L, G2, T_au, VenG, ne, &
     2e-10_dp, Eee, Een, Ts, Exc, Etot, cg_iter)
 
-Etot_conv = sum(four_gaussians_min)
+Etot_conv = -204.88460758_dp
 print *, "Summary of energies [a.u.]:"
 print "('    Ts   = ', f14.8)", Ts
 print "('    Een  = ', f14.8)", Een
@@ -78,17 +77,9 @@ print *, "   ---------------------"
 print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 print "('    Etot/atom = ', f14.8, ' a.u. = ', f14.8, ' eV')", &
     Etot/natom, Etot*Ha2eV / natom
-!print *, "Errors:"
-!print *, abs(Ts - four_gaussians_min(1))
-!print *, abs(Een - four_gaussians_min(2))
-!print *, abs(Eee - four_gaussians_min(3))
-!print *, abs(Exc - four_gaussians_min(4))
-!print *, abs(Etot - Etot_conv)
-!call assert(abs(Ts - four_gaussians_min(1)) < 1e-7_dp)
-!call assert(abs(Een - four_gaussians_min(2)) < 1e-7_dp)
-!call assert(abs(Eee - four_gaussians_min(3)) < 1e-8_dp)
-!call assert(abs(Exc - four_gaussians_min(4)) < 1e-8_dp)
-!call assert(abs(Etot - Etot_conv) < 1e-10_dp)
+print *, "Errors:"
+print *, abs(Etot - Etot_conv)
+call assert(abs(Etot - Etot_conv) < 3e-3_dp)
 
 call free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
     calc_value=.true., calc_derivative=.true.)
@@ -99,7 +90,6 @@ mu = sum(Hn)/size(Hn)
 print *, "mu_Hn = ", mu
 print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 call assert(all(ne > 0))
-stop "OK"
 
 print *
 print *, "------------------------------------------------------------------"
