@@ -172,7 +172,7 @@ do i = 1, 1000
     print *, "conductivity along the 'x' direction =", conductivity
 
     open(newunit=u, file="cond.txt", position="append", status="old")
-    write(u, *) i, t, Etot, Ex, conductivity
+    write(u, *) i, t, Etot, Ex, conductivity, current_avg
     close(u)
 
 end do
