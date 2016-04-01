@@ -7,9 +7,9 @@ use constants, only: i_, pi
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
-    fourier2real, real_space_vectors
+    fourier2real, real_space_vectors, vtk_save
 use constants, only: Ha2eV
-use utils, only: loadtxt, stop_error, assert, linspace
+use utils, only: loadtxt, stop_error, assert, linspace, str
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc
@@ -31,7 +31,7 @@ real(dp), allocatable :: X(:, :)
 integer :: cg_iter, u
 real(dp) :: Ex, E0, t, current_avg(3), conductivity, td, tw, Ediff
 
-Ng = 32
+Ng = 128
 
 L = 8.1049178668765851_dp
 T_eV = 34.5_dp
@@ -99,7 +99,6 @@ print *, "Propagation"
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
-dt = dt / 10
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -119,14 +118,14 @@ ne = real(psi*conjg(psi), dp)
 psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
-E0 = 1e-1_dp
+E0 = 0.01_dp
 
 
 open(newunit=u, file="cond.txt", status="replace")
 close(u)
 
-td = 0.05
-tw = 0.01_dp
+td = 0.2_dp
+tw = 0.04_dp
 
 do i = 1, 1000
     t = t + dt
@@ -175,6 +174,8 @@ do i = 1, 1000
     open(newunit=u, file="cond.txt", position="append", status="old")
     write(u, *) i, t, Etot*Ha2eV / natom, Ex, conductivity, current_avg
     close(u)
+
+    call vtk_save("data/iter" // str(i) // ".vtk", Xn, ne)
 
 end do
 print *, "Done"
