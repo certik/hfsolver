@@ -29,7 +29,7 @@ integer, parameter :: natom = 128
 real(dp) :: mu, dt, psi_norm
 real(dp), allocatable :: X(:, :)
 integer :: cg_iter, u
-real(dp) :: Ex, E0, t, current_avg(3), conductivity, td, tw, Ediff
+real(dp) :: Ex, E0, t, current_avg(3), conductivity, td, tw, Ediff, omega
 
 Ng = 64
 
@@ -127,7 +127,7 @@ close(u)
 td = 0.2_dp
 tw = 0.04_dp
 
-do i = 1, 10000
+do i = 1, 1000
     t = t + dt
     print *, "iter =", i, "time =", t
     print *, "dt     =", dt
@@ -135,7 +135,9 @@ do i = 1, 10000
     if (dt > 1/maxval(abs(Hn))) &
         call stop_error("Time step is too large (dt > dt_max).")
     psi3 = psi2; psi2 = psi
-    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+    !Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+    omega = 10._dp
+    Ex = E0 * sin(omega*t)
     psi = psi3 - 2*i_*dt*(Hn + Xn(:,:,:,1)*Ex)*psi2
     ne = real(psi*conjg(psi), dp)
     call real2fourier(psi, psiG)
