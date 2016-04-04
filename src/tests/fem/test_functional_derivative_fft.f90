@@ -49,8 +49,8 @@ print *, "    Done."
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-call positions_bcc(X, L)
-!call loadtxt("../pos.txt", X)
+!call positions_bcc(X, L)
+call loadtxt("../pos.txt", X)
 call assert(size(X, 1) == 3)
 call assert(size(X, 2) == natom)
 call assert(all(X > 0))
@@ -127,7 +127,7 @@ close(u)
 td = 0.2_dp
 tw = 0.04_dp
 
-do i = 1, 1000
+do i = 1, 10000
     t = t + dt
     print *, "iter =", i, "time =", t
     print *, "dt     =", dt
