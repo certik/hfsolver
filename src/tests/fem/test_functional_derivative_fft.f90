@@ -1,3 +1,31 @@
+module str
+implicit none
+private
+public str2
+
+contains
+
+pure integer function str_int_len(i) result(sz)
+! Returns the length of the string representation of 'i'
+integer, intent(in) :: i
+integer, parameter :: MAX_STR = 100
+character(MAX_STR) :: s
+! If 's' is too short (MAX_STR too small), Fortan will abort with:
+! "Fortran runtime error: End of record"
+write(s, '(i0.6)') i
+sz = len_trim(s)
+end function
+
+pure function str2(i) result(s)
+! Converts integer "i" to string
+integer, intent(in) :: i
+character(len=str_int_len(i)) :: s
+write(s, '(i0.6)') i
+end function
+
+end module str
+
+
 program test_functional_derivative_fft
 
 ! The same as test_functional_derivative but using FFT
@@ -10,6 +38,7 @@ use ofdft_fft, only: free_energy, radial_potential_fourier, &
     fourier2real, real_space_vectors, vtk_save
 use constants, only: Ha2eV
 use utils, only: loadtxt, stop_error, assert, linspace, str
+use str, only: str2
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc, positions_bcc
@@ -180,7 +209,7 @@ do i = 1, 1000
         psi_norm, dt, 1/maxval(abs(Hn))
     close(u)
 
-    !call vtk_save("data/iter" // str(i) // ".vtk", Xn, ne)
+    call vtk_save("data/iter" // str2(i) // ".vtk", Xn, ne)
 
 end do
 print *, "Done"
