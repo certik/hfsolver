@@ -54,15 +54,16 @@ complex(dp), allocatable, dimension(:,:,:) :: VenG, psi, psi2, psi3, psiG, tmp
 complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
 integer :: i, j
-integer, parameter :: natom = 128
+integer, parameter :: natom = 2
 real(dp) :: mu, dt, psi_norm
 real(dp), allocatable :: X(:, :)
 integer :: cg_iter, u
 real(dp) :: Ex, E0, t, current_avg(3), conductivity, td, tw, Ediff
 
-Ng = 64
+Ng = 32
 
 L = 8.1049178668765851_dp
+L = L / 4
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
 
@@ -94,7 +95,7 @@ end do
 
 ne = natom / L**3
 call free_energy_min(real(natom, dp), natom, L, G2, T_au, VenG, ne, &
-    2e-10_dp, Eee, Een, Ts, Exc, Etot, cg_iter)
+    1e-12_dp, Eee, Een, Ts, Exc, Etot, cg_iter)
 
 Etot_conv = -204.88460758_dp
 print *, "Summary of energies [a.u.]:"
@@ -128,6 +129,7 @@ print *, "Propagation"
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 20 ! set dt 10x smaller than the limit
+dt = dt / 10
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -147,7 +149,7 @@ ne = real(psi*conjg(psi), dp)
 psi_norm = integral(L, ne)
 print *, "norm of psi:", psi_norm
 
-E0 = 0.01_dp
+E0 = 10._dp
 
 
 open(newunit=u, file="cond.txt", status="replace")
@@ -156,7 +158,7 @@ close(u)
 td = 0.2_dp
 tw = 0.04_dp
 
-do i = 1, 1000
+do i = 1, 400
     t = t + dt
     print *, "iter =", i, "time =", t
     print *, "dt     =", dt
@@ -166,7 +168,8 @@ do i = 1, 1000
     psi3 = psi2; psi2 = psi
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
     psi = psi3 - 2*i_*dt*(Hn + Xn(:,:,:,1)*Ex)*psi2
-    ne = real(psi*conjg(psi), dp)
+    !ne = real(psi*conjg(psi), dp)
+    ne = abs(psi)**2
     call real2fourier(psi, psiG)
     psiG(1,1,1) = 0
     do j = 1, 3
