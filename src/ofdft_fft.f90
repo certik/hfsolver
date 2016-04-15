@@ -13,7 +13,8 @@ use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz, xc_pz2
 use utils, only: stop_error, assert, clock
-use fourier, only: fft3_inplace, ifft3_inplace
+use fourier, only: fft3_inplace, ifft3_inplace, &
+    fft1_inplace => fft_pass_inplace, ifft1_inplace
 use integration, only: integrate_trapz_1
 implicit none
 private
@@ -34,10 +35,12 @@ end interface
 
 interface real2fourier
     module procedure real2fourier_complex, real2fourier_real
+    module procedure real2fourier1d_complex, real2fourier1d_real
 end interface
 
 interface fourier2real
     module procedure fourier2real_complex, fourier2real_real
+    module procedure fourier2real1d_complex, fourier2real1d_real
 end interface
 
 integer :: fft_counter
@@ -130,6 +133,23 @@ fft_counter = fft_counter + 1
 fft_time = fft_time + t2-t1
 end subroutine
 
+subroutine real2fourier1d_complex(x, xG)
+! Calculates Discrete Fourier Transform, with the same normalization as the
+! Fourier Transform for periodic systems (which is Fourier Series).
+complex(dp), intent(in) :: x(:)
+complex(dp), intent(out) :: xG(:)
+integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
+Ng = size(x, 1)
+xG = x
+call fft1_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
 subroutine real2fourier_real(x, xG)
 ! Calculates Discrete Fourier Transform, with the same normalization as the
 ! Fourier Transform for periodic systems (which is Fourier Series).
@@ -141,6 +161,23 @@ t1 = clock()
 Ng = size(x, 1)
 xG = x
 call fft3_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+subroutine real2fourier1d_real(x, xG)
+! Calculates Discrete Fourier Transform, with the same normalization as the
+! Fourier Transform for periodic systems (which is Fourier Series).
+real(dp), intent(in) :: x(:)
+complex(dp), intent(out) :: xG(:)
+integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
+Ng = size(x, 1)
+xG = x
+call fft1_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
 xG = xG / size(x)     ! The proper normalization is to divide by N
 t2 = clock()
 fft_counter = fft_counter + 1
@@ -165,6 +202,24 @@ fft_counter = fft_counter + 1
 fft_time = fft_time + t2-t1
 end subroutine
 
+subroutine fourier2real1d_complex(xG, x)
+! Calculates Inverse Discrete Fourier Transform. xG must follow the same
+! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
+! will be equal to 'x':
+! call real2fourier(x, xG)
+! call fourier2real(xG, x2)
+complex(dp), intent(in) :: xG(:)
+complex(dp), intent(out) :: x(:)
+real(dp) :: t1, t2
+t1 = clock()
+x = xG
+call ifft1_inplace(x) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
+! The result is already normalized
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
 subroutine fourier2real_real(xG, x)
 ! Calculates Inverse Discrete Fourier Transform. xG must follow the same
 ! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
@@ -178,6 +233,32 @@ real(dp) :: t1, t2
 t1 = clock()
 tmp = xG
 call ifft3_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
+x = real(tmp, dp)       ! The result is already normalized
+if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
+    if (logging_info) then
+        print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+    end if
+end if
+! TODO: make this strict:
+!call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+subroutine fourier2real1d_real(xG, x)
+! Calculates Inverse Discrete Fourier Transform. xG must follow the same
+! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
+! will be equal to 'x':
+! call real2fourier(x, xG)
+! call fourier2real(xG, x2)
+complex(dp), intent(in) :: xG(:)
+real(dp), intent(out) :: x(:)
+complex(dp) :: tmp(size(xG,1))
+real(dp) :: t1, t2
+t1 = clock()
+tmp = xG
+call ifft1_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 x = real(tmp, dp)       ! The result is already normalized
 if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
     if (logging_info) then
