@@ -17,7 +17,7 @@ integer :: Ng
 real(dp), allocatable :: G(:), G2(:)
 real(dp), allocatable :: ne(:)
 real(dp), allocatable :: Xn(:), Vn(:)
-complex(dp), allocatable, dimension(:) :: psi, psi2, psi3, psiG
+complex(dp), allocatable, dimension(:) :: psi, psiG
 complex(dp), allocatable, dimension(:) :: dpsi
 real(dp) :: L
 integer :: i
@@ -26,20 +26,20 @@ real(dp) :: dt, psi_norm
 integer :: u
 real(dp) :: t
 
-Ng = 32
+Ng = 2048
 
-L = 1._dp
+L = 10._dp
 
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng), psi(Ng))
-allocate(psi2(Ng), psi3(Ng), psiG(Ng))
+allocate(psiG(Ng))
 allocate(dpsi(Ng))
 allocate(Xn(Ng), Vn(Ng))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-Vn = 30*(Xn-L/2)**2
-psi = gauss_x(Xn, 0.1_dp, L/2, -10._dp)
+Vn = 1e5_dp*(Xn-L/2)**2
+psi = gauss_x(Xn, 0.1_dp, L/2, 400._dp)
 
 dt = 1e-4_dp
 print *, "dt =", dt
@@ -70,33 +70,17 @@ print *, "norm of psi:", psi_norm
 
 t = 0
 
-psi2 = psi
-
-call real2fourier(psi2, psiG)
-call fourier2real(-G2*psiG, dpsi)
-psi = psi2 - i_*dt*(dpsi/2+Vn*psi2)
-
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "Initial norm of psi:", psi_norm
-psi = sqrt(nelec / psi_norm) * psi
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "norm of psi:", psi_norm
-
-
 do i = 1, 100
     t = t + dt
     print *, "iter =", i, "time =", t
 
-    psi3 = psi2; psi2 = psi
+    psi = psi * exp(-i_*Vn*dt/2)
+    call real2fourier(psi, psiG)
+    psiG = psiG * exp(-i_*G2*dt/2)
+    call fourier2real(psiG, psi)
+    psi = psi * exp(-i_*Vn*dt/2)
 
-    call real2fourier(psi2, psiG)
-    call fourier2real(-G2*psiG, dpsi)
-
-    psi = psi3 - 2*i_*dt*(dpsi/2+Vn*psi2)
     ne = real(psi*conjg(psi), dp)
-
     psi_norm = integral(L, ne)
     print *, "norm of psi:", psi_norm
 
