@@ -19,7 +19,8 @@ implicit none
 private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
     radial_potential_fourier, real2fourier, fourier2real, integralG, &
-    logging_info, integral, real_space_vectors, radial_density_fourier
+    logging_info, integral, real_space_vectors, radial_density_fourier, &
+    vtk_save
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
@@ -674,6 +675,44 @@ tmp = i_ * nG * Ven0G * exp(-i_*(G(:,:,:,1)*x+G(:,:,:,2)*y+G(:,:,:,3)*z))
 Fx = real(sum(G(:,:,:,1) * L**3 * tmp), dp)
 Fy = real(sum(G(:,:,:,2) * L**3 * tmp), dp)
 Fz = real(sum(G(:,:,:,3) * L**3 * tmp), dp)
+end subroutine
+
+subroutine vtk_save(filename, Xn, f)
+character(len=*), intent(in) :: filename
+real(dp), intent(in) :: Xn(:, :, :, :), f(:, :, :)
+
+integer :: Nx, Ny, Nz
+integer :: u
+
+Nx = size(Xn, 1)
+Ny = size(Xn, 2)
+Nz = size(Xn, 3)
+call assert(size(Xn, 4) == 3)
+
+call assert(size(f, 1) == Nx)
+call assert(size(f, 2) == Ny)
+call assert(size(f, 3) == Nz)
+
+open(newunit=u, file=filename, status="replace")
+write(u, "(a)") "# vtk DataFile Version 2.0"
+write(u, "(a)") "Function at a real space uniform grid"
+write(u, "(a)") "ASCII"
+write(u, "(a)") "DATASET RECTILINEAR_GRID"
+write(u, "(a, i8, i8, i8)") "DIMENSIONS", Nx, Ny, Nz
+
+write(u, "(a, ' ', i8, ' ', a)") "X_COORDINATES", Nx, "float"
+write(u, *) Xn(:, 1, 1, 1)
+write(u, "(a, ' ', i8, ' ', a)") "Y_COORDINATES", Ny, "float"
+write(u, *) Xn(1, :, 1, 2)
+write(u, "(a, ' ', i8, ' ', a)") "Z_COORDINATES", Nz, "float"
+write(u, *) Xn(1, 1, :, 3)
+
+write(u, "(a, ' ', i10)") "POINT_DATA", size(f)
+write(u, "(a)") "SCALARS MyFunction float"
+write(u, "(a)") "LOOKUP_TABLE default"
+write(u, *) f
+
+close(u)
 end subroutine
 
 end module

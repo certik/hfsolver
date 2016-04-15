@@ -8,10 +8,14 @@ implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
     stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random, &
-    zeros, mesh_exp, linspace, clock
+    zeros, mesh_exp, linspace, clock, strfmt
 
 interface str
     module procedure str_int, str_real, str_real_n
+end interface
+
+interface strfmt
+    module procedure strfmt_int, strfmt_real
 end interface
 
 contains
@@ -346,6 +350,46 @@ real(dp), intent(in) :: r
 integer, intent(in) :: n
 character(len=str_real_len(r, "(f0." // str_int(n) // ")")) :: s
 write(s, "(f0." // str_int(n) // ")") r
+end function
+
+pure integer function strfmt_int_len(fm, i) result(sz)
+! Returns the length of the string representation of 'i'
+character(len=*), intent(in) :: fm
+integer, intent(in) :: i
+integer, parameter :: MAX_STR = 100
+character(MAX_STR) :: s
+! If 's' is too short (MAX_STR too small), Fortan will abort with:
+! "Fortran runtime error: End of record"
+write(s, fm) i
+sz = len_trim(s)
+end function
+
+pure function strfmt_int(fm, i) result(s)
+! Converts integer "i" to string
+character(len=*), intent(in) :: fm
+integer, intent(in) :: i
+character(len=strfmt_int_len(fm, i)) :: s
+write(s, fm) i
+end function
+
+pure integer function strfmt_real_len(fm, r) result(sz)
+! Returns the length of the string representation of 'r'
+character(len=*), intent(in) :: fm
+real(dp), intent(in) :: r
+integer, parameter :: MAX_STR = 100
+character(MAX_STR) :: s
+! If 's' is too short (MAX_STR too small), Fortan will abort with:
+! "Fortran runtime error: End of record"
+write(s, fm) r
+sz = len_trim(s)
+end function
+
+pure function strfmt_real(fm, r) result(s)
+! Converts real "r" to string
+character(len=*), intent(in) :: fm
+real(dp), intent(in) :: r
+character(len=strfmt_real_len(fm, r)) :: s
+write(s, fm) r
 end function
 
 subroutine init_random()
