@@ -14,6 +14,7 @@ addprog(schroed2d)
 addprog(schroed3d)
 addprog(conv_poisson3d)
 addprog(ofmd)
+addprog(ofmd_time_propagation)
 
 if(WITH_BDDC)
     addprog(test_free_energy_bddc)
