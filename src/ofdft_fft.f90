@@ -29,6 +29,10 @@ integer, parameter :: update_polak_ribiere   = 2
 
 logical :: logging_info = .true.
 
+interface integral
+    module procedure integral3d, integral1d
+end interface
+
 interface integralG
     module procedure integralG_complex, integralG_real
 end interface
@@ -272,9 +276,14 @@ fft_counter = fft_counter + 1
 fft_time = fft_time + t2-t1
 end subroutine
 
-real(dp) function integral(L, f) result(r)
+real(dp) function integral3d(L, f) result(r)
 real(dp), intent(in) :: L, f(:, :, :)
 r = sum(f) * L**3 / size(f)
+end function
+
+real(dp) function integral1d(L, f) result(r)
+real(dp), intent(in) :: L, f(:)
+r = sum(f) * L / size(f)
 end function
 
 real(dp) function integralG_complex(L, fG) result(r)
