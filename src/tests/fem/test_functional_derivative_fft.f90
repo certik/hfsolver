@@ -9,7 +9,7 @@ use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
     fourier2real, real_space_vectors, vtk_save
 use constants, only: Ha2eV
-use utils, only: loadtxt, stop_error, assert, linspace, str
+use utils, only: loadtxt, stop_error, assert, linspace, strfmt
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc, positions_bcc
@@ -180,7 +180,7 @@ do i = 1, 1000
         psi_norm, dt, 1/maxval(abs(Hn))
     close(u)
 
-    !call vtk_save("data/iter" // str(i) // ".vtk", Xn, ne)
+    !call vtk_save("data/iter" // strfmt('(i0.6)', i) // ".vtk", Xn, ne)
 
 end do
 print *, "Done"
