@@ -45,6 +45,7 @@ end interface
 
 interface integralG
     module procedure integralG_complex, integralG_real
+    module procedure integralG_real_1d
 end interface
 
 interface real2fourier
@@ -337,6 +338,11 @@ end function
 real(dp) function integralG_real(fG, L) result(r)
 real(dp), intent(in) :: L, fG(:, :, :)
 r = sum(fG) * L**3
+end function
+
+real(dp) function integralG_real_1d(fG, L) result(r)
+real(dp), intent(in) :: L, fG(:)
+r = sum(fG) * L
 end function
 
 subroutine calc_dFdtheta(L, T_au, Ven, C1, C2, C3, psi, eta, theta, dFdtheta)
