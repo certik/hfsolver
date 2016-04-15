@@ -29,6 +29,11 @@ integer, parameter :: update_polak_ribiere   = 2
 
 logical :: logging_info = .true.
 
+interface real_space_vectors
+    module procedure real_space_vectors_1d
+    module procedure real_space_vectors_3d
+end interface
+
 interface integral
     module procedure integral3d, integral1d
 end interface
@@ -52,7 +57,7 @@ real(dp) :: fft_time
 
 contains
 
-subroutine real_space_vectors(L, X)
+subroutine real_space_vectors_3d(L, X)
 ! Calculates the real space vectors in the box [0, L]^3
 real(dp), intent(in) :: L
 ! X(i, j, k, :) is the 3D position vector of the point with index (i, j, k)
@@ -66,6 +71,16 @@ forall(i=1:Ng, j=1:Ng, k=1:Ng)
     X(i, j, k, 2) = X1D(j)
     X(i, j, k, 3) = X1D(k)
 end forall
+end subroutine
+
+subroutine real_space_vectors_1d(L, X)
+! Calculates the real space vectors in the box [0, L]
+real(dp), intent(in) :: L
+! X(i) is the 1D position vector of the point with index (i)
+real(dp), intent(out) :: X(:)
+integer :: Ng, i
+Ng = size(X, 1)
+forall(i=1:Ng) X(i) = (i-1) * L / Ng
 end subroutine
 
 subroutine reciprocal_space_vectors(L, G, G2)
