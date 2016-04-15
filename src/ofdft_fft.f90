@@ -34,6 +34,11 @@ interface real_space_vectors
     module procedure real_space_vectors_3d
 end interface
 
+interface reciprocal_space_vectors
+    module procedure reciprocal_space_vectors_1d
+    module procedure reciprocal_space_vectors_3d
+end interface
+
 interface integral
     module procedure integral3d, integral1d
 end interface
@@ -83,7 +88,7 @@ Ng = size(X, 1)
 forall(i=1:Ng) X(i) = (i-1) * L / Ng
 end subroutine
 
-subroutine reciprocal_space_vectors(L, G, G2)
+subroutine reciprocal_space_vectors_3d(L, G, G2)
 real(dp), intent(in) :: L
 ! G(:, :, :, i) where i=1, 2, 3 are the x, y, z components
 ! G2(:, :, :) are the squares of G
@@ -133,6 +138,17 @@ forall(i=1:Ng, j=1:Ng, k=1:Ng)
 end forall
 G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
+end subroutine
+
+subroutine reciprocal_space_vectors_1d(L, G, G2)
+real(dp), intent(in) :: L
+! G(:) are the x components
+! G2(:) are the squares of G
+real(dp), intent(out) :: G(:), G2(:)
+integer :: Ng, i
+Ng = size(G, 1)
+forall(i=1:Ng) G(i) = 2*pi/L * (i-1-Ng*nint((i-1.5_dp)/Ng))
+G2 = G**2
 end subroutine
 
 subroutine real2fourier_complex(x, xG)
