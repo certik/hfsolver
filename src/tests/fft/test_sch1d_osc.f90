@@ -23,7 +23,7 @@ real(dp) :: L
 integer :: i
 integer, parameter :: nelec = 1
 real(dp) :: dt, psi_norm, E_tot, omega
-integer :: u
+integer :: u, u2
 real(dp) :: t
 
 Ng = 16
@@ -46,17 +46,15 @@ psi = 1 / L
 dt = 1e-2_dp
 print *, "dt =", dt
 
-open(newunit=u, file="sch1d.txt", status="replace")
-close(u)
-
 open(newunit=u, file="sch1d_grid.txt", status="replace")
 write(u, *) Xn
 write(u, *) Vn
 close(u)
 
-open(newunit=u, file="sch1d_psi.txt", status="replace")
-write(u, *) real(psi, dp), aimag(psi)
-close(u)
+open(newunit=u, file="sch1d.txt", status="replace")
+
+open(newunit=u2, file="sch1d_psi.txt", status="replace")
+write(u2, *) real(psi, dp), aimag(psi)
 
 
 ! Do first step by hand:
@@ -94,16 +92,14 @@ do i = 1, 600
     print *, "E_tot       =", E_tot
     print *, "E_tot_exact =", omega/2
 
-    open(newunit=u, file="sch1d.txt", position="append", status="old")
     write(u, *) i, t, psi_norm, E_tot
-    close(u)
-
-    open(newunit=u, file="sch1d_psi.txt", position="append", status="old")
-    write(u, *) real(psi, dp), aimag(psi)
-    close(u)
+    write(u2, *) real(psi, dp), aimag(psi)
 
 end do
 print *, "Done"
+
+close(u)
+close(u2)
 
 print *, E_tot - omega/2
 call assert(abs(E_tot - omega/2) < 1e-9_dp)
