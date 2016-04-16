@@ -17,12 +17,12 @@ implicit none
 integer :: Ng
 real(dp), allocatable :: G(:), G2(:)
 real(dp), allocatable :: ne(:)
-real(dp), allocatable :: Xn(:), Vn(:)
-complex(dp), allocatable, dimension(:) :: psi, psiG
+real(dp), allocatable :: Xn(:), Vn(:), current(:)
+complex(dp), allocatable, dimension(:) :: psi, psiG, tmp, dpsi
 real(dp) :: L
 integer :: i
 integer, parameter :: nelec = 1
-real(dp) :: dt, psi_norm, E_tot, omega
+real(dp) :: dt, psi_norm, E_tot, omega, current_avg, Ex, E0, td, tw
 integer :: u, u2
 real(dp) :: t
 
@@ -32,7 +32,7 @@ L = 10._dp
 
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng), psi(Ng))
-allocate(psiG(Ng))
+allocate(psiG(Ng), tmp(Ng), dpsi(Ng), current(Ng))
 allocate(Xn(Ng), Vn(Ng))
 
 call real_space_vectors(L, Xn)
@@ -103,6 +103,54 @@ close(u2)
 
 print *, E_tot - omega/2
 call assert(abs(E_tot - omega/2) < 1e-9_dp)
+
+
+open(newunit=u, file="sch1d.txt", status="replace")
+
+open(newunit=u2, file="sch1d_psi.txt", status="replace")
+write(u2, *) real(psi, dp), aimag(psi)
+
+dt = 0.01_dp
+E0 = 0.01_dp
+td = 0.2_dp
+tw = 0.04_dp
+
+t = 0
+do i = 1, 2000
+    t = t + dt
+    print *, "iter =", i, "time =", t
+    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+
+    psi = psi * exp(-i_*(Vn+Xn*Ex)*dt/2)
+    call real2fourier(psi, psiG)
+    psiG = psiG * exp(-i_*G2*dt/2)
+    call fourier2real(psiG, psi)
+    psi = psi * exp(-i_*(Vn+Xn*Ex)*dt/2)
+
+    ne = real(psi*conjg(psi), dp)
+    psi_norm = integral(L, ne)
+    print *, "norm of psi:", psi_norm
+
+    call real2fourier(psi, psiG)
+    E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) &
+        + integral(L, (Vn+Xn*Ex)*ne)
+    print *, "E_tot       =", E_tot
+    print *, "E_tot_exact =", omega/2
+
+    call fourier2real(i_*G*psiG, dpsi)
+    tmp = (conjg(psi)*dpsi-psi*conjg(dpsi)) / (2*i_)
+    current = real(tmp, dp)
+    call assert(maxval(abs(aimag(tmp))) < epsilon(1._dp))
+    current_avg = integral(L, current)/L
+    print *, "average current =", current_avg
+
+    write(u, *) i, t, psi_norm, E_tot, current_avg, Ex
+    write(u2, *) real(psi, dp), aimag(psi)
+
+end do
+
+close(u)
+close(u2)
 
 contains
 
