@@ -26,7 +26,7 @@ real(dp) :: dt, psi_norm, E_tot, omega, current_avg, Ex, E0, td, tw
 integer :: u, u2
 real(dp) :: t
 
-Ng = 16
+Ng = 64
 
 L = 10._dp
 
@@ -38,7 +38,12 @@ allocate(Xn(Ng), Vn(Ng))
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
 omega = 1._dp
-Vn = omega**2 * (Xn-L/2)**2 / 2
+!Vn = omega**2 * (Xn-L/2)**2 / 2
+where (Xn > 9 .or. Xn < 1)
+    Vn = 1e10_dp
+else where
+    Vn = 0
+end where
 !Vn = reg_coulomb_x(Xn, 20._dp, L/2)
 !psi = gauss_x(Xn, 0.1_dp, L/2, 400._dp)
 psi = 1 / L
@@ -70,7 +75,7 @@ print *, "norm of psi:", psi_norm
 
 t = 0
 
-do i = 1, 600
+do i = 1, 1000
     t = t + dt
     print *, "iter =", i, "time =", t
 
@@ -101,8 +106,8 @@ print *, "Done"
 close(u)
 close(u2)
 
-print *, E_tot - omega/2
-call assert(abs(E_tot - omega/2) < 1e-9_dp)
+!print *, E_tot - omega/2
+!call assert(abs(E_tot - omega/2) < 1e-9_dp)
 
 
 open(newunit=u, file="sch1d.txt", status="replace")
@@ -110,16 +115,17 @@ open(newunit=u, file="sch1d.txt", status="replace")
 open(newunit=u2, file="sch1d_psi.txt", status="replace")
 write(u2, *) real(psi, dp), aimag(psi)
 
-dt = 0.01_dp
-E0 = 0.01_dp
+dt = 1e-4_dp
+E0 = 0.001_dp
 td = 0.2_dp
 tw = 0.04_dp
 
 t = 0
-do i = 1, 2000
+do i = 1, 10000
     t = t + dt
     print *, "iter =", i, "time =", t
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+!    Ex = 0
 
     psi = psi * exp(-i_*(Vn+Xn*Ex)*dt/2)
     call real2fourier(psi, psiG)
