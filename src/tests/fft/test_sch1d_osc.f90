@@ -112,7 +112,7 @@ td = 0.5_dp
 tw = 0.2_dp
 
 t = 0
-do i = 1, 10000
+do i = 1, 100000
     t = t + dt
     print *, "iter =", i, "time =", t
     !Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
