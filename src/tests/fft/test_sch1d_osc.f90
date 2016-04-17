@@ -53,7 +53,6 @@ close(u)
 open(newunit=u, file="sch1d.txt", status="replace")
 
 open(newunit=u2, file="sch1d_psi.txt", status="replace")
-write(u2, *) real(psi, dp), aimag(psi)
 
 
 ! Do first step by hand:
@@ -91,10 +90,11 @@ do i = 1, 2000
     print *, "E_tot       =", E_tot
 
     write(u, *) i, t, psi_norm, E_tot
-!    write(u2, *) real(psi, dp), aimag(psi)
 
 end do
 print *, "Done"
+
+write(u2, *) real(psi, dp), aimag(psi)
 
 close(u)
 close(u2)
