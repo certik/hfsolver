@@ -22,7 +22,7 @@ complex(dp), allocatable, dimension(:) :: psi, psiG, tmp, dpsi
 real(dp) :: L
 integer :: i
 integer, parameter :: nelec = 1
-real(dp) :: dt, psi_norm, E_tot, omega, current_avg, Ex, E0, td, tw
+real(dp) :: dt, psi_norm, E_tot, current_avg, Ex, E0, td, tw, a, V0, b
 integer :: u, u2
 real(dp) :: t
 
@@ -37,15 +37,9 @@ allocate(Xn(Ng), Vn(Ng))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-omega = 1._dp
-!Vn = omega**2 * (Xn-L/2)**2 / 2
-where (Xn > 9 .or. Xn < 1)
-    Vn = 1e10_dp
-else where
-    Vn = 0
-end where
-!Vn = reg_coulomb_x(Xn, 20._dp, L/2)
-!psi = gauss_x(Xn, 0.1_dp, L/2, 400._dp)
+a = 2
+b = 12
+Vn = -1/sqrt(a+(Xn-L/2)**b)
 psi = 1 / L
 
 dt = 1e-2_dp
@@ -75,7 +69,7 @@ print *, "norm of psi:", psi_norm
 
 t = 0
 
-do i = 1, 1000
+do i = 1, 2000
     t = t + dt
     print *, "iter =", i, "time =", t
 
@@ -95,10 +89,9 @@ do i = 1, 1000
     call real2fourier(psi, psiG)
     E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
     print *, "E_tot       =", E_tot
-    print *, "E_tot_exact =", omega/2
 
     write(u, *) i, t, psi_norm, E_tot
-    write(u2, *) real(psi, dp), aimag(psi)
+!    write(u2, *) real(psi, dp), aimag(psi)
 
 end do
 print *, "Done"
@@ -106,8 +99,8 @@ print *, "Done"
 close(u)
 close(u2)
 
-!print *, E_tot - omega/2
-!call assert(abs(E_tot - omega/2) < 1e-9_dp)
+stop "OK"
+
 
 
 open(newunit=u, file="sch1d.txt", status="replace")
@@ -141,7 +134,6 @@ do i = 1, 10000
     E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) &
         + integral(L, (Vn+Xn*Ex)*ne)
     print *, "E_tot       =", E_tot
-    print *, "E_tot_exact =", omega/2
 
     call fourier2real(i_*G*psiG, dpsi)
     tmp = (conjg(psi)*dpsi-psi*conjg(dpsi)) / (2*i_)
