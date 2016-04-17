@@ -22,13 +22,13 @@ complex(dp), allocatable, dimension(:) :: psi, psiG, tmp, dpsi
 real(dp) :: L
 integer :: i
 integer, parameter :: nelec = 1
-real(dp) :: dt, psi_norm, E_tot, current_avg, Ex, E0, td, tw, a, V0, b
+real(dp) :: dt, psi_norm, E_tot, current_avg, Ex, E0, td, tw, a, b
 integer :: u, u2
 real(dp) :: t
 
-Ng = 64
+Ng = 64 * 16
 
-L = 10._dp
+L = 10._dp * 16
 
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng), psi(Ng))
@@ -99,8 +99,6 @@ write(u2, *) real(psi, dp), aimag(psi)
 close(u)
 close(u2)
 
-stop "OK"
-
 
 
 open(newunit=u, file="sch1d.txt", status="replace")
@@ -108,17 +106,17 @@ open(newunit=u, file="sch1d.txt", status="replace")
 open(newunit=u2, file="sch1d_psi.txt", status="replace")
 write(u2, *) real(psi, dp), aimag(psi)
 
-dt = 1e-4_dp
-E0 = 0.001_dp
-td = 0.2_dp
-tw = 0.04_dp
+dt = 2.5e-3_dp
+E0 = 0.005_dp
+td = 0.5_dp
+tw = 0.2_dp
 
 t = 0
 do i = 1, 10000
     t = t + dt
     print *, "iter =", i, "time =", t
-    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
-!    Ex = 0
+    !Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(pi)*tw)
 
     psi = psi * exp(-i_*(Vn+Xn*Ex)*dt/2)
     call real2fourier(psi, psiG)
@@ -143,9 +141,11 @@ do i = 1, 10000
     print *, "average current =", current_avg
 
     write(u, *) i, t, psi_norm, E_tot, current_avg, Ex
-    write(u2, *) real(psi, dp), aimag(psi)
+!    write(u2, *) real(psi, dp), aimag(psi)
 
 end do
+
+write(u2, *) real(psi, dp), aimag(psi)
 
 close(u)
 close(u2)

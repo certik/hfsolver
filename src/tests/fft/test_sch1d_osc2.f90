@@ -23,12 +23,14 @@ real(dp) :: L
 integer :: i
 integer, parameter :: nelec = 1
 real(dp) :: dt, psi_norm, E_tot, current_avg, Ex, E0, td, tw, a, V0, b
-integer :: u, u2
+integer :: u, u2, Nmult
 real(dp) :: t
 
-Ng = 64
+Nmult = 16
 
-L = 10._dp
+Ng = 64 * Nmult
+
+L = 10._dp * Nmult
 
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng), psi(Ng))
@@ -40,81 +42,33 @@ call reciprocal_space_vectors(L, G, G2)
 a = 2
 b = 12
 Vn = -1/sqrt(a+(Xn-L/2)**b)
+
+open(newunit=u2, file="sch1d_psi2.txt", status="replace")
+write(u2, *) real(psi, dp), aimag(psi)
+
 psi = 1 / L
 
-dt = 1e-2_dp
-print *, "dt =", dt
 
-open(newunit=u, file="sch1d_grid.txt", status="replace")
+open(newunit=u, file="sch1d_grid2.txt", status="replace")
 write(u, *) Xn
 write(u, *) Vn
 close(u)
 
-open(newunit=u, file="sch1d.txt", status="replace")
 
-open(newunit=u2, file="sch1d_psi.txt", status="replace")
+open(newunit=u, file="sch1d2.txt", status="replace")
 
-
-! Do first step by hand:
-print *, "First step"
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "Initial norm of psi:", psi_norm
-psi = sqrt(nelec / psi_norm) * psi
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "norm of psi:", psi_norm
-
-
-t = 0
-
-do i = 1, 2000
-    t = t + dt
-    print *, "iter =", i, "time =", t
-
-    psi = psi * exp(-Vn*dt/2)
-    call real2fourier(psi, psiG)
-    psiG = psiG * exp(-G2*dt/2)
-    call fourier2real(psiG, psi)
-    psi = psi * exp(-Vn*dt/2)
-
-    ne = real(psi*conjg(psi), dp)
-    psi_norm = integral(L, ne)
-    psi = sqrt(nelec / psi_norm) * psi
-    ne = real(psi*conjg(psi), dp)
-    psi_norm = integral(L, ne)
-    print *, "norm of psi:", psi_norm
-
-    call real2fourier(psi, psiG)
-    E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
-    print *, "E_tot       =", E_tot
-
-    write(u, *) i, t, psi_norm, E_tot
-
-end do
-print *, "Done"
-
+open(newunit=u2, file="sch1d_psi2.txt", status="replace")
 write(u2, *) real(psi, dp), aimag(psi)
 
-close(u)
-close(u2)
-
-stop "OK"
-
-
-
-open(newunit=u, file="sch1d.txt", status="replace")
-
-open(newunit=u2, file="sch1d_psi.txt", status="replace")
-write(u2, *) real(psi, dp), aimag(psi)
-
-dt = 1e-4_dp
+dt = 1e-3_dp
 E0 = 0.001_dp
 td = 0.2_dp
 tw = 0.04_dp
 
+print *, "dt =", dt
+
 t = 0
-do i = 1, 10000
+do i = 1, 100
     t = t + dt
     print *, "iter =", i, "time =", t
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
