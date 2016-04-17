@@ -7,3 +7,4 @@ project(fft)
 
 addprog(sch1d_time_prop)
 addtest(test_sch1d_osc)
+addprog(test_sch1d_osc2)
