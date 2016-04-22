@@ -45,7 +45,7 @@ call fourier2real(G2/2+0*i_, psi)
 
 do j = 1, Ng
 do i = 1, Ng
-    k = i-j
+    k = i-j+1
     if (k < 1) k = k + Ng
     H(i,j) = psi(k) / Ng
 end do
