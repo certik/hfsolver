@@ -41,18 +41,18 @@ call reciprocal_space_vectors(L, G, G2)
 omega = 1._dp
 Vn = omega**2 * (Xn-L/2)**2 / 2
 
-call fourier2real(G2/2+0*i_, psi)
+call real2fourier(Vn, psiG)
 
 do j = 1, Ng
 do i = 1, Ng
-    k = i-j
+    k = i-j+1
     if (k < 1) k = k + Ng
-    H(i,j) = psi(k) / Ng
+    H(i,j) = psiG(k)
 end do
 end do
 
 do i = 1, Ng
-    H(i,i) = H(i,i) + Vn(i)
+    H(i,i) = H(i,i) + G2(i)/2
 end do
 
 lam = eigvals(H)
