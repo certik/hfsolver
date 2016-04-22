@@ -23,9 +23,9 @@ complex(dp), allocatable, dimension(:) :: psi, psiG, lam
 complex(dp), allocatable :: H(:,:)
 real(dp) :: L
 real(dp) :: dt, psi_norm, E_tot, omega
-integer :: i, j, k
+integer :: i, j, k, a, b
 
-Ng = 16
+Ng = 16*32
 
 L = 10._dp
 
@@ -39,7 +39,12 @@ allocate(lam(Ng))
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
 omega = 1._dp
-Vn = omega**2 * (Xn-L/2)**2 / 2
+!Vn = omega**2 * (Xn-L/2)**2 / 2
+
+a = 2
+b = 12
+Vn = -1/sqrt(a+(Xn-L/2)**b)
+
 
 call fourier2real(G2/2+0*i_, psi)
 
