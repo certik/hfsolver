@@ -9,7 +9,7 @@ use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
     fourier2real, real_space_vectors, vtk_save, integralG
-use utils, only: loadtxt, stop_error, assert, linspace, strfmt
+use utils, only: loadtxt, stop_error, assert, linspace, strfmt, init_random
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc, positions_bcc
@@ -25,6 +25,7 @@ integer, allocatable :: idx(:)
 real(dp) :: L
 real(dp) :: omega, lambda
 integer :: i, ai, aj, ak, bi, bj, bk, ci, cj, ck, a_idx, b_idx !, a, b
+complex(dp) :: lam0
 
 Ng = 8
 
@@ -104,46 +105,49 @@ do i = Ng**3, 1, -1
     print *, i, lam(idx(i))
 end do
 
-call power_iteration(H)
-call inverse_iteration(H, -0.339662_dp)
+call init_random()
+lam0 = power_iteration(H)
+print *, lam0
+lam0 = inverse_iteration(H, -0.339662_dp)
+print *, lam0
 
 !print *, "E_tot_exact =", 3*omega/2
 
 contains
 
-    subroutine power_iteration(A)
+    complex(dp) function power_iteration(A) result(lam)
     complex(dp), intent(in) :: A(:, :)
-    complex(dp) :: b(size(A, 1)), b2(size(A, 1)), lam
+    complex(dp) :: y(size(A, 1)), v(size(A, 1))
+    real(dp) :: y0(size(A, 1))
     integer :: i
-    b = 1
-    b = b / sqrt(sum(abs(b)**2))
+    call random_number(y0)
+    y = y0
     print *
     do i = 1, 40
-        b2 = matmul(A, b)
-        lam = dot_product(conjg(b), b2)
-        b = b2
-        b = b / sqrt(sum(abs(b)**2))
+        v = y / sqrt(sum(abs(y)**2))
+        y = matmul(A, v)
+        lam = dot_product(conjg(v), y)
         print *, i, lam
     end do
-    end subroutine
+    end function
 
-    subroutine power_iteration_inv(A)
+    complex(dp) function power_iteration_inv(A) result(lam)
     complex(dp), intent(in) :: A(:, :)
-    complex(dp) :: b(size(A, 1)), b2(size(A, 1)), lam
+    complex(dp) :: y(size(A, 1)), v(size(A, 1))
+    real(dp) :: y0(size(A, 1))
     integer :: i
-    b = 1
-    b = b / sqrt(sum(abs(b)**2))
+    call random_number(y0)
+    y = y0
     print *
     do i = 1, 40
-        b2 = solve(A, b)
-        lam = dot_product(conjg(b), b2)
-        b = b2
-        b = b / sqrt(sum(abs(b)**2))
+        v = y / sqrt(sum(abs(y)**2))
+        y = solve(A, v)
+        lam = dot_product(conjg(v), y)
         print *, i, lam
     end do
-    end subroutine
+    end function
 
-    subroutine inverse_iteration(A, mu)
+    complex(dp) function inverse_iteration(A, mu) result(lam)
     complex(dp), intent(in) :: A(:, :)
     real(dp), intent(in) :: mu
     complex(dp) :: M(size(A, 1), size(A, 2))
@@ -157,8 +161,10 @@ contains
     !print *, "inverting:"
     !M = inv(M)
     !print *, "done"
-    !call power_iteration(M)
-    call power_iteration_inv(M)
-    end subroutine
+    !lam = power_iteration(M)
+    lam = power_iteration_inv(M)
+
+    lam = mu + 1/lam
+    end function
 
 end program
