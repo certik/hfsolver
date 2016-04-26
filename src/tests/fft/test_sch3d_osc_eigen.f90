@@ -138,24 +138,29 @@ contains
     complex(dp) :: y(size(A, 1)), v(size(A, 1)), theta
     real(dp) :: y0(size(A, 1))
     integer :: i, N
+    logical, parameter :: invert = .false.
     N = size(A, 1)
     call assert(size(A, 2) == N)
     M = A
     do i = 1, N
         M(i,i) = M(i,i) - mu
     end do
-    !print *, "inverting:"
-    !M = inv(M)
-    !print *, "done"
-    !lam = power_iteration(M)
+    if (invert) then
+        print *, "inverting:"
+        M = inv(M)
+        print *, "done"
+    end if
 
     call random_number(y0)
     y = y0
     print *
     do i = 1, 40
         v = y / sqrt(sum(abs(y)**2))
-        !y = matmul(M, v)
-        y = solve(M, v)
+        if (invert) then
+            y = matmul(M, v)
+        else
+            y = solve(M, v)
+        end if
         theta = dot_product(conjg(v), y)
         lam = mu + 1/theta
         print *, i, lam
