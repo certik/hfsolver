@@ -108,7 +108,7 @@ end do
 call init_random()
 lam0 = power_iteration(H)
 print *, lam0
-lam0 = inverse_iteration(H, -0.339662_dp)
+lam0 = inverse_iteration(H, -0.25_dp)
 print *, lam0
 
 !print *, "E_tot_exact =", 3*omega/2
@@ -131,26 +131,12 @@ contains
     end do
     end function
 
-    complex(dp) function power_iteration_inv(A) result(lam)
-    complex(dp), intent(in) :: A(:, :)
-    complex(dp) :: y(size(A, 1)), v(size(A, 1))
-    real(dp) :: y0(size(A, 1))
-    integer :: i
-    call random_number(y0)
-    y = y0
-    print *
-    do i = 1, 40
-        v = y / sqrt(sum(abs(y)**2))
-        y = solve(A, v)
-        lam = dot_product(conjg(v), y)
-        print *, i, lam
-    end do
-    end function
-
     complex(dp) function inverse_iteration(A, mu) result(lam)
     complex(dp), intent(in) :: A(:, :)
     real(dp), intent(in) :: mu
     complex(dp) :: M(size(A, 1), size(A, 2))
+    complex(dp) :: y(size(A, 1)), v(size(A, 1)), theta
+    real(dp) :: y0(size(A, 1))
     integer :: i, N
     N = size(A, 1)
     call assert(size(A, 2) == N)
@@ -162,9 +148,18 @@ contains
     !M = inv(M)
     !print *, "done"
     !lam = power_iteration(M)
-    lam = power_iteration_inv(M)
 
-    lam = mu + 1/lam
+    call random_number(y0)
+    y = y0
+    print *
+    do i = 1, 40
+        v = y / sqrt(sum(abs(y)**2))
+        !y = matmul(M, v)
+        y = solve(M, v)
+        theta = dot_product(conjg(v), y)
+        lam = mu + 1/theta
+        print *, i, lam
+    end do
     end function
 
 end program
