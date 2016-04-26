@@ -23,7 +23,7 @@ complex(dp), allocatable, dimension(:) :: lam
 complex(dp), allocatable :: H(:,:), psi(:,:,:)
 integer, allocatable :: idx(:)
 real(dp) :: L
-real(dp) :: omega
+real(dp) :: omega, lambda
 integer :: i, ai, aj, ak, bi, bj, bk, ci, cj, ck, a_idx, b_idx !, a, b
 
 Ng = 8
@@ -37,9 +37,11 @@ allocate(lam(Ng**3), idx(Ng**3))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-omega = 1._dp
+!omega = 1._dp
 r = sqrt(sum((Xn-L/2)**2, dim=4))
-Vn = omega**2 * r**2 / 2
+!Vn = omega**2 * r**2 / 2
+lambda = 0.2_dp
+Vn = -exp(-lambda*r**2)
 
 !a = 2
 !b = 12
@@ -102,6 +104,6 @@ do i = Ng**3, 1, -1
     print *, i, lam(idx(i))
 end do
 
-print *, "E_tot_exact =", 3*omega/2
+!print *, "E_tot_exact =", 3*omega/2
 
 end program
