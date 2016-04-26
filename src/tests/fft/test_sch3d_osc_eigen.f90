@@ -13,7 +13,7 @@ use utils, only: loadtxt, stop_error, assert, linspace, strfmt
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc, positions_bcc
-use linalg, only: eigvals
+use linalg, only: eigvals, inv, solve
 use sorting, only: argsort
 implicit none
 integer :: Ng
@@ -104,6 +104,61 @@ do i = Ng**3, 1, -1
     print *, i, lam(idx(i))
 end do
 
+call power_iteration(H)
+call inverse_iteration(H, -0.339662_dp)
+
 !print *, "E_tot_exact =", 3*omega/2
+
+contains
+
+    subroutine power_iteration(A)
+    complex(dp), intent(in) :: A(:, :)
+    complex(dp) :: b(size(A, 1)), b2(size(A, 1)), lam
+    integer :: i
+    b = 1
+    b = b / sqrt(sum(abs(b)**2))
+    print *
+    do i = 1, 40
+        b2 = matmul(A, b)
+        lam = dot_product(conjg(b), b2)
+        b = b2
+        b = b / sqrt(sum(abs(b)**2))
+        print *, i, lam
+    end do
+    end subroutine
+
+    subroutine power_iteration_inv(A)
+    complex(dp), intent(in) :: A(:, :)
+    complex(dp) :: b(size(A, 1)), b2(size(A, 1)), lam
+    integer :: i
+    b = 1
+    b = b / sqrt(sum(abs(b)**2))
+    print *
+    do i = 1, 40
+        b2 = solve(A, b)
+        lam = dot_product(conjg(b), b2)
+        b = b2
+        b = b / sqrt(sum(abs(b)**2))
+        print *, i, lam
+    end do
+    end subroutine
+
+    subroutine inverse_iteration(A, mu)
+    complex(dp), intent(in) :: A(:, :)
+    real(dp), intent(in) :: mu
+    complex(dp) :: M(size(A, 1), size(A, 2))
+    integer :: i, N
+    N = size(A, 1)
+    call assert(size(A, 2) == N)
+    M = A
+    do i = 1, N
+        M(i,i) = M(i,i) - mu
+    end do
+    !print *, "inverting:"
+    !M = inv(M)
+    !print *, "done"
+    !call power_iteration(M)
+    call power_iteration_inv(M)
+    end subroutine
 
 end program
