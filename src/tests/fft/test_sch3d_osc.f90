@@ -17,12 +17,13 @@ use linalg, only: eigvals, inv, solve
 use sorting, only: argsort
 implicit none
 integer :: Ng
-real(dp), allocatable :: G(:,:,:,:), G2(:,:,:)
+real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), ne(:,:,:)
 real(dp), allocatable :: Xn(:,:,:,:), Vn(:,:,:), r(:,:,:)
 complex(dp), allocatable, dimension(:) :: lam
 complex(dp), allocatable :: H(:,:), psi(:,:,:)
 integer, allocatable :: idx(:)
-real(dp) :: L, dt, t
+integer, parameter :: nelec = 1
+real(dp) :: L, dt, t, psi_norm
 real(dp) :: omega, lambda
 integer :: i, ai, aj, ak, bi, bj, bk, ci, cj, ck, a_idx, b_idx !, a, b
 complex(dp) :: lam0
@@ -34,7 +35,7 @@ L = 10._dp
 allocate(G(Ng,Ng,Ng,3), G2(Ng,Ng,Ng), psi(Ng,Ng,Ng))
 allocate(Xn(Ng, Ng, Ng, 3), Vn(Ng, Ng, Ng), r(Ng, Ng, Ng))
 allocate(H(Ng**3, Ng**3))
-allocate(lam(Ng**3), idx(Ng**3), ne(Ng**3))
+allocate(lam(Ng**3), idx(Ng**3), ne(Ng,Ng,Ng))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
