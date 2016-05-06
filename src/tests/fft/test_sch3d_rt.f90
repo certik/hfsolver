@@ -22,11 +22,13 @@ complex(dp), allocatable :: psi(:,:,:), psiG(:,:,:), dpsi(:,:,:,:), tmp(:,:,:)
 integer, parameter :: nelec = 1
 real(dp) :: L, dt, t, psi_norm, E_tot, current_avg(3)
 real(dp) :: lambda, E0, Ex, td, tw
-integer :: i, j, u
+integer :: i, j, u, a, b, Nmult
 
-Ng = 32
+Nmult = 8
 
-L = 10._dp
+Ng = 8 * Nmult
+
+L = 10._dp * Nmult
 
 allocate(G(Ng,Ng,Ng,3), G2(Ng,Ng,Ng), psi(Ng,Ng,Ng))
 allocate(Xn(Ng, Ng, Ng, 3), Vn(Ng, Ng, Ng), r(Ng, Ng, Ng))
@@ -36,14 +38,17 @@ allocate(dpsi(Ng,Ng,Ng,3), current(Ng,Ng,Ng,3))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
+!lambda = 0.2_dp
+!Vn = -exp(-lambda*r**2)
+a = 2
+b = 12
 r = sqrt(sum((Xn-L/2)**2, dim=4))
-lambda = 0.2_dp
-Vn = -exp(-lambda*r**2)
+Vn = -3/sqrt(a+r**b)
 
 ne = 1 / L**3
 psi = sqrt(ne)
 
-dt = 1e-1_dp
+dt = 0.1_dp
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -86,13 +91,13 @@ print *, "Real Time Propagation:"
 
 open(newunit=u, file="cond.txt", status="replace")
 
-dt = 1e-3_dp
+dt = 1e-2_dp
 E0 = 0.001_dp
 td = 0.2_dp
 tw = 0.04_dp
 t = 0
 
-do i = 1, 50
+do i = 1, 5000
     t = t + dt
     print *, "iter =", i, "time =", t
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
