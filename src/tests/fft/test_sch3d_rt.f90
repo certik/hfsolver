@@ -22,7 +22,7 @@ complex(dp), allocatable :: psi(:,:,:), psiG(:,:,:), dpsi(:,:,:,:), tmp(:,:,:)
 integer, parameter :: nelec = 1
 real(dp) :: L, dt, t, psi_norm, E_tot, current_avg(3)
 real(dp) :: lambda, E0, Ex, td, tw
-integer :: i, j
+integer :: i, j, u
 
 Ng = 32
 
@@ -82,12 +82,15 @@ do i = 1, 100
 end do
 
 print *
-print *, "Real Time Propagaton:"
+print *, "Real Time Propagation:"
+
+open(newunit=u, file="cond.txt", status="replace")
 
 dt = 1e-3_dp
 E0 = 0.001_dp
 td = 0.2_dp
 tw = 0.04_dp
+t = 0
 
 do i = 1, 50
     t = t + dt
@@ -123,6 +126,10 @@ do i = 1, 50
     print *, "average current Y =", current_avg(2)
     print *, "average current Z =", current_avg(3)
 
+    write(u, *) i, t, Ex, E_tot, psi_norm, current_avg
+
 end do
+
+close(u)
 
 end program
