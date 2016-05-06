@@ -3,7 +3,7 @@ program test_sch3d_rt
 ! 3D RT
 
 use types, only: dp
-use constants, only: i_
+use constants, only: i_, pi
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
@@ -21,7 +21,7 @@ real(dp), allocatable :: Xn(:,:,:,:), Vn(:,:,:), r(:,:,:)
 complex(dp), allocatable :: psi(:,:,:), psiG(:,:,:)
 integer, parameter :: nelec = 1
 real(dp) :: L, dt, t, psi_norm, E_tot
-real(dp) :: lambda
+real(dp) :: lambda, E0, Ex, td, tw
 integer :: i
 
 Ng = 32
@@ -84,16 +84,20 @@ print *
 print *, "Real Time Propagaton:"
 
 dt = 1e-3_dp
+E0 = 0.001_dp
+td = 0.2_dp
+tw = 0.04_dp
 
 do i = 1, 50
     t = t + dt
     print *, "iter =", i, "time =", t
+    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
 
-    psi = psi * exp(-i_*Vn*dt/2)
+    psi = psi * exp(-i_*(Vn+Xn(:,:,:,1)*Ex)*dt/2)
     call real2fourier(psi, psiG)
     psiG = psiG * exp(-i_*G2*dt/2)
     call fourier2real(psiG, psi)
-    psi = psi * exp(-i_*Vn*dt/2)
+    psi = psi * exp(-i_*(Vn+Xn(:,:,:,1)*Ex)*dt/2)
 
     ne = real(psi*conjg(psi), dp)
     psi_norm = integral(L, ne)
