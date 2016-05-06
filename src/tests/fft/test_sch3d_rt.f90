@@ -20,11 +20,11 @@ real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), ne(:,:,:)
 real(dp), allocatable :: Xn(:,:,:,:), Vn(:,:,:), r(:,:,:), current(:,:,:,:)
 complex(dp), allocatable :: psi(:,:,:), psiG(:,:,:), dpsi(:,:,:,:), tmp(:,:,:)
 integer, parameter :: nelec = 1
-real(dp) :: L, dt, t, psi_norm, E_tot, current_avg(3)
+real(dp) :: L, dt, t, psi_norm, E_tot, current_avg(3), r0(3)
 real(dp) :: lambda, E0, Ex, td, tw
-integer :: i, j, u, a, b, Nmult
+integer :: i, j, k, u, a, b, Nmult
 
-Nmult = 8
+Nmult = 4
 
 Ng = 8 * Nmult
 
@@ -42,8 +42,20 @@ call reciprocal_space_vectors(L, G, G2)
 !Vn = -exp(-lambda*r**2)
 a = 2
 b = 12
-r = sqrt(sum((Xn-L/2)**2, dim=4))
-Vn = -3/sqrt(a+r**b)
+Vn = 0
+do i = 1, Nmult
+do j = 1, Nmult
+do k = 1, Nmult
+    r0 = (2*[i,j,k]-1)*L/(2*Nmult)
+    r = sqrt( &
+            (Xn(:,:,:,1)-r0(1))**2 + &
+            (Xn(:,:,:,2)-r0(2))**2 + &
+            (Xn(:,:,:,3)-r0(3))**2 &
+        )
+    Vn = Vn + (-3/sqrt(a+r**b))
+end do
+end do
+end do
 
 ne = 1 / L**3
 psi = sqrt(ne)
