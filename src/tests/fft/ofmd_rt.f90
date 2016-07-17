@@ -3,7 +3,7 @@ program ofmd_rt
 ! Real time (RT) propagation using OFMD.
 
 use types, only: dp
-use constants, only: i_
+use constants, only: i_, pi
 use ofdft, only: read_pseudo
 use ofdft_fft, only: free_energy, radial_potential_fourier, &
     reciprocal_space_vectors, free_energy_min, real2fourier, integral, &
@@ -28,7 +28,7 @@ integer :: i, j
 integer, parameter :: natom = 1
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
-real(dp) :: E0, t, omega, current_avg(3), conductivity
+real(dp) :: E0, t, current_avg(3), Ex, td, tw
 
 Ng = 32
 
@@ -90,7 +90,16 @@ print *, "Propagation"
 ! Propagate
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
-dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
+! This is an automatic way to get the time step, but for now we leave it
+! commented out and set the time step by hand below:
+!dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
+
+! Set the time step by hand:
+dt = 1e-2_dp
+
+E0 = 0.001_dp
+td = 0.2_dp
+tw = 0.04_dp
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -99,28 +108,22 @@ psi = sqrt(ne)
 
 t = 0
 
-psi2 = psi
-psi = psi2 - i_*dt*Hn*psi2
-
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "Initial norm of psi:", psi_norm
-psi = sqrt(natom / psi_norm) * psi
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "norm of psi:", psi_norm
-
-E0 = 1e-3_dp
-omega = 0.05
-
 do i = 1, 10
     t = t + dt
     print *, "iter =", i, "time =", t
-    psi3 = psi2; psi2 = psi
-    psi = psi3 - 2*i_*dt*(Hn + E0*Xn(:,:,:,1)*sin(omega*t))*psi2
+    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+
+    psi = psi * exp(-i_*(Hn+Xn(:,:,:,1)*Ex)*dt/2)
+! There is no Laplace operator, so this is skipped:
+!    call real2fourier(psi, psiG)
+!    psiG = psiG * exp(-i_*G2*dt/2)
+!    call fourier2real(psiG, psi)
+    psi = psi * exp(-i_*(Hn+Xn(:,:,:,1)*Ex)*dt/2)
+
     ne = real(psi*conjg(psi), dp)
     call real2fourier(psi, psiG)
-    psiG(1,1,1) = 0
+    ! This is probably not needed, so it's commented out:
+    !psiG(1,1,1) = 0
     do j = 1, 3
         call fourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j))
         tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
@@ -148,11 +151,8 @@ do i = 1, 10
     do j = 1, 3
         current_avg(j) = integral(L, current(:, :, :, j))/L**3
     end do
-    print *, "E field along the 'x' direction =", E0*sin(omega*t)
     print *, "average current =", current_avg
     print *, "current normalized =", current_avg / current_avg(1)
-    conductivity = current_avg(1) / E0*sin(omega*t)
-    print *, "conductivity along the 'x' direction =", conductivity
 
 end do
 print *, "Done"
