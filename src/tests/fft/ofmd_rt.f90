@@ -25,7 +25,7 @@ complex(dp), allocatable, dimension(:,:,:) :: VenG, psi, psi2, psi3, psiG, tmp
 complex(dp), allocatable, dimension(:,:,:,:) :: dpsi
 real(dp) :: L, T_eV, T_au
 integer :: i, j
-integer, parameter :: natom = 4
+integer, parameter :: natom = 1
 real(dp) :: X(3, natom), alpha_nen, mu, dt, psi_norm
 integer :: cg_iter
 real(dp) :: E0, t, omega, current_avg(3), conductivity
@@ -52,7 +52,9 @@ print *, "    Done."
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-call positions_fcc(X, L)
+!call positions_fcc(X, L)
+! Put the single atom into the middle of the box [0, L]^3.
+X(:, 1) = [L/2, L/2, L/2]
 VenG = 0
 do i = 1, natom
     VenG = VenG - Ven0G * exp(-i_ * &
