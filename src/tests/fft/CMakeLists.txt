@@ -6,6 +6,7 @@ endmacro(ADDPROG)
 project(fft)
 
 addprog(sch1d_time_prop)
+addprog(ofmd_rt)
 addtest(test_sch1d_osc)
 addtest(test_sch1d_osc_eigen)
 addtest(test_sch3d_osc)
