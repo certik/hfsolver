@@ -13,7 +13,8 @@ use optimize, only: bracket, brent, parabola_vertex
 use ofdft, only: f
 use xc, only: xc_pz, xc_pz2
 use utils, only: stop_error, assert, clock
-use fourier, only: fft3_inplace, ifft3_inplace
+use fourier, only: fft3_inplace, ifft3_inplace, &
+    fft1_inplace => fft_pass_inplace, ifft1_inplace
 use integration, only: integrate_trapz_1
 implicit none
 private
@@ -28,16 +29,33 @@ integer, parameter :: update_polak_ribiere   = 2
 
 logical :: logging_info = .true.
 
+interface real_space_vectors
+    module procedure real_space_vectors_1d
+    module procedure real_space_vectors_3d
+end interface
+
+interface reciprocal_space_vectors
+    module procedure reciprocal_space_vectors_1d
+    module procedure reciprocal_space_vectors_3d
+end interface
+
+interface integral
+    module procedure integral3d, integral1d
+end interface
+
 interface integralG
     module procedure integralG_complex, integralG_real
+    module procedure integralG_real_1d
 end interface
 
 interface real2fourier
     module procedure real2fourier_complex, real2fourier_real
+    module procedure real2fourier1d_complex, real2fourier1d_real
 end interface
 
 interface fourier2real
     module procedure fourier2real_complex, fourier2real_real
+    module procedure fourier2real1d_complex, fourier2real1d_real
 end interface
 
 integer :: fft_counter
@@ -45,7 +63,7 @@ real(dp) :: fft_time
 
 contains
 
-subroutine real_space_vectors(L, X)
+subroutine real_space_vectors_3d(L, X)
 ! Calculates the real space vectors in the box [0, L]^3
 real(dp), intent(in) :: L
 ! X(i, j, k, :) is the 3D position vector of the point with index (i, j, k)
@@ -61,7 +79,17 @@ forall(i=1:Ng, j=1:Ng, k=1:Ng)
 end forall
 end subroutine
 
-subroutine reciprocal_space_vectors(L, G, G2)
+subroutine real_space_vectors_1d(L, X)
+! Calculates the real space vectors in the box [0, L]
+real(dp), intent(in) :: L
+! X(i) is the 1D position vector of the point with index (i)
+real(dp), intent(out) :: X(:)
+integer :: Ng, i
+Ng = size(X, 1)
+forall(i=1:Ng) X(i) = (i-1) * L / Ng
+end subroutine
+
+subroutine reciprocal_space_vectors_3d(L, G, G2)
 real(dp), intent(in) :: L
 ! G(:, :, :, i) where i=1, 2, 3 are the x, y, z components
 ! G2(:, :, :) are the squares of G
@@ -113,6 +141,17 @@ G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
+subroutine reciprocal_space_vectors_1d(L, G, G2)
+real(dp), intent(in) :: L
+! G(:) are the x components
+! G2(:) are the squares of G
+real(dp), intent(out) :: G(:), G2(:)
+integer :: Ng, i
+Ng = size(G, 1)
+forall(i=1:Ng) G(i) = 2*pi/L * (i-1-Ng*nint((i-1.5_dp)/Ng))
+G2 = G**2
+end subroutine
+
 subroutine real2fourier_complex(x, xG)
 ! Calculates Discrete Fourier Transform, with the same normalization as the
 ! Fourier Transform for periodic systems (which is Fourier Series).
@@ -124,6 +163,23 @@ t1 = clock()
 Ng = size(x, 1)
 xG = x
 call fft3_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+subroutine real2fourier1d_complex(x, xG)
+! Calculates Discrete Fourier Transform, with the same normalization as the
+! Fourier Transform for periodic systems (which is Fourier Series).
+complex(dp), intent(in) :: x(:)
+complex(dp), intent(out) :: xG(:)
+integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
+Ng = size(x, 1)
+xG = x
+call fft1_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
 xG = xG / size(x)     ! The proper normalization is to divide by N
 t2 = clock()
 fft_counter = fft_counter + 1
@@ -147,6 +203,23 @@ fft_counter = fft_counter + 1
 fft_time = fft_time + t2-t1
 end subroutine
 
+subroutine real2fourier1d_real(x, xG)
+! Calculates Discrete Fourier Transform, with the same normalization as the
+! Fourier Transform for periodic systems (which is Fourier Series).
+real(dp), intent(in) :: x(:)
+complex(dp), intent(out) :: xG(:)
+integer :: Ng
+real(dp) :: t1, t2
+t1 = clock()
+Ng = size(x, 1)
+xG = x
+call fft1_inplace(xG) ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+xG = xG / size(x)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
 subroutine fourier2real_complex(xG, x)
 ! Calculates Inverse Discrete Fourier Transform. xG must follow the same
 ! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
@@ -159,6 +232,24 @@ real(dp) :: t1, t2
 t1 = clock()
 x = xG
 call ifft3_inplace(x) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
+! The result is already normalized
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+subroutine fourier2real1d_complex(xG, x)
+! Calculates Inverse Discrete Fourier Transform. xG must follow the same
+! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
+! will be equal to 'x':
+! call real2fourier(x, xG)
+! call fourier2real(xG, x2)
+complex(dp), intent(in) :: xG(:)
+complex(dp), intent(out) :: x(:)
+real(dp) :: t1, t2
+t1 = clock()
+x = xG
+call ifft1_inplace(x) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 ! The result is already normalized
 t2 = clock()
 fft_counter = fft_counter + 1
@@ -191,9 +282,40 @@ fft_counter = fft_counter + 1
 fft_time = fft_time + t2-t1
 end subroutine
 
-real(dp) function integral(L, f) result(r)
+subroutine fourier2real1d_real(xG, x)
+! Calculates Inverse Discrete Fourier Transform. xG must follow the same
+! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
+! will be equal to 'x':
+! call real2fourier(x, xG)
+! call fourier2real(xG, x2)
+complex(dp), intent(in) :: xG(:)
+real(dp), intent(out) :: x(:)
+complex(dp) :: tmp(size(xG,1))
+real(dp) :: t1, t2
+t1 = clock()
+tmp = xG
+call ifft1_inplace(tmp) ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
+x = real(tmp, dp)       ! The result is already normalized
+if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
+    if (logging_info) then
+        print *, "INFO: fourier2real() max imaginary part:", maxval(aimag(tmp))
+    end if
+end if
+! TODO: make this strict:
+!call assert(maxval(abs(aimag(tmp))) < 1e-1_dp)
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
+end subroutine
+
+real(dp) function integral3d(L, f) result(r)
 real(dp), intent(in) :: L, f(:, :, :)
 r = sum(f) * L**3 / size(f)
+end function
+
+real(dp) function integral1d(L, f) result(r)
+real(dp), intent(in) :: L, f(:)
+r = sum(f) * L / size(f)
 end function
 
 real(dp) function integralG_complex(L, fG) result(r)
@@ -216,6 +338,11 @@ end function
 real(dp) function integralG_real(fG, L) result(r)
 real(dp), intent(in) :: L, fG(:, :, :)
 r = sum(fG) * L**3
+end function
+
+real(dp) function integralG_real_1d(fG, L) result(r)
+real(dp), intent(in) :: L, fG(:)
+r = sum(fG) * L
 end function
 
 subroutine calc_dFdtheta(L, T_au, Ven, C1, C2, C3, psi, eta, theta, dFdtheta)
