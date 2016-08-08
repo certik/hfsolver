@@ -41,7 +41,7 @@ close(u)
 print *, "Done."
 
 print *, "Unfolding positions..."
-call unfold_positions(L, X, Xu)
+call unfold_positions([L, L, L], X, Xu)
 print *, "Done."
 do i = 1, steps
     com(:, i) = sum(spread(m, 1, 3) * Xu(:, :, i), dim=2) / sum(m)
