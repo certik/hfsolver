@@ -91,20 +91,18 @@ subroutine unfold_positions(L, X, Xu)
 ! first time step as a reference and then tracks them as they evolve possibly
 ! outside of this box. The X and Xu arrays are of the type X(:, j, i), which
 ! are the (x,y,z) coordinates of the j-th particle in the i-th time step.
-real(dp), intent(in) :: L ! Box length
+real(dp), intent(in) :: L(3) ! Box x-, y- and z-length
 ! Positions in [0, L]^3 with possible jumps:
 real(dp), intent(in) :: X(:, :, :)
 ! Unwinded positions in (-oo, oo)^3 with no jumps (continuous):
 real(dp), intent(out) :: Xu(:, :, :)
-real(dp) :: d(3), Xj(3)
+real(dp) :: d(3)
 integer :: i, j
 Xu(:, :, 1) = X(:, :, 1)
 do i = 2, size(X, 3)
     do j = 1, size(X, 2)
-        Xj = X(:, j, i-1) - X(:, j, i) + [L/2, L/2, L/2]
-        Xj = Xj - L*floor(Xj/L)
-        d = [L/2, L/2, L/2] - Xj
-        Xu(:, j, i) = Xu(:, j, i-1) + d
+        d = X(:, j, i) - X(:, j, i-1)
+        Xu(:, j, i) = Xu(:, j, i-1) + d + L*floor(d/L + 1._dp/2)
     end do
 end do
 end subroutine
