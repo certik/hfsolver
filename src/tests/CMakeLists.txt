@@ -58,6 +58,7 @@ ADDTEST(test_sparse)
 
 ADDTEST(test_fourier)
 ADDTEST(test_ffte)
+ADDTEST(test_ffte_par)
 
 ADDTEST(test_brent)
 
