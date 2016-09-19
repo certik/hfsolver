@@ -4,7 +4,7 @@ use constants, only: pi
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
-use utils, only: assert, init_random, stop_error, get_int_arg
+use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: ffte_fft3_inplace => fft3_inplace, &
     ffte_ifft3_inplace => ifft3_inplace, pfft3, pfft3_init, pifft3
 use openmp, only: omp_get_wtime
@@ -49,9 +49,9 @@ if (myid == 0) then
             print *, "test_ffte_par L(3) Ng(3) nsub(3)"
             call stop_error("Incorrect number of arguments.")
         end if
-        L(1) = get_int_arg(1)
-        L(2) = get_int_arg(2)
-        L(3) = get_int_arg(3)
+        L(1) = get_float_arg(1)
+        L(2) = get_float_arg(2)
+        L(3) = get_float_arg(3)
         Ng(1) = get_int_arg(4)
         Ng(2) = get_int_arg(5)
         Ng(3) = get_int_arg(6)
