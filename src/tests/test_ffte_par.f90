@@ -7,9 +7,9 @@ use utils, only: assert, init_random, stop_error, get_int_arg
 use ffte, only: ffte_fft3_inplace => fft3_inplace, &
     ffte_ifft3_inplace => ifft3_inplace, pfft3, pfft3_init, pifft3
 use openmp, only: omp_get_wtime
-use mpi_interface, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
-    mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, mpi_bcast_ints, &
-    mpi_barrier, MPI_DOUBLE_PRECISION, MPI_SUM
+use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
+    mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
+    mpi_barrier, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_bcast, mpi_allreduce
 use ofdft_fft, only: reciprocal_space_vectors, real_space_vectors
 implicit none
 
@@ -59,7 +59,7 @@ if (myid == 0) then
         call stop_error("nsub(1) must be equal to 1")
     end if
 end if
-call mpi_bcast_ints(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 
 myxyz = [0, myid/nsub(2), mod(myid, nsub(2))]
 
