@@ -54,6 +54,7 @@ set(SRC
     ofdft_fft.f90
     ofdft_fe.f90
     md.f90
+    bsplines.f90
 
     ewald.f90
 
