@@ -14,9 +14,9 @@ implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: x3, x3d, x3d2, x3d3
 real(dp) :: tmp
-real(dp) :: t1, t2
 integer :: l, m, n, i, j, k
 integer :: Ng(3)
+real(dp) :: t1, t2, t3
 
 !  parallel variables
 integer :: myid, comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -80,9 +80,17 @@ end do
 end do
 x3d = x3
 call pfft3_init(Ng)
+call cpu_time(t1)
 call pfft3(x3d, x3d2, commy, commz, Ng, nsub)
+call cpu_time(t2)
 call pifft3(x3d2, x3d3, commy, commz, Ng, nsub)
-print *, myid, maxval(abs(x3 - x3d3))
+call cpu_time(t3)
+if (myid == 0) then
+    print *, myid, maxval(abs(x3 - x3d3))
+    print *, "Timings (t, t*nproc):"
+    print *, t2-t1, (t2-t1)*nproc
+    print *, t3-t2, (t3-t2)*nproc
+end if
 call assert(all(abs(x3 - x3d3) < 5e-15_dp))
 deallocate(x3, x3d, x3d2, x3d3)
 
