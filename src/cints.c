@@ -50,6 +50,16 @@ void fact_init()
         fact[i] = fact_impl(i);
 }
 
+int fact_ratio2(int a, int b){ return fact[a]/fact[b]/fact[a-2*b]; }
+
+int binomial(int a, int b){return fact[a]/(fact[b]*fact[a-b]);}
+
+int fact2(int n){ /* double factorial function = 1*3*5*...*n */
+  if (n <= 1) return 1;
+  return n*fact2(n-2);
+}
+
+
 double fB(int i, int l1, int l2, double px, double ax, double bx, 
 		 int r, double g){
   return binomial_prefactor(i,l1,l2,px-ax,px-bx)*Bfunc(i,r,g);
@@ -296,12 +306,6 @@ double *A_array(int l1, int l2, double PA, double PB,
   return A;
 }
 
-
-int fact2(int n){ /* double factorial function = 1*3*5*...*n */
-  if (n <= 1) return 1;
-  return n*fact2(n-2);
-}
-
 double dist2(double x1, double y1, double z1,
 		    double x2, double y2, double z2){
   return (x1-x2)*(x1-x2)+(y1-y2)*(y1-y2)+(z1-z2)*(z1-z2);
@@ -319,8 +323,6 @@ double binomial_prefactor(int s, int ia, int ib, double xpa, double xpb){
       sum += binomial(ia,s-t)*binomial(ib,t)*pow(xpa,ia-s+t)*pow(xpb,ib-t);
   return sum;
 } 
-
-int binomial(int a, int b){return fact[a]/(fact[b]*fact[a-b]);}
 
 int ijkl2intindex(int i, int j, int k, int l){
   int tmp,ij,kl;
@@ -343,8 +345,6 @@ int ijkl2intindex(int i, int j, int k, int l){
   }
   return ij*(ij+1)/2+kl;
 }
-
-int fact_ratio2(int a, int b){ return fact[a]/fact[b]/fact[a-2*b]; }
 
 double product_center_1D(double alphaa, double xa, 
 			 double alphab, double xb){
