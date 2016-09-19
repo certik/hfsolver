@@ -8,7 +8,7 @@ implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
     stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random, &
-    zeros, mesh_exp, linspace, clock, strfmt
+    zeros, mesh_exp, linspace, clock, strfmt, get_int_arg
 
 interface str
     module procedure str_int, str_real, str_real_n
@@ -474,6 +474,29 @@ if (with_openmp()) then
     r = omp_get_wtime()
 else
     call cpu_time(r)
+end if
+end function
+
+
+integer function get_int_arg(i) result(r)
+integer, intent(in) :: i
+integer, parameter :: maxlen=32
+character(len=maxlen) :: arg
+integer :: s
+if (.not. (0 < i .and. i <= command_argument_count())) then
+    call stop_error("get_int_arg: `i` must satisfy `0 < i <= arg_count`.")
+end if
+call get_command_argument(i, arg, status=s)
+if (s == -1) then
+    call stop_error("get_int_arg: Argument too long, increase `maxlen`.")
+else if (s > 0) then
+    call stop_error("get_int_arg: Argument retrieval failed.")
+else if (s /= 0) then
+    call stop_error("get_int_arg: Unknown error.")
+end if
+read(arg, *, iostat=s) r
+if (s /= 0) then
+    call stop_error("get_int_arg: Failed to convert an argument to integer.")
 end if
 end function
 
