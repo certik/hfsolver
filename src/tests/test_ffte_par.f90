@@ -57,10 +57,12 @@ if (myid == 0) then
 end if
 call mpi_bcast_ints(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 
-myxyz = [0, myid/nsub(3), mod(myid, nsub(3))]
+myxyz = [0, myid/nsub(2), mod(myid, nsub(2))]
 
 call mpi_comm_split(comm_all, myxyz(2), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(3), 0, commz, ierr)
+
+myxyz = [0, mod(myid, nsub(2)), myid/nsub(2)]
 
 Ng = 32
 Ng_local = Ng / nsub
