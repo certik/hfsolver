@@ -65,17 +65,13 @@ contains
 
 subroutine real_space_vectors_3d(L, X)
 ! Calculates the real space vectors in the box [0, L]^3
-real(dp), intent(in) :: L
+real(dp), intent(in) :: L(:)
 ! X(i, j, k, :) is the 3D position vector of the point with index (i, j, k)
 real(dp), intent(out) :: X(:, :, :, :)
-real(dp) :: X1D(size(X, 1))
-integer :: Ng, i, j, k
-Ng = size(X, 1)
-forall(i=1:Ng) X1D(i) = (i-1) * L / Ng
-forall(i=1:Ng, j=1:Ng, k=1:Ng)
-    X(i, j, k, 1) = X1D(i)
-    X(i, j, k, 2) = X1D(j)
-    X(i, j, k, 3) = X1D(k)
+integer :: Ng(3), i, j, k
+Ng = [size(X,1), size(X,2), size(X,3)]
+forall(i=1:Ng(1), j=1:Ng(2), k=1:Ng(3))
+    X(i, j, k, :) = ([i, j, k] - 1) * L / Ng
 end forall
 end subroutine
 
@@ -90,13 +86,12 @@ forall(i=1:Ng) X(i) = (i-1) * L / Ng
 end subroutine
 
 subroutine reciprocal_space_vectors_3d(L, G, G2)
-real(dp), intent(in) :: L
+real(dp), intent(in) :: L(:)
 ! G(:, :, :, i) where i=1, 2, 3 are the x, y, z components
 ! G2(:, :, :) are the squares of G
 real(dp), intent(out) :: G(:, :, :, :), G2(:, :, :)
-real(dp) :: G1D(size(G, 1))
-integer :: Ng, i, j, k
-Ng = size(G, 1)
+integer :: Ng(3), i, j, k
+Ng = shape(G2)
 ! The FFT frequencies are ordered as follows
 !
 !     G1D(1:Ng) = 2*pi*k/L,
@@ -131,11 +126,8 @@ Ng = size(G, 1)
 !     forall(i=1:Ng) k(i) = i-1 - Ng*nint((i-1.5_dp)/Ng)
 !
 ! That is the formula that we use below:
-forall(i=1:Ng) G1D(i) = 2*pi/L * (i-1-Ng*nint((i-1.5_dp)/Ng))
-forall(i=1:Ng, j=1:Ng, k=1:Ng)
-    G(i, j, k, 1) = G1D(i)
-    G(i, j, k, 2) = G1D(j)
-    G(i, j, k, 3) = G1D(k)
+forall(i=1:Ng(1), j=1:Ng(2), k=1:Ng(3))
+    G(i, j, k, :) = 2*pi/L * ([i,j,k] - 1 - Ng*nint(([i,j,k]-1.5_dp)/Ng))
 end forall
 G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2

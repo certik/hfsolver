@@ -85,7 +85,7 @@ Nmesh = 10000
 allocate(R2(Nmesh))
 R2 = linspace(0._dp, L/2, Nmesh)
 
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 select case(start)
     case (0)

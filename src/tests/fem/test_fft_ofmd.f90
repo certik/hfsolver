@@ -38,8 +38,8 @@ allocate(VenG0(Ng, Ng, Ng), VenG(Ng, Ng, Ng), ne(Ng, Ng, Ng), dFdn(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), Xn(Ng, Ng, Ng, 3))
 call radial_potential_fourier(R, V, L, Z, VenG0, V0)
 
-call real_space_vectors(L, Xn)
-call reciprocal_space_vectors(L, G, G2)
+call real_space_vectors([L, L, L], Xn)
+call reciprocal_space_vectors([L, L, L], G, G2)
 ne = 1
 do i = 1, Ng
 do j = 1, Ng

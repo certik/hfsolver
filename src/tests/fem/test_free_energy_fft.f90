@@ -46,8 +46,8 @@ allocate(R(10000))
 R = linspace(1._dp/10000, 0.9_dp, 10000)
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, VenG0, V0)
 
-call real_space_vectors(L, Xn)
-call reciprocal_space_vectors(L, G, G2)
+call real_space_vectors([L, L, L], Xn)
+call reciprocal_space_vectors([L, L, L], G, G2)
 ne = 1
 do i = 1, Ng
 do j = 1, Ng
