@@ -20,6 +20,7 @@ real(dp) :: L, r2
 integer :: i, j, k
 integer :: Ng(3)
 real(dp) :: t1, t2, t3
+integer :: LNPU(3)
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -33,7 +34,10 @@ call mpi_comm_rank(comm_all, myid, ierr)
 call mpi_comm_size(comm_all, nproc, ierr)
 if (myid == 0) then
     if (command_argument_count() == 0) then
-        nsub = 1
+        call FACTOR(nproc, LNPU)
+        nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
+        nsub(2) = nproc / nsub(3)
+        nsub(1) = 1
     else
         if (command_argument_count() /= 3) then
             print *, "Usage:"
