@@ -15,7 +15,7 @@ use ofdft_fft, only: reciprocal_space_vectors, real_space_vectors, &
     real2fourier
 implicit none
 
-complex(dp), dimension(:,:,:), allocatable :: x3, x3d, x3d2
+complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2
 real(dp), allocatable :: G2(:,:,:), X(:,:,:,:), X_global(:,:,:,:)
 real(dp), allocatable :: G_global(:,:,:,:), G2_global(:,:,:)
 real(dp) :: L(3), r2, alpha, Z, Eee, Eee_conv
@@ -88,9 +88,9 @@ call mpi_comm_split(comm_all, myxyz(3), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
 
-allocate(x3(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(x3d(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(x3d2(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(ne2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(G_global(Ng(1), Ng(2), Ng(3), 3))
 allocate(G2_global(Ng(1), Ng(2), Ng(3)))
 allocate(X_global(Ng(1), Ng(2), Ng(3), 3))
@@ -100,9 +100,9 @@ call real_space_vectors(L, X_global)
 call reciprocal_space_vectors(L, G_global, G2_global)
 ! Convert X_global to X (local)
 ! Convert G2_global to G2 (local)
-do k = 1, size(x3, 3)
-do j = 1, size(x3, 2)
-do i = 1, size(x3, 1)
+do k = 1, size(ne, 3)
+do j = 1, size(ne, 2)
+do i = 1, size(ne, 1)
     ijk_global = [i, j, k] + myxyz*Ng_local
 !    print "(7i0)", myid, i, j, k, ijk_global
     X(i,j,k,:) = X_global(ijk_global(1), ijk_global(2), ijk_global(3), :)
@@ -115,52 +115,51 @@ end do
 ! neutral:
 alpha = 5
 Z = 3
-do k = 1, size(x3, 3)
-do j = 1, size(x3, 2)
-do i = 1, size(x3, 1)
+do k = 1, size(ne, 3)
+do j = 1, size(ne, 2)
+do i = 1, size(ne, 1)
     r2 =sum((X(i,j,k,:)-L/2)**2)
-    x3(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2) &
+    ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2) &
         - Z*(alpha+1)**3/pi**(3._dp/2)*exp(-(alpha+1)**2*r2)
 end do
 end do
 end do
 
-Eee = pintegral(comm_all, L, real(x3, dp), Ng)
+Eee = pintegral(comm_all, L, real(ne, dp), Ng)
 if (myid == 0) then
     print *, "integral:", myid, Eee
     call assert(abs(Eee) < 1e-10_dp)
 end if
-x3d2 = 0
+ne2 = 0
 call pfft3_init(Ng)
 call mpi_barrier(comm_all, ierr)
 call cpu_time(t1)
-call preal2fourier(x3, x3d, commy, commz, Ng, nsub)
+call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 call mpi_barrier(comm_all, ierr)
 call cpu_time(t2)
-call pfourier2real(x3d, x3d2, commy, commz, Ng, nsub)
+call pfourier2real(neG, ne2, commy, commz, Ng, nsub)
 call mpi_barrier(comm_all, ierr)
 call cpu_time(t3)
 if (myid == 0) then
-    print *, "Error:", maxval(abs(x3-x3d2))
     print *, "Timings (t, t*nproc):"
     print *, t2-t1, (t2-t1)*nproc
     print *, t3-t2, (t3-t2)*nproc
+    print *, "Error:", maxval(abs(ne-ne2))
+    call assert(all(abs(ne - ne2) < 1e-12_dp))
 end if
-call assert(all(abs(x3 - x3d2) < 1e-12_dp))
+call mpi_barrier(comm_all, ierr)
 
-x3d2 = 4*pi*x3d/G2
 if (myid == 0) then
-    x3d2(1,1,1) = 0
+    neG(1,1,1) = 0
 end if
-Eee = pintegralG(comm_all, L, real(x3d2*conjg(x3d), dp)) / 2 &
-    - Z**2*alpha/sqrt(2*pi)
+Eee = pintegralG(comm_all, L, 2*pi*abs(neG)**2/G2) - Z**2*alpha/sqrt(2*pi)
 if (myid == 0) then
     print *, "integralG:", myid, Eee
     Eee_conv = -17.465136801093962_dp
     print *, "error:", abs(Eee-Eee_conv)
     call assert(abs(Eee - Eee_conv) < 1e-12_dp)
 end if
-deallocate(x3, x3d, x3d2)
+deallocate(ne, neG, ne2)
 
 call mpi_finalize(ierr)
 
