@@ -6,6 +6,15 @@ macro(ADDTEST name)
     add_test(${name} ${PROJECT_BINARY_DIR}/${name})
 endmacro(ADDTEST)
 
+macro(ADDMPITEST name)
+    if(WITH_MPI)
+        add_executable(${name} ${name}.f90)
+        target_link_libraries(${name} hfsolver ${ARGN} ${LIBS})
+        add_test(${name} mpirun -n 4 ${PROJECT_BINARY_DIR}/${name})
+        set_tests_properties(${name} PROPERTIES LABELS mpi)
+    endif()
+endmacro(ADDMPITEST)
+
 macro(ADDPROG name)
     add_executable(${name} ${name}.f90)
     target_link_libraries(${name} hfsolver ${LIBS})
@@ -58,10 +67,7 @@ ADDTEST(test_sparse)
 
 ADDTEST(test_fourier)
 ADDTEST(test_ffte)
-if(WITH_MPI)
-    ADDTEST(test_ffte_par)
-    set_tests_properties(test_ffte_par PROPERTIES LABELS mpi)
-endif()
+ADDMPITEST(test_ffte_par)
 
 ADDTEST(test_brent)
 
