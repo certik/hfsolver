@@ -27,17 +27,20 @@ end subroutine
 subroutine pfft3(x, y, commy, commz, Ng, nsub)
 complex(dp), intent(inout) :: x(:, :, :) ! input, will get destroyed
 complex(dp), intent(out) :: y(:, :, :)   ! output
-integer, intent(in) :: commy, commz
-integer, intent(in) :: Ng(:), nsub(:)
+integer, intent(in) :: commy, commz ! communicators in y, z directions
+integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
+integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
 call pzfft3dv(x, y, Ng(1), Ng(2), Ng(3), commy, commz, nsub(2), nsub(3), -1)
 end subroutine
 
 subroutine pifft3(x, y, commy, commz, Ng, nsub)
 complex(dp), intent(inout) :: x(:, :, :) ! input, will get destroyed
 complex(dp), intent(out) :: y(:, :, :)   ! output, will get divided by N
-integer, intent(in) :: commy, commz
-integer, intent(in) :: Ng(:), nsub(:)
+integer, intent(in) :: commy, commz ! communicators in y, z directions
+integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
+integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
 call pzfft3dv(x, y, Ng(1), Ng(2), Ng(3), commy, commz, nsub(2), nsub(3), 1)
+y = y * product(Ng)
 end subroutine
 
 end module
