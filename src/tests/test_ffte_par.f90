@@ -6,7 +6,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
-use pffte, only: pfft3_init, pfft3, pifft3, preal2fourier, pfourier2real
+use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
