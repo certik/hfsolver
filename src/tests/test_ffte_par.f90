@@ -6,17 +6,18 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
-use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real
+use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
+    real_space_vectors
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
     mpi_barrier, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_bcast, mpi_allreduce
-use ofdft_fft, only: reciprocal_space_vectors, real_space_vectors, &
+use ofdft_fft, only: reciprocal_space_vectors, &
     real2fourier
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2
-real(dp), allocatable :: G2(:,:,:), X(:,:,:,:), X_global(:,:,:,:)
+real(dp), allocatable :: G2(:,:,:), X(:,:,:,:)
 real(dp), allocatable :: G_global(:,:,:,:), G2_global(:,:,:)
 real(dp) :: L(3), r2, alpha, Z, Eee, Eee_conv
 integer :: i, j, k
@@ -93,19 +94,16 @@ allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(ne2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(G_global(Ng(1), Ng(2), Ng(3), 3))
 allocate(G2_global(Ng(1), Ng(2), Ng(3)))
-allocate(X_global(Ng(1), Ng(2), Ng(3), 3))
 allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
-call real_space_vectors(L, X_global)
+call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G_global, G2_global)
-! Convert X_global to X (local)
 ! Convert G2_global to G2 (local)
 do k = 1, size(ne, 3)
 do j = 1, size(ne, 2)
 do i = 1, size(ne, 1)
     ijk_global = [i, j, k] + myxyz*Ng_local
 !    print "(7i0)", myid, i, j, k, ijk_global
-    X(i,j,k,:) = X_global(ijk_global(1), ijk_global(2), ijk_global(3), :)
     G2(i,j,k) = G2_global(ijk_global(1), ijk_global(2), ijk_global(3))
 end do
 end do
@@ -159,7 +157,6 @@ if (myid == 0) then
     print *, "error:", abs(Eee-Eee_conv)
     call assert(abs(Eee - Eee_conv) < 1e-12_dp)
 end if
-deallocate(ne, neG, ne2)
 
 call mpi_finalize(ierr)
 
