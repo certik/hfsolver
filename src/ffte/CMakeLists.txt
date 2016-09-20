@@ -13,7 +13,8 @@ endif()
 
 add_library(ffte ${SRC})
 
-target_compile_options(ffte PRIVATE -std=legacy -Wno-implicit-interface)
+target_compile_options(ffte PRIVATE -std=legacy -Wno-implicit-interface
+    -Wno-unused-parameter)
 
 add_library(hfsolver::ffte ALIAS ffte)
 
