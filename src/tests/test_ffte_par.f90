@@ -45,7 +45,7 @@ if (myid == 0) then
     else
         if (command_argument_count() /= 9) then
             print *, "Usage:"
-            print *,
+            print *
             print *, "test_ffte_par L(3) Ng(3) nsub(3)"
             call stop_error("Incorrect number of arguments.")
         end if
