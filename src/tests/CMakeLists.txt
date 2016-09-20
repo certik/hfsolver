@@ -60,6 +60,7 @@ ADDTEST(test_fourier)
 ADDTEST(test_ffte)
 if(WITH_MPI)
     ADDTEST(test_ffte_par)
+    set_tests_properties(test_ffte_par PROPERTIES LABELS mpi)
 endif()
 
 ADDTEST(test_brent)

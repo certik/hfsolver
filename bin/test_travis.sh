@@ -11,6 +11,8 @@ if [[ "${TEST_PYTHON}" == "yes" ]]; then
 else
     if [[ "${TEST_SLOW}" == "yes" ]]; then
       ctest -V --output-on-failure -L slow
+    elif [[ "${TEST_MPI}" == "yes" ]]; then
+      ctest --output-on-failure -L mpi
     else
       ctest --output-on-failure -LE slow
     fi

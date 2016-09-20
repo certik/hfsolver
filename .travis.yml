@@ -8,6 +8,8 @@ addons:
     - gfortran
     - liblapack-dev
     - libfftw3-dev
+    - libopenmpi-dev
+    - openmpi-bin
 env:
   # Test all fast tests in Debug build:
   - BUILD_TYPE="Debug" TEST_OPENMP="yes"
@@ -19,6 +21,8 @@ env:
   - TEST_SLOW="yes" BUILD_TYPE="Release"
   # Test all Python tests in Debug build:
   - BUILD_TYPE="Debug" TEST_PYTHON="yes" TEST_OPENMP="yes"
+  # Test all MPI tests in Debug build:
+  - TEST_MPI="yes"  BUILD_TYPE="Debug" TEST_OPENMP="yes"
 before_install:
   - if [[ "${TEST_LIBINT}" == "yes" ]]; then
       git clone https://github.com/qsnake/libint.git;
