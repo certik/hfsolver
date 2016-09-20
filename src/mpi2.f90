@@ -1,19 +1,19 @@
 module mpi2
 use types, only: dp
-use mpi
+use mpi, only: MPI_COMM_WORLD, MPI_INTEGER, MPI_DOUBLE_PRECISION, MPI_SUM, &
+    mpi_comm_rank, mpi_comm_size, mpi_init, mpi_comm_split, mpi_barrier
 use mpi_dispatch, only: mpi_bcast_floats, mpi_bcast_float, mpi_bcast_ints, &
-    mpi_bcast_int, mpi_allreduce_float
+    mpi_bcast_int, mpi_allreduce_float, mpi_finalize => mpi_finalize_dispatch
 implicit none
 private
-public mpi_bcast, mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, mpi_comm_size, &
-    mpi_init, mpi_comm_split, MPI_INTEGER, mpi_barrier, MPI_DOUBLE_PRECISION, &
-    MPI_SUM, mpi_allreduce
 
-interface
-    subroutine mpi_finalize(ierr)
-    integer, intent(out) :: ierr
-    end subroutine
-end interface
+! Implemented in the `mpi` module
+public MPI_COMM_WORLD, MPI_INTEGER, MPI_DOUBLE_PRECISION, MPI_SUM, &
+    mpi_comm_rank, mpi_comm_size, mpi_init, mpi_comm_split, mpi_barrier
+
+! Implemented in the `mpi_dispatch` and interface blocks below
+public mpi_bcast, mpi_finalize, mpi_allreduce
+
 
 interface mpi_bcast
     module procedure mpi_bcast_floats
