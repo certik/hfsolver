@@ -52,8 +52,8 @@ call read_pseudo("D.pseudo", R, Ven_rad, Z, Ediff)
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, V0)
 print *, "    Done."
 
-call real_space_vectors(L, Xn)
-call reciprocal_space_vectors(L, G, G2)
+call real_space_vectors([L, L, L], Xn)
+call reciprocal_space_vectors([L, L, L], G, G2)
 VenG = 0
 do i = 1, natom
     VenG = VenG - Ven0G * exp(-i_ * &

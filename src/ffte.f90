@@ -3,13 +3,12 @@ use iso_fortran_env, only: real64
 use types, only: dp
 implicit none
 private
-public fft3_inplace, ifft3_inplace
+public fft3_inplace, ifft3_inplace, dp_ffte, factor
 
 ! FFTE is using REAL*8, which is 8 bytes real = 64 bit real = real64
 integer, parameter:: dp_ffte=kind(1._real64)
 
 interface
-
     subroutine FACTOR(N, IP)
     integer, intent(in) :: n
     integer, intent(out) :: ip(*)
@@ -20,7 +19,6 @@ interface
     complex(dp_ffte), intent(inout) :: A(*)
     integer, intent(in) :: NX, NY, NZ, IOPT
     end subroutine
-
 end interface
 
 contains

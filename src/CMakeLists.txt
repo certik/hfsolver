@@ -116,7 +116,9 @@ endif()
 
 if(WITH_MPI)
     set(SRC ${SRC}
-        mpi_interface.f90
+        mpi2.f90
+        mpi_dispatch.f90
+        pffte.f90
     )
 endif()
 

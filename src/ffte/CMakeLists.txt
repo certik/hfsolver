@@ -5,9 +5,16 @@ set(SRC
     zfft3d.f
     )
 
+if(WITH_MPI)
+    set(SRC ${SRC}
+        pzfft3dv.f
+    )
+endif()
+
 add_library(ffte ${SRC})
 
-target_compile_options(ffte PRIVATE -std=legacy -Wno-implicit-interface)
+target_compile_options(ffte PRIVATE -std=legacy -Wno-implicit-interface
+    -Wno-unused-parameter)
 
 add_library(hfsolver::ffte ALIAS ffte)
 

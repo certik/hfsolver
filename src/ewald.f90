@@ -592,8 +592,8 @@ end do
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), Xn(Ng, Ng, Ng, 3))
 allocate(rho_tilde_minus(Ng,Ng,Ng), rho_tilde_minusG(Ng,Ng,Ng))
 
-call real_space_vectors(L, Xn)
-call reciprocal_space_vectors(L, G, G2)
+call real_space_vectors([L, L, L], Xn)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 rho_tilde_minus = 0
 Ng_rc = int(Ng*rc/L) + 2
@@ -704,7 +704,7 @@ N = size(q)
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(rho0G(Ng,Ng,Ng))
 
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L,L,L], G, G2)
 
 do i = 1, N_rad_grid
     R(i) = rc * i / N_rad_grid

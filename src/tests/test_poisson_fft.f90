@@ -38,7 +38,7 @@ Ng = 32
 
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 alpha = 5
 X(:, 1) = L/2
@@ -72,7 +72,7 @@ print *, "Ng, alpha, Eee"
 do Ng = 32, 256, 16
     allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
     allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-    call reciprocal_space_vectors(L, G, G2)
+    call reciprocal_space_vectors([L, L, L], G, G2)
 
     do ialpha = 1, 200, 10
         alpha = 5 + ialpha
@@ -128,7 +128,7 @@ Ng = 32
 
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 alpha = 5
 X(:, 1) = [L/4, L/4, L/4]
@@ -206,7 +206,7 @@ Ng = 32
 
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 alpha = 5
 ! Cl^-
@@ -261,7 +261,7 @@ Ng = 64
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng))
 allocate(ne0(Ng, Ng, Ng), ne0G(Ng, Ng, Ng), Vee0G(Ng, Ng, Ng))
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 alpha = 14
 ! Cl^-
@@ -354,7 +354,7 @@ Ng = 64
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng))
 allocate(ne0(Ng, Ng, Ng), ne0G(Ng, Ng, Ng), Vee0G(Ng, Ng, Ng))
-call reciprocal_space_vectors(L, G, G2)
+call reciprocal_space_vectors([L, L, L], G, G2)
 
 alpha = 14
 ! Cl^-

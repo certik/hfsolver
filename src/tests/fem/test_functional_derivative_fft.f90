@@ -51,8 +51,8 @@ print *, "Radial nuclear potential FFT"
 call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, Ven0G, V0)
 print *, "    Done."
 
-call real_space_vectors(L, Xn)
-call reciprocal_space_vectors(L, G, G2)
+call real_space_vectors([L, L, L], Xn)
+call reciprocal_space_vectors([L, L, L], G, G2)
 call positions_fcc(X, L)
 VenG = 0
 do i = 1, natom
