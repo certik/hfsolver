@@ -6,18 +6,16 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
-use pffte, only: pfft3_init, pfft3, pifft3
+use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
+    real_space_vectors, reciprocal_space_vectors
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
     mpi_barrier, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_bcast, mpi_allreduce
-use ofdft_fft, only: reciprocal_space_vectors, real_space_vectors, &
-    real2fourier
 implicit none
 
-complex(dp), dimension(:,:,:), allocatable :: x3, x3d, x3d2, x3d3
-real(dp), allocatable :: G2(:,:,:), X(:,:,:,:), X_global(:,:,:,:)
-real(dp), allocatable :: G_global(:,:,:,:), G2_global(:,:,:)
+complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2
+real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:)
 real(dp) :: L(3), r2, alpha, Z, Eee, Eee_conv
 integer :: i, j, k
 integer :: Ng(3)
@@ -28,7 +26,6 @@ integer :: LNPU(3)
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
-integer :: ijk_global(3)
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -45,7 +42,7 @@ if (myid == 0) then
     else
         if (command_argument_count() /= 9) then
             print *, "Usage:"
-            print *,
+            print *
             print *, "test_ffte_par L(3) Ng(3) nsub(3)"
             call stop_error("Incorrect number of arguments.")
         end if
@@ -88,83 +85,65 @@ call mpi_comm_split(comm_all, myxyz(3), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
 
-allocate(x3(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(x3d(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(x3d2(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(x3d3(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(G_global(Ng(1), Ng(2), Ng(3), 3))
-allocate(G2_global(Ng(1), Ng(2), Ng(3)))
-allocate(X_global(Ng(1), Ng(2), Ng(3), 3))
-allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(ne2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
-call real_space_vectors(L, X_global)
-call reciprocal_space_vectors(L, G_global, G2_global)
-! Convert X_global to X (local)
-! Convert G2_global to G2 (local)
-do k = 1, size(x3, 3)
-do j = 1, size(x3, 2)
-do i = 1, size(x3, 1)
-    ijk_global = [i, j, k] + myxyz*Ng_local
-!    print "(7i0)", myid, i, j, k, ijk_global
-    X(i,j,k,:) = X_global(ijk_global(1), ijk_global(2), ijk_global(3), :)
-    G2(i,j,k) = G2_global(ijk_global(1), ijk_global(2), ijk_global(3))
-end do
-end do
-end do
+allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
+allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
+call real_space_vectors(L, X, Ng, myxyz)
+call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
+G(1, 1, 1, :) = 1 ! To avoid division by 0
+G2(1, 1, 1) = 1 ! To avoid division by 0
 
 ! Setup two Gaussians with opposite charges, thus overall the density is net
 ! neutral:
 alpha = 5
 Z = 3
-do k = 1, size(x3, 3)
-do j = 1, size(x3, 2)
-do i = 1, size(x3, 1)
+do k = 1, size(ne, 3)
+do j = 1, size(ne, 2)
+do i = 1, size(ne, 1)
     r2 =sum((X(i,j,k,:)-L/2)**2)
-    x3(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2) &
+    ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2) &
         - Z*(alpha+1)**3/pi**(3._dp/2)*exp(-(alpha+1)**2*r2)
 end do
 end do
 end do
 
-Eee = pintegral(comm_all, L, real(x3, dp), Ng)
+Eee = pintegral(comm_all, L, real(ne, dp), Ng)
 if (myid == 0) then
     print *, "integral:", myid, Eee
     call assert(abs(Eee) < 1e-10_dp)
 end if
-x3d = x3
+ne2 = 0
 call pfft3_init(Ng)
 call mpi_barrier(comm_all, ierr)
 call cpu_time(t1)
-call pfft3(x3d, x3d2, commy, commz, Ng, nsub)
+call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 call mpi_barrier(comm_all, ierr)
-!call real2fourier(x3d, x3d2)
 call cpu_time(t2)
-x3d2 = x3d2 / product(Ng)
-!call pifft3(x3d2, x3d3, commy, commz, Ng, nsub)
-!x3d3 = x3d3 * product(Ng)
+call pfourier2real(neG, ne2, commy, commz, Ng, nsub)
+call mpi_barrier(comm_all, ierr)
 call cpu_time(t3)
 if (myid == 0) then
-!    print *, myid, maxval(abs(x3 - x3d3))
     print *, "Timings (t, t*nproc):"
     print *, t2-t1, (t2-t1)*nproc
-!    print *, t3-t2, (t3-t2)*nproc
+    print *, t3-t2, (t3-t2)*nproc
+    print *, "Error:", maxval(abs(ne-ne2))
+    call assert(all(abs(ne - ne2) < 1e-12_dp))
 end if
-!call assert(all(abs(x3 - x3d3) < 5e-15_dp))
+call mpi_barrier(comm_all, ierr)
 
-x3d3 = 4*pi*x3d2/G2
 if (myid == 0) then
-    x3d3(1,1,1) = 0
+    neG(1,1,1) = 0
 end if
-Eee = pintegralG(comm_all, L, real(x3d3*conjg(x3d2), dp)) / 2 &
-    - Z**2*alpha/sqrt(2*pi)
-!Eee = pintegralG(comm_all, L, abs(x3d2)**2/G2)
+Eee = pintegralG(comm_all, L, 2*pi*abs(neG)**2/G2) - Z**2*alpha/sqrt(2*pi)
 if (myid == 0) then
     print *, "integralG:", myid, Eee
     Eee_conv = -17.465136801093962_dp
     print *, "error:", abs(Eee-Eee_conv)
     call assert(abs(Eee - Eee_conv) < 1e-12_dp)
 end if
-deallocate(x3, x3d, x3d2, x3d3)
 
 call mpi_finalize(ierr)
 

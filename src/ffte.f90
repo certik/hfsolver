@@ -33,7 +33,7 @@ subroutine ifft3_inplace(x)
 complex(dp), intent(inout) :: x(:, :, :)
 call zfft3d(x, size(x, 1), size(x, 2), size(x, 3), 0)
 call zfft3d(x, size(x, 1), size(x, 2), size(x, 3), 1)
-x = x * product(shape(x))
+x = x * size(x)
 end subroutine
 
 end module
