@@ -6,7 +6,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
-use pffte, only: pfft3_init, pfft3, pifft3
+use pffte, only: pfft3_init, pfft3, pifft3, preal2fourier, pfourier2real
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -15,7 +15,7 @@ use ofdft_fft, only: reciprocal_space_vectors, real_space_vectors, &
     real2fourier
 implicit none
 
-complex(dp), dimension(:,:,:), allocatable :: x3, x3d, x3d2, x3d3
+complex(dp), dimension(:,:,:), allocatable :: x3, x3d, x3d2
 real(dp), allocatable :: G2(:,:,:), X(:,:,:,:), X_global(:,:,:,:)
 real(dp), allocatable :: G_global(:,:,:,:), G2_global(:,:,:)
 real(dp) :: L(3), r2, alpha, Z, Eee, Eee_conv
@@ -91,7 +91,6 @@ call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 allocate(x3(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(x3d(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(x3d2(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(x3d3(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(G_global(Ng(1), Ng(2), Ng(3), 3))
 allocate(G2_global(Ng(1), Ng(2), Ng(3)))
 allocate(X_global(Ng(1), Ng(2), Ng(3), 3))
@@ -131,40 +130,37 @@ if (myid == 0) then
     print *, "integral:", myid, Eee
     call assert(abs(Eee) < 1e-10_dp)
 end if
-x3d = x3
+x3d2 = 0
 call pfft3_init(Ng)
 call mpi_barrier(comm_all, ierr)
 call cpu_time(t1)
-call pfft3(x3d, x3d2, commy, commz, Ng, nsub)
+call preal2fourier(x3, x3d, commy, commz, Ng, nsub)
 call mpi_barrier(comm_all, ierr)
-!call real2fourier(x3d, x3d2)
 call cpu_time(t2)
-x3d2 = x3d2 / product(Ng)
-!call pifft3(x3d2, x3d3, commy, commz, Ng, nsub)
-!x3d3 = x3d3 * product(Ng)
+call pfourier2real(x3d, x3d2, commy, commz, Ng, nsub)
+call mpi_barrier(comm_all, ierr)
 call cpu_time(t3)
 if (myid == 0) then
-!    print *, myid, maxval(abs(x3 - x3d3))
+    print *, "Error:", maxval(abs(x3-x3d2))
     print *, "Timings (t, t*nproc):"
     print *, t2-t1, (t2-t1)*nproc
-!    print *, t3-t2, (t3-t2)*nproc
+    print *, t3-t2, (t3-t2)*nproc
 end if
-!call assert(all(abs(x3 - x3d3) < 5e-15_dp))
+call assert(all(abs(x3 - x3d2) < 1e-12_dp))
 
-x3d3 = 4*pi*x3d2/G2
+x3d2 = 4*pi*x3d/G2
 if (myid == 0) then
-    x3d3(1,1,1) = 0
+    x3d2(1,1,1) = 0
 end if
-Eee = pintegralG(comm_all, L, real(x3d3*conjg(x3d2), dp)) / 2 &
+Eee = pintegralG(comm_all, L, real(x3d2*conjg(x3d), dp)) / 2 &
     - Z**2*alpha/sqrt(2*pi)
-!Eee = pintegralG(comm_all, L, abs(x3d2)**2/G2)
 if (myid == 0) then
     print *, "integralG:", myid, Eee
     Eee_conv = -17.465136801093962_dp
     print *, "error:", abs(Eee-Eee_conv)
     call assert(abs(Eee - Eee_conv) < 1e-12_dp)
 end if
-deallocate(x3, x3d, x3d2, x3d3)
+deallocate(x3, x3d, x3d2)
 
 call mpi_finalize(ierr)
 
