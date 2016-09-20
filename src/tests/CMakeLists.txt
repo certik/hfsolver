@@ -58,7 +58,9 @@ ADDTEST(test_sparse)
 
 ADDTEST(test_fourier)
 ADDTEST(test_ffte)
-ADDTEST(test_ffte_par)
+if(WITH_MPI)
+    ADDTEST(test_ffte_par)
+endif()
 
 ADDTEST(test_brent)
 

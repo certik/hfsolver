@@ -118,6 +118,7 @@ if(WITH_MPI)
     set(SRC ${SRC}
         mpi2.f90
         mpi_dispatch.f90
+        pffte.f90
     )
 endif()
 
