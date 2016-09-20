@@ -7,18 +7,15 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
-    real_space_vectors
+    real_space_vectors, reciprocal_space_vectors
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
     mpi_barrier, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_bcast, mpi_allreduce
-use ofdft_fft, only: reciprocal_space_vectors, &
-    real2fourier
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2
-real(dp), allocatable :: G2(:,:,:), X(:,:,:,:)
-real(dp), allocatable :: G_global(:,:,:,:), G2_global(:,:,:)
+real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:)
 real(dp) :: L(3), r2, alpha, Z, Eee, Eee_conv
 integer :: i, j, k
 integer :: Ng(3)
@@ -29,7 +26,6 @@ integer :: LNPU(3)
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
-integer :: ijk_global(3)
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -92,22 +88,11 @@ call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(ne2(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(G_global(Ng(1), Ng(2), Ng(3), 3))
-allocate(G2_global(Ng(1), Ng(2), Ng(3)))
-allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
+allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
+allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
 call real_space_vectors(L, X, Ng, myxyz)
-call reciprocal_space_vectors(L, G_global, G2_global)
-! Convert G2_global to G2 (local)
-do k = 1, size(ne, 3)
-do j = 1, size(ne, 2)
-do i = 1, size(ne, 1)
-    ijk_global = [i, j, k] + myxyz*Ng_local
-!    print "(7i0)", myid, i, j, k, ijk_global
-    G2(i,j,k) = G2_global(ijk_global(1), ijk_global(2), ijk_global(3))
-end do
-end do
-end do
+call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 
 ! Setup two Gaussians with opposite charges, thus overall the density is net
 ! neutral:

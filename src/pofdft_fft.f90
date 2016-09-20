@@ -1,10 +1,12 @@
 module pofdft_fft
 use types, only: dp
+use constants, only: pi
 use ffte, only: dp_ffte
 use pffte, only: pfft3_init, pfft3, pifft3
 implicit none
 private
-public pfft3_init, preal2fourier, pfourier2real, real_space_vectors
+public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
+    reciprocal_space_vectors
 
 
 contains
@@ -58,6 +60,20 @@ forall(i=1:Ng(1), j=1:Ng(2), k=1:Ng(3))
 end forall
 end subroutine
 
+subroutine reciprocal_space_vectors_3d(L, G, G2)
+real(dp), intent(in) :: L(:)
+! G(:, :, :, i) where i=1, 2, 3 are the x, y, z components
+! G2(:, :, :) are the squares of G
+real(dp), intent(out) :: G(:, :, :, :), G2(:, :, :)
+integer :: Ng(3), i, j, k
+Ng = shape(G2)
+forall(i=1:Ng(1), j=1:Ng(2), k=1:Ng(3))
+    G(i, j, k, :) = 2*pi/L * ([i,j,k] - 1 - Ng*nint(([i,j,k]-1.5_dp)/Ng))
+end forall
+G(1, 1, 1, :) = 1 ! To avoid division by 0
+G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
+end subroutine
+
 subroutine real_space_vectors(L, X, Ng, myxyz)
 real(dp), intent(in) :: L(:)
 real(dp), intent(out) :: X(:, :, :, :)
@@ -71,6 +87,27 @@ do j = 1, size(X, 2)
 do i = 1, size(X, 1)
     ijk_global = [i, j, k] + myxyz*Ng_local
     X(i,j,k,:) = X_global(ijk_global(1), ijk_global(2), ijk_global(3), :)
+end do
+end do
+end do
+end subroutine
+
+subroutine reciprocal_space_vectors(L, G, G2, Ng, myxyz)
+real(dp), intent(in) :: L(:)
+! G(:, :, :, i) where i=1, 2, 3 are the x, y, z components
+! G2(:, :, :) are the squares of G
+real(dp), intent(out) :: G(:, :, :, :), G2(:, :, :)
+integer, intent(in) :: Ng(:), myxyz(:)
+integer:: Ng_local(3), ijk_global(3), i, j, k
+real(dp) :: G_global(Ng(1), Ng(2), Ng(3), 3), G2_global(Ng(1),Ng(2),Ng(3))
+call reciprocal_space_vectors_3d(L, G_global, G2_global)
+Ng_local = [size(G,1), size(G,2), size(G,3)]
+do k = 1, size(G, 3)
+do j = 1, size(G, 2)
+do i = 1, size(G, 1)
+    ijk_global = [i, j, k] + myxyz*Ng_local
+    G(i,j,k,:) = G_global(ijk_global(1), ijk_global(2), ijk_global(3), :)
+    G2(i,j,k) = G2_global(ijk_global(1), ijk_global(2), ijk_global(3))
 end do
 end do
 end do
