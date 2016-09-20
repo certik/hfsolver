@@ -21,7 +21,7 @@ C     PARAMETER (MAXNPU=65536)
 C The maximum supported 2-D transform length is 65536.
 C     PARAMETER (NDA2=65536)
 C The maximum supported 3-D transform length is 4096.
-C     PARAMETER (NDA3=4096)
+      PARAMETER (NDA3=4096)
 C The parameter NBLK is a blocking parameter.
       PARAMETER (NBLK=16)
 C The parameter NB is a blocking parameter for NVIDIA GPUs.

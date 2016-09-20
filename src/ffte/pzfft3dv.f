@@ -55,7 +55,7 @@ C
       SUBROUTINE PZFFT3DV(A,B,NX,NY,NZ,ICOMMY,ICOMMZ,NPUY,NPUZ,IOPT)
       IMPLICIT REAL*8 (A-H,O-Z)
       INCLUDE 'mpif.h'
-      INCLUDE 'param2.h'
+      INCLUDE 'param.h'
       COMPLEX*16 A(*),B(*)
       COMPLEX*16 C(NDA3)
       COMPLEX*16 WX(NDA3),WY(NDA3),WZ(NDA3)
