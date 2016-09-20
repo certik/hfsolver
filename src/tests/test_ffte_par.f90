@@ -5,6 +5,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
+use ffte, only: factor
 use pffte, only: pfft3_init, pfft3, pifft3
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
@@ -35,7 +36,7 @@ call mpi_comm_rank(comm_all, myid, ierr)
 call mpi_comm_size(comm_all, nproc, ierr)
 if (myid == 0) then
     if (command_argument_count() == 0) then
-        call FACTOR(nproc, LNPU)
+        call factor(nproc, LNPU)
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
