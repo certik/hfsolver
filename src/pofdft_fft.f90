@@ -119,11 +119,12 @@ call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
 r = r * product(L)
 end function
 
-subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
-    calc_value, calc_derivative)
-use ofdft_fft, only: integral, integralG, real2fourier, fourier2real
+subroutine free_energy(comm, commy, commz, Ng, nsub, &
+        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
+        calc_value, calc_derivative)
 use ofdft, only: f
-real(dp), intent(in) :: L, G2(:, :, :), T_au, ne(:, :, :)
+integer, intent(in) :: comm, commy, commz, Ng(:), nsub(:)
+real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 logical, intent(in) :: calc_value, calc_derivative
@@ -137,11 +138,12 @@ real(dp), intent(out) :: dFdn(:, :, :)
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
     exc_density, Ven_ee, Vxc, dF0dn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG
+    neG, VeeG, ne_, Ven_ee_
 real(dp) :: beta, dydn
 call assert(calc_value .or. calc_derivative)
 
-call real2fourier(ne, neG)
+ne_ = ne
+call preal2fourier(ne_, neG, commy, commz, Ng, nsub)
 
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
@@ -157,16 +159,16 @@ call xc_pz(ne, exc_density, Vxc)
 if (calc_value) then
     ! Hartree energy
     !Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
-    Eee = integralG(L, VeeG*conjg(neG)) / 2
+    Eee = pintegralG(comm, L, real(VeeG*conjg(neG), dp)) / 2
     ! Electron-nucleus energy
     !Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
-    Een = integralG(L, VenG*conjg(neG))
+    Een = pintegralG(comm, L, real(VenG*conjg(neG), dp))
 
     ! Kinetic energy using Perrot parametrization
     F0 = ne / beta * f(y)
-    Ts = integral(L, F0)
+    Ts = pintegral(comm, L, F0, Ng)
     ! Exchange and correlation potential
-    Exc = integral(L, exc_density * ne)
+    Exc = pintegral(comm, L, exc_density * ne, Ng)
     Etot = Ts + Een + Eee + Exc
 end if
 
@@ -177,10 +179,11 @@ if (calc_derivative) then
     ! d F0 / d n =
     dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
 
-    call fourier2real(VenG+VeeG, Ven_ee)
+    call pfourier2real(VenG+VeeG, Ven_ee_, commy, commz, Ng, nsub)
+    Ven_ee = real(Ven_ee_, dp)
 
     dFdn = dF0dn + Ven_ee + Vxc
-    dFdn = dFdn * L**3
+    dFdn = dFdn ! Do not multiply by L**3
 end if
 end subroutine
 
