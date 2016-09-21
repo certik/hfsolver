@@ -6,12 +6,20 @@ macro(ADDTEST name)
     add_test(${name} ${PROJECT_BINARY_DIR}/${name})
 endmacro(ADDTEST)
 
-macro(ADDMPITEST name)
+macro(ADDMPIEXECUTABLE name)
     if(WITH_MPI)
         add_executable(${name} ${name}.f90)
         target_link_libraries(${name} hfsolver ${ARGN} ${LIBS})
-        add_test(${name} mpirun -n 4 ${PROJECT_BINARY_DIR}/${name})
-        set_tests_properties(${name} PROPERTIES LABELS mpi)
+    endif()
+endmacro(ADDMPIEXECUTABLE)
+
+macro(ADDMPITEST name testname NCORES)
+    if(WITH_MPI)
+        add_test(${testname} mpirun -n ${NCORES} ${PROJECT_BINARY_DIR}/${name}
+            ${ARGN})
+        set_tests_properties(${testname} PROPERTIES
+            LABELS mpi
+            PROCESSORS ${NCORES})
     endif()
 endmacro(ADDMPITEST)
 
@@ -67,7 +75,17 @@ ADDTEST(test_sparse)
 
 ADDTEST(test_fourier)
 ADDTEST(test_ffte)
-ADDMPITEST(test_ffte_par)
+ADDMPIEXECUTABLE(test_ffte_par)
+ADDMPITEST(test_ffte_par ffte1 1)
+ADDMPITEST(test_ffte_par ffte2 4)
+ADDMPITEST(test_ffte_par ffte3 4 2 2 2 32 32 32 1 2 2)
+ADDMPITEST(test_ffte_par ffte4 4 2 2 2 32 32 32 1 1 2)
+set_tests_properties(ffte4 PROPERTIES WILL_FAIL TRUE)
+ADDMPITEST(test_ffte_par ffte5 3 2 2 2 33 30 30 1 1 3)
+set_tests_properties(ffte5 PROPERTIES WILL_FAIL TRUE)
+ADDMPITEST(test_ffte_par ffte6 3 2 2 2 32 30 30 1 1 3)
+set_tests_properties(ffte6 PROPERTIES WILL_FAIL TRUE)
+ADDMPITEST(test_ffte_par ffte7 3 2 2 2 36 36 36 1 1 3)
 
 ADDTEST(test_brent)
 
