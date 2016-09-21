@@ -7,11 +7,12 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
-    real_space_vectors, reciprocal_space_vectors, calculate_myxyz
+    real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
+    pintegral, pintegralG
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
-    mpi_barrier, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_bcast, mpi_allreduce
+    mpi_barrier, MPI_DOUBLE_PRECISION, mpi_bcast
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2
@@ -141,32 +142,4 @@ if (myid == 0) then
 end if
 
 call mpi_finalize(ierr)
-
-contains
-
-real(dp) function pintegral(comm, L, f, Ng) result(r)
-! Calculates the integral over 'f' in parallel, returns the answer on all
-! processors.
-integer, intent(in) :: comm
-real(dp), intent(in) :: L(:), f(:,:,:)
-integer, intent(in) :: Ng(:)
-real(dp) :: myr
-myr = sum(f)
-call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
-r = r * product(L/Ng)
-end function
-
-real(dp) function pintegralG(comm, L, fG) result(r)
-! Calculates the integral over 'fG' in reciprocal space in parallel, returns
-! the answer on all processors.
-integer, intent(in) :: comm
-real(dp), intent(in) :: L(:)
-real(dp), intent(in) :: fG(:, :, :)
-real(dp) :: myr
-!myr = sum(real(fG, dp))
-myr = sum(fG)
-call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
-r = r * product(L)
-end function
-
 end program
