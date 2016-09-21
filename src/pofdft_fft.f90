@@ -6,7 +6,7 @@ use pffte, only: pfft3_init, pfft3, pifft3
 implicit none
 private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
-    reciprocal_space_vectors
+    reciprocal_space_vectors, calculate_myxyz
 
 
 contains
@@ -47,6 +47,12 @@ tmp = xG
 call pifft3(tmp, x, commy, commz, Ng, nsub)
 ! The result is already normalized
 end subroutine
+
+function calculate_myxyz(myid, nsub) result(myxyz)
+integer, intent(in) :: myid, nsub(3)
+integer :: myxyz(3)
+myxyz = [0, mod(myid, nsub(2)), myid/nsub(2)]
+end function
 
 subroutine real_space_vectors(L, X, Ng, myxyz)
 real(dp), intent(in) :: L(:)

@@ -7,7 +7,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
-    real_space_vectors, reciprocal_space_vectors
+    real_space_vectors, reciprocal_space_vectors, calculate_myxyz
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -67,36 +67,16 @@ if (myid == 0) then
     if (product(nsub) /= nproc) then
         call stop_error("nproc must be equal to the number of subdomains")
     end if
-    if (nsub(1) /= 1) then
-        call stop_error("nsub(1) must be equal to 1")
-    end if
-    if (.not. all(Ng_local * nsub == Ng)) then
-        call stop_error("Ng must be equal to Ng_local * nsub")
-    end if
-    if (mod(Ng(1), nsub(2)) + mod(Ng(1), nsub(3)) + mod(Ng(2), nsub(3)) &
-        + mod(Ng(3), nsub(2)) > 0) then
-        call stop_error("Ng must be divisible by any permutation of nsub")
-    end if
-    call factor(Ng(1), LNPU)
-    if (Ng(1) /= 2**LNPU(1)*3**LNPU(2)*5**LNPU(3)) then
-        call stop_error("Ng(1) not power of 2, 3 and 5")
-    end if
-    call factor(Ng(2), LNPU)
-    if (Ng(2) /= 2**LNPU(1)*3**LNPU(2)*5**LNPU(3)) then
-        call stop_error("Ng(2) not power of 2, 3 and 5")
-    end if
-    call factor(Ng(3), LNPU)
-    if (Ng(3) /= 2**LNPU(1)*3**LNPU(2)*5**LNPU(3)) then
-        call stop_error("Ng(3) not power of 2, 3 and 5")
-    end if
 end if
 call mpi_bcast(L, size(L), MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(Ng_local, size(Ng_local), MPI_INTEGER, 0, comm_all, ierr)
+call pfft3_init(myid, comm_all, Ng, nsub)
 
-myxyz = [0, mod(myid, nsub(2)), myid/nsub(2)]
+myxyz = calculate_myxyz(myid, nsub)
 
+! Note that myxyz(3) corresponds to commy, and myxyz(2) to commz
 call mpi_comm_split(comm_all, myxyz(3), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
@@ -130,7 +110,6 @@ if (myid == 0) then
     call assert(abs(Eee) < 1e-10_dp)
 end if
 ne2 = 0
-call pfft3_init(Ng)
 call mpi_barrier(comm_all, ierr)
 call cpu_time(t1)
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
