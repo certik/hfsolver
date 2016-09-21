@@ -73,6 +73,22 @@ if (myid == 0) then
     if (.not. all(Ng_local * nsub == Ng)) then
         call stop_error("Ng must be equal to Ng_local * nsub")
     end if
+    if (mod(Ng(1), nsub(2)) + mod(Ng(1), nsub(3)) + mod(Ng(2), nsub(3)) &
+        + mod(Ng(3), nsub(2)) > 0) then
+        call stop_error("Ng must be divisible by any permutation of nsub")
+    end if
+    call factor(Ng(1), LNPU)
+    if (Ng(1) /= 2**LNPU(1)*3**LNPU(2)*5**LNPU(3)) then
+        call stop_error("Ng(1) not power of 2, 3 and 5")
+    end if
+    call factor(Ng(2), LNPU)
+    if (Ng(2) /= 2**LNPU(1)*3**LNPU(2)*5**LNPU(3)) then
+        call stop_error("Ng(2) not power of 2, 3 and 5")
+    end if
+    call factor(Ng(3), LNPU)
+    if (Ng(3) /= 2**LNPU(1)*3**LNPU(2)*5**LNPU(3)) then
+        call stop_error("Ng(3) not power of 2, 3 and 5")
+    end if
 end if
 call mpi_bcast(L, size(L), MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
