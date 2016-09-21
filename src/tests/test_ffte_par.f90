@@ -7,7 +7,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
-    real_space_vectors, reciprocal_space_vectors
+    real_space_vectors, reciprocal_space_vectors, calculate_myxyz
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -95,8 +95,9 @@ call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(Ng_local, size(Ng_local), MPI_INTEGER, 0, comm_all, ierr)
 
-myxyz = [0, mod(myid, nsub(2)), myid/nsub(2)]
+myxyz = calculate_myxyz(myid, nsub)
 
+! Note that myxyz(3) corresponds to commy, and myxyz(2) to commz
 call mpi_comm_split(comm_all, myxyz(3), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
