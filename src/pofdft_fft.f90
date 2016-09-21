@@ -32,10 +32,10 @@ end subroutine
 
 subroutine pfourier2real(xG, x, commy, commz, Ng, nsub)
 ! Calculates Inverse Discrete Fourier Transform. xG must follow the same
-! normalization as defined by real2fourier(), i.e. in the following calls, 'x2'
+! normalization as defined by preal2fourier(), i.e. in the following calls, 'x2'
 ! will be equal to 'x':
-! call real2fourier(x, xG)
-! call fourier2real(xG, x2)
+! call preal2fourier(x, xG)
+! call pfourier2real(xG, x2)
 ! Parallel version.
 complex(dp), intent(in) :: xG(:, :, :)
 complex(dp), intent(out) :: x(:, :, :)
