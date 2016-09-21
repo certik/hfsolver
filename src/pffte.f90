@@ -1,6 +1,8 @@
 module pffte
 use types, only: dp
-use ffte, only: dp_ffte
+use ffte, only: dp_ffte, factor
+use utils, only: stop_error
+use mpi2, only: mpi_barrier
 implicit none
 private
 public pfft3_init, pfft3, pifft3
@@ -15,12 +17,43 @@ end interface
 
 contains
 
-subroutine pfft3_init(Ng)
-integer, intent(in) :: Ng(:)
+subroutine pfft3_init(myid, comm_all, Ng, nsub)
+integer, intent(in) :: myid, comm_all, Ng(:), nsub(:)
 complex(dp) :: x(1), y(1)
-integer :: commy, commz, nsub(3)
+integer :: commy, commz, ierr
+integer :: Ng_local(3), F(3)
+if (myid==0) then
+    if (.not. all(nsub > 0)) then
+        call stop_error("nsub must be positive")
+    end if
+    Ng_local = Ng / nsub
+    if (nsub(1) /= 1) then
+        call stop_error("nsub(1) must be equal to 1")
+    end if
+    if (.not. all(Ng_local * nsub == Ng)) then
+        call stop_error("Ng must be equal to Ng_local * nsub")
+    end if
+    if (mod(Ng(1), nsub(2)) + mod(Ng(1), nsub(3)) + mod(Ng(2), nsub(3)) &
+        + mod(Ng(3), nsub(2)) > 0) then
+        call stop_error("Ng must be divisible by any permutation of nsub")
+    end if
+    call factor(Ng(1), F)
+    if (Ng(1) /= 2**F(1)*3**F(2)*5**F(3)) then
+        call stop_error("Ng(1) must be 2^a * 3^b * 5^c;  a,b,c=0,1,2,3,...")
+    end if
+    call factor(Ng(2), F)
+    if (Ng(2) /= 2**F(1)*3**F(2)*5**F(3)) then
+        call stop_error("Ng(2) must be 2^a * 3^b * 5^c;  a,b,c=0,1,2,3,...")
+    end if
+    call factor(Ng(3), F)
+    if (Ng(3) /= 2**F(1)*3**F(2)*5**F(3)) then
+        call stop_error("Ng(3) must be 2^a * 3^b * 5^c;  a,b,c=0,1,2,3,...")
+    end if
+end if
+call mpi_barrier(comm_all, ierr)
 ! Only Ng is relevant if iopt == 0
-nsub = 1 ! pzfft3dv divides by nsub inside, but does not store the result
+! pzfft3dv divides by nsub inside, but does not store the result (the above
+! checks make sure we do not divide by 0)
 call pzfft3dv(x, y, Ng(1), Ng(2), Ng(3), commy, commz, nsub(2), nsub(3), 0)
 end subroutine
 
