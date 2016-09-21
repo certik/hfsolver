@@ -93,8 +93,6 @@ allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
-G(1, 1, 1, :) = 1 ! To avoid division by 0
-G2(1, 1, 1) = 1 ! To avoid division by 0
 
 ! Setup two Gaussians with opposite charges, thus overall the density is net
 ! neutral:
@@ -136,6 +134,8 @@ call mpi_barrier(comm_all, ierr)
 
 if (myid == 0) then
     neG(1,1,1) = 0
+    G(1, 1, 1, :) = 1 ! To avoid division by 0
+    G2(1, 1, 1) = 1 ! To avoid division by 0
 end if
 Eee = pintegralG(comm_all, L, 2*pi*abs(neG)**2/G2) - Z**2*alpha/sqrt(2*pi)
 if (myid == 0) then
