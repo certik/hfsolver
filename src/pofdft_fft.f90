@@ -3,6 +3,8 @@ use types, only: dp
 use constants, only: pi
 use ffte, only: dp_ffte
 use pffte, only: pfft3_init, pfft3, pifft3
+use utils, only: assert, stop_error
+use xc, only: xc_pz
 implicit none
 private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
@@ -87,6 +89,71 @@ end do
 end do
 end do
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
+end subroutine
+
+subroutine free_energy(L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
+    calc_value, calc_derivative)
+use ofdft_fft, only: integral, integralG, real2fourier, fourier2real
+use ofdft, only: f
+real(dp), intent(in) :: L, G2(:, :, :), T_au, ne(:, :, :)
+complex(dp), intent(in) :: VenG(:, :, :)
+real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
+logical, intent(in) :: calc_value, calc_derivative
+
+! dFdn returns "delta F / delta n", the functional derivative with respect to
+! the density "n". Use the relation
+!     d/dpsi = 2 psi d/dn
+! to obtain the derivative with respect to psi (i.e. multiply Hpsi by 2*psi).
+real(dp), intent(out) :: dFdn(:, :, :)
+
+real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
+    exc_density, Ven_ee, Vxc, dF0dn
+complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
+    neG, VeeG
+real(dp) :: beta, dydn
+call assert(calc_value .or. calc_derivative)
+
+call real2fourier(ne, neG)
+
+VeeG = 4*pi*neG / G2
+VeeG(1, 1, 1) = 0
+
+beta = 1/T_au
+! The density must be positive, the f(y) fails for negative "y". Thus we use
+! ne.
+y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
+if (any(y < 0)) call stop_error("Density must be positive")
+
+call xc_pz(ne, exc_density, Vxc)
+
+if (calc_value) then
+    ! Hartree energy
+    !Eee = integralG2(L, real(VeeG)*real(neG)+aimag(VeeG)*aimag(neG)) / 2
+    Eee = integralG(L, VeeG*conjg(neG)) / 2
+    ! Electron-nucleus energy
+    !Een = integralG2(L, real(VenG)*real(neG)+aimag(VenG)*aimag(neG))
+    Een = integralG(L, VenG*conjg(neG))
+
+    ! Kinetic energy using Perrot parametrization
+    F0 = ne / beta * f(y)
+    Ts = integral(L, F0)
+    ! Exchange and correlation potential
+    Exc = integral(L, exc_density * ne)
+    Etot = Ts + Een + Eee + Exc
+end if
+
+if (calc_derivative) then
+    ! Calculate the derivative
+    dydn = pi**2 / sqrt(2._dp) * beta**(3._dp/2)
+    ! F0 = ne / beta * f(y)
+    ! d F0 / d n =
+    dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
+
+    call fourier2real(VenG+VeeG, Ven_ee)
+
+    dFdn = dF0dn + Ven_ee + Vxc
+    dFdn = dFdn * L**3
+end if
 end subroutine
 
 end module
