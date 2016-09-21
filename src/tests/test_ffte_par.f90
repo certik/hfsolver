@@ -8,20 +8,21 @@ use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
-    pintegral, pintegralG
+    pintegral, pintegralG, free_energy
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
     mpi_barrier, MPI_DOUBLE_PRECISION, mpi_bcast
 implicit none
 
-complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2
-real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:)
-real(dp) :: L(3), r2, alpha, Z, Eee, Eee_conv
+complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2, VenG, Ven
+real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:), dFdn(:,:,:)
+real(dp) :: L(3), r2, alpha, Z, Eee_conv
 integer :: i, j, k
 integer :: Ng(3)
 real(dp) :: t1, t2, t3
 integer :: LNPU(3)
+real(dp) :: T_au, Eee, Een, Ts, Exc, Etot
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -88,6 +89,9 @@ allocate(ne2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(dFdn(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(Ven(Ng_local(1), Ng_local(2), Ng_local(3)))
+allocate(VenG(Ng_local(1), Ng_local(2), Ng_local(3)))
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 
@@ -104,6 +108,19 @@ do i = 1, size(ne, 1)
 end do
 end do
 end do
+
+! Setup VenG
+alpha = 5
+Z = 3
+do k = 1, size(ne, 3)
+do j = 1, size(ne, 2)
+do i = 1, size(ne, 1)
+    r2 =sum((X(i,j,k,:)-L/2)**2)
+    Ven(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
+end do
+end do
+end do
+call preal2fourier(Ven, VenG, commy, commz, Ng, nsub)
 
 Eee = pintegral(comm_all, L, real(ne, dp), Ng)
 if (myid == 0) then
@@ -139,6 +156,26 @@ if (myid == 0) then
     Eee_conv = -17.465136801093962_dp
     print *, "error:", abs(Eee-Eee_conv)
     call assert(abs(Eee - Eee_conv) < 1e-12_dp)
+end if
+T_au = 1._dp
+! Setup (positive) ne for the free energy:
+alpha = 3
+Z = 3
+do k = 1, size(ne, 3)
+do j = 1, size(ne, 2)
+do i = 1, size(ne, 1)
+    r2 =sum((X(i,j,k,:)-L/2)**2)
+    ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
+end do
+end do
+end do
+call free_energy(comm_all, commy, commz, Ng, nsub, &
+        L, G2, T_au, VenG, real(ne, dp), Eee, Een, Ts, Exc, Etot, dFdn, &
+        .true., .true.)
+if (myid == 0) then
+    print *, "Energy:"
+    print *, Eee, Een, Ts, Exc
+    print *, Etot
 end if
 
 call mpi_finalize(ierr)
