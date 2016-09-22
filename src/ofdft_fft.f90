@@ -503,7 +503,6 @@ if (calc_derivative) then
     call fourier2real(VenG+VeeG, Ven_ee)
 
     dFdn = dF0dn + Ven_ee + Vxc
-    dFdn = dFdn * L**3
 end if
 end subroutine
 

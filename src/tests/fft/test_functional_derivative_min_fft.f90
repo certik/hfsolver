@@ -81,7 +81,7 @@ print *, "Propagation"
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
-dt = 1e-4_dp
+dt = 1e-4_dp * L**3
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -142,7 +142,7 @@ end do
 print *, "Done"
 
 Etot_conv = -172.12475770606159_dp
-mu_conv = 96.415580964855209_dp
+mu_conv = 96.415580964855209_dp / L**3
 
 print *, "Etot:", Etot, abs(Etot - Etot_conv)
 print *, "mu:", mu, abs(mu - mu_conv)
