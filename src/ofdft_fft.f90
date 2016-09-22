@@ -59,7 +59,7 @@ interface fourier2real
 end interface
 
 integer :: fft_counter
-real(dp) :: fft_time
+real(dp) :: fft_time = 0
 
 contains
 
