@@ -4,11 +4,12 @@ use constants, only: pi
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
-use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg
+use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg, &
+    allocate_mold
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
-    pintegral, pintegralG, free_energy
+    pintegral, pintegralG, free_energy, free_energy_min
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -16,12 +17,14 @@ use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2, VenG, Ven
-real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:), dFdn(:,:,:)
+real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:), dFdn(:,:,:), &
+    ne_(:,:,:)
 real(dp) :: L(3), r2, alpha, Z, Eee_conv
 integer :: i, j, k
 integer :: Ng(3)
 real(dp) :: t1, t2, t3
 integer :: LNPU(3)
+integer :: cg_iter
 real(dp) :: T_au, Eee, Een, Ts, Exc, Etot
 
 !  parallel variables
@@ -92,6 +95,7 @@ allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(dFdn(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(Ven(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(VenG(Ng_local(1), Ng_local(2), Ng_local(3)))
+call allocate_mold(ne_, dFdn)
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 
@@ -177,6 +181,10 @@ if (myid == 0) then
     print *, Eee, Een, Ts, Exc
     print *, Etot
 end if
+ne_ = real(ne, dp)
+call free_energy_min(comm_all, commy, commz, Ng, nsub, &
+        1._dp, 1, L, G2, T_au, VenG, ne_, 1e-12_dp, &
+        Eee, Een, Ts, Exc, Etot, cg_iter)
 
 call mpi_finalize(ierr)
 end program
