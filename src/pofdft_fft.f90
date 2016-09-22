@@ -14,12 +14,22 @@ public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
     reciprocal_space_vectors, calculate_myxyz, pintegral, pintegralG, &
     free_energy
 
+interface preal2fourier
+    module procedure preal2fourier_real
+    module procedure preal2fourier_complex
+end interface
+
+interface pfourier2real
+    module procedure pfourier2real_real
+    module procedure pfourier2real_complex
+end interface
+
 integer :: fft_counter
 real(dp) :: fft_time
 
 contains
 
-subroutine preal2fourier(x, xG, commy, commz, Ng, nsub)
+subroutine preal2fourier_complex(x, xG, commy, commz, Ng, nsub)
 ! Calculates Discrete Fourier Transform, with the same normalization as the
 ! Fourier Transform for periodic systems (which is Fourier Series).
 ! Parallel version.
@@ -36,7 +46,22 @@ call pfft3(tmp, xG, commy, commz, Ng, nsub)
 xG = xG / product(Ng)     ! The proper normalization is to divide by N
 end subroutine
 
-subroutine pfourier2real(xG, x, commy, commz, Ng, nsub)
+subroutine preal2fourier_real(x, xG, commy, commz, Ng, nsub)
+! The same as preal2fourier_complex, but discard the imaginary part of "x"
+real(dp), intent(in) :: x(:, :, :)
+complex(dp), intent(out) :: xG(:, :, :)
+integer, intent(in) :: commy, commz ! communicators in y, z directions
+integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
+integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
+! Temporary input array, will get trashed by pfft3
+complex(dp) :: tmp(size(x,1), size(x,2), size(x,3))
+tmp = x
+! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
+call pfft3(tmp, xG, commy, commz, Ng, nsub)
+xG = xG / product(Ng)     ! The proper normalization is to divide by N
+end subroutine
+
+subroutine pfourier2real_complex(xG, x, commy, commz, Ng, nsub)
 ! Calculates Inverse Discrete Fourier Transform. xG must follow the same
 ! normalization as defined by preal2fourier(), i.e. in the following calls, 'x2'
 ! will be equal to 'x':
@@ -54,6 +79,19 @@ tmp = xG
 ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 call pifft3(tmp, x, commy, commz, Ng, nsub)
 ! The result is already normalized
+end subroutine
+
+subroutine pfourier2real_real(xG, x, commy, commz, Ng, nsub)
+! The same as pfourier2real_complex, but discard the imaginary part of "x"
+complex(dp), intent(in) :: xG(:, :, :)
+real(dp), intent(out) :: x(:, :, :)
+integer, intent(in) :: commy, commz ! communicators in y, z directions
+integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
+integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
+! Temporary input array, will get trashed by pfft3
+complex(dp) :: tmp(size(x,1), size(x,2), size(x,3))
+call pfourier2real_complex(xG, tmp, commy, commz, Ng, nsub)
+x = real(tmp, dp)
 end subroutine
 
 function calculate_myxyz(myid, nsub) result(myxyz)
@@ -143,12 +181,11 @@ real(dp), intent(out) :: dFdn(:, :, :)
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
     exc_density, Ven_ee, Vxc, dF0dn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG, ne_, Ven_ee_
+    neG, VeeG
 real(dp) :: beta, dydn
 call assert(calc_value .or. calc_derivative)
 
-ne_ = ne
-call preal2fourier(ne_, neG, commy, commz, Ng, nsub)
+call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
@@ -184,8 +221,7 @@ if (calc_derivative) then
     ! d F0 / d n =
     dF0dn = 1 / beta * f(y) + ne / beta * f(y, deriv=.true.) * dydn
 
-    call pfourier2real(VenG+VeeG, Ven_ee_, commy, commz, Ng, nsub)
-    Ven_ee = real(Ven_ee_, dp)
+    call pfourier2real(VenG+VeeG, Ven_ee, commy, commz, Ng, nsub)
 
     dFdn = dF0dn + Ven_ee + Vxc
     dFdn = dFdn ! Do not multiply by L**3
