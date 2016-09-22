@@ -3,16 +3,17 @@ use types, only: dp
 use constants, only: pi, Ha2eV
 use ffte, only: dp_ffte
 use pffte, only: pfft3_init, pfft3, pifft3
-use utils, only: assert, stop_error, clock
+use utils, only: assert, stop_error, clock, allocate_mold
 use xc, only: xc_pz
 use ofdft, only: f
+use ofdft_fft, only: update_fletcher_reeves, update_polak_ribiere
 use optimize, only: bracket, brent, parabola_vertex
 use mpi2, only: MPI_DOUBLE_PRECISION, mpi_allreduce, MPI_SUM
 implicit none
 private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
     reciprocal_space_vectors, calculate_myxyz, pintegral, pintegralG, &
-    free_energy
+    free_energy, free_energy_min
 
 interface preal2fourier
     module procedure preal2fourier_real
@@ -224,37 +225,37 @@ if (calc_derivative) then
     call pfourier2real(VenG+VeeG, Ven_ee, commy, commz, Ng, nsub)
 
     dFdn = dF0dn + Ven_ee + Vxc
-    dFdn = dFdn ! Do not multiply by L**3
+    dFdn = dFdn * product(L) ! FIXME: Do not multiply by L**3
 end if
 end subroutine
 
-subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
-use ofdft_fft, only: real2fourier, fourier2real
+subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3, commy, commz, Ng, nsub)
 real(dp), dimension(:, :, :), intent(in) :: G2, psi, eta
 real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
+integer, intent(in) :: commy, commz, Ng(:), nsub(:)
 complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
-call real2fourier(psi**2, neG)
+call preal2fourier(psi**2, neG, commy, commz, Ng, nsub)
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C1)
+call pfourier2real(VeeG, C1, commy, commz, Ng, nsub)
 
-call real2fourier(psi*eta, neG)
+call preal2fourier(psi*eta, neG, commy, commz, Ng, nsub)
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C2)
+call pfourier2real(VeeG, C2, commy, commz, Ng, nsub)
 
-call real2fourier(eta**2, neG)
+call preal2fourier(eta**2, neG, commy, commz, Ng, nsub)
 VeeG = 4*pi*neG / G2
 VeeG(1, 1, 1) = 0
-call fourier2real(VeeG, C3)
+call pfourier2real(VeeG, C3, commy, commz, Ng, nsub)
 end subroutine
 
-subroutine calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
+subroutine calc_F(comm, Ng, L, T_au, Ven, C1, C2, C3, psi, eta, theta, F_)
 ! Calculates F[psi(theta)] efficiently (no FFT needed, just integrals)
 ! See the function find_theta() for an example how to prepare the C1, C2 and C3
 ! constants and how to use this subroutine.
-use ofdft_fft, only: integral
-real(dp), intent(in) :: L, T_au, psi(:, :, :), eta(:, :, :)
+integer, intent(in) :: comm, Ng(:)
+real(dp), intent(in) :: L(:), T_au, psi(:, :, :), eta(:, :, :)
 real(dp), intent(in) :: C1(:, :, :), C2(:, :, :), C3(:, :, :)
 real(dp), intent(in) :: theta
 real(dp), intent(in) :: Ven(:, :, :)
@@ -271,13 +272,12 @@ y = pi**2 / sqrt(2._dp) * beta**(3._dp/2) * ne
 if (any(y < 0)) call stop_error("Density must be positive")
 Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
 
-F_ = integral(L, ne / beta * f(y) + (Ven+Vee/2+exc_density)*ne)
+F_ = pintegral(comm, L, ne / beta * f(y) + (Ven+Vee/2+exc_density)*ne, Ng)
 end subroutine
 
-subroutine free_energy_min(Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
+subroutine free_energy_min(comm, commy, commz, Ng, nsub, &
+        Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
         Eee, Een, Ts, Exc, Etot, cg_iter)
-use ofdft_fft, only: update_fletcher_reeves, update_polak_ribiere, free_energy,&
-    integral, fourier2real
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
 ! components are returned in Eee, Een, Ts and Exc. The relation is:
@@ -286,13 +286,13 @@ use ofdft_fft, only: update_fletcher_reeves, update_polak_ribiere, free_energy,&
 !
 real(dp), intent(in) :: Nelec ! Number of electrons
 integer, intent(in) :: Natom ! Number of atoms
-real(dp), intent(in) :: L, G2(:, :, :), T_au, energy_eps
+real(dp), intent(in) :: L(:), G2(:, :, :), T_au, energy_eps
 real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
+integer, intent(in) :: comm, commy, commz, Ng(:), nsub(:)
 
-integer :: Ng
 real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
     psi, psi_, psi_prev, ksi, ksi_prev, phi, phi_prime, eta
@@ -315,35 +315,34 @@ func_use_fft = .true.
 last2 = 0
 last3 = 0
 
-Ng = size(ne, 1)
-
-allocate(Hpsi(Ng, Ng, Ng))
-allocate(psi(Ng, Ng, Ng))
-allocate(psi_(Ng, Ng, Ng))
-allocate(psi_prev(Ng, Ng, Ng))
-allocate(phi(Ng, Ng, Ng))
-allocate(phi_prime(Ng, Ng, Ng))
-allocate(ksi(Ng, Ng, Ng))
-allocate(ksi_prev(Ng, Ng, Ng))
-allocate(eta(Ng, Ng, Ng))
+call allocate_mold(Hpsi, ne)
+call allocate_mold(psi, ne)
+call allocate_mold(psi_, ne)
+call allocate_mold(psi_prev, ne)
+call allocate_mold(phi, ne)
+call allocate_mold(phi_prime, ne)
+call allocate_mold(ksi, ne)
+call allocate_mold(ksi_prev, ne)
+call allocate_mold(eta, ne)
 
 psi = sqrt(ne)
-psi_norm = integral(L, psi**2)
+psi_norm = pintegral(comm, L, psi**2, Ng)
 print *, "Initial norm of psi:", psi_norm
 psi = sqrt(Nelec / psi_norm) * psi
-psi_norm = integral(L, psi**2)
+psi_norm = pintegral(comm, L, psi**2, Ng)
 print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
+call free_energy(comm, commy, commz, Ng, nsub, &
+    L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
     Hpsi, calc_value=.false., calc_derivative=.true.)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
-mu = 1._dp / Nelec * integral(L, 0.5_dp * psi * Hpsi)
+mu = 1._dp / Nelec * pintegral(comm, L, 0.5_dp * psi * Hpsi, Ng)
 ksi = 2*mu*psi - Hpsi
 phi = ksi
-phi_prime = phi - 1._dp / Nelec *  integral(L, phi * psi) * psi
-eta = sqrt(Nelec / integral(L, phi_prime**2)) * phi_prime
+phi_prime = phi - 1._dp / Nelec *  pintegral(comm, L, phi * psi, Ng) * psi
+eta = sqrt(Nelec / pintegral(comm, L, phi_prime**2, Ng)) * phi_prime
 theta = pi/2
 !print *, "Summary of energies [a.u.]:"
 !print "('    Ts   = ', f14.8)", Ts
@@ -372,8 +371,9 @@ do iter = 1, max_iter
             call brent(func_fft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
         else
-            call fourier2real(VenG, Ven)
-            call precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
+            call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+            call precalc_C1C2C2(G2, psi, eta, C1, C2, C3, &
+                commy, commz, Ng, nsub)
             call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
             call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
@@ -386,7 +386,8 @@ do iter = 1, max_iter
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
-    call free_energy(L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
+    call free_energy(comm, commy, commz, Ng, nsub, &
+        L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
 !    print *, "Iteration:", iter
 !    psi_norm = integral(L, psi**2)
@@ -420,21 +421,21 @@ do iter = 1, max_iter
         end if
     end if
     Hpsi = Hpsi * 2*psi ! d/dpsi = 2 psi d/dn
-    mu = 1._dp / Nelec * integral(L, 0.5_dp * psi * Hpsi)
+    mu = 1._dp / Nelec * pintegral(comm, L, 0.5_dp * psi * Hpsi, Ng)
     ksi_prev = ksi
     ksi = 2*mu*psi - Hpsi
     select case(update_type)
         case(update_fletcher_reeves) ! Fletcher-Reeves
-            gamma_n = integral(L, ksi**2)
+            gamma_n = pintegral(comm, L, ksi**2, Ng)
         case(update_polak_ribiere)   ! Polak-Ribiere
-            gamma_n = max(integral(L, ksi*(ksi-ksi_prev)), 0._dp)
+            gamma_n = max(pintegral(comm, L, ksi*(ksi-ksi_prev), Ng), 0._dp)
         case default
             call stop_error("Unknown update type.")
     end select
-    gamma_d = integral(L, ksi_prev**2)
+    gamma_d = pintegral(comm, L, ksi_prev**2, Ng)
     phi = ksi + gamma_n / gamma_d * phi
-    phi_prime = phi - 1._dp / Nelec * integral(L, phi * psi) * psi
-    eta = sqrt(Nelec / integral(L, phi_prime**2)) * phi_prime
+    phi_prime = phi - 1._dp / Nelec * pintegral(comm, L, phi * psi, Ng) * psi
+    eta = sqrt(Nelec / pintegral(comm, L, phi_prime**2, Ng)) * phi_prime
     t2 = clock()
     print "('time: ', f6.3, ' fft: ', f6.3, ' (', f5.2, '%) # fft: ', i3, ' line search', f6.3)", &
         t2-t1, fft_time, fft_time / (t2-t1) * 100, fft_counter, t12-t11
@@ -445,13 +446,14 @@ contains
 
     real(dp) function func_nofft(theta) result(energy)
     real(dp), intent(in) :: theta
-    call calc_F(L, T_au, Ven, C1, C2, C3, psi, eta, theta, energy)
+    call calc_F(comm, Ng, L, T_au, Ven, C1, C2, C3, psi, eta, theta, energy)
     end function
 
     real(dp) function func_fft(theta) result(energy)
     real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
-    call free_energy(L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
+    call free_energy(comm, commy, commz, Ng, nsub, &
+        L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi, calc_value=.true., calc_derivative=.false.)
     end function
 
