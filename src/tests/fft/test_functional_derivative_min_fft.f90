@@ -48,7 +48,7 @@ print *, "Load initial position"
 allocate(X(3, natom))
 call positions_bcc(X, L)
 print *, "Radial nuclear potential FFT"
-call read_pseudo("D.pseudo", R, Ven_rad, Z, Ediff)
+call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, V0)
 print *, "    Done."
 
@@ -175,7 +175,7 @@ print *, "mu:", mu, abs(mu - mu_conv)
 print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
 print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
 call assert(abs(Etot - Etot_conv) < 1e-10_dp)
-call assert(abs(mu - mu_conv) < 1e-5_dp)
+call assert(abs(mu - mu_conv) < 5e-5_dp)
 call assert(abs(mu - mu_Hn) < 5e-5_dp)
 
 end program
