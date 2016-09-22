@@ -8,7 +8,8 @@ implicit none
 private
 public upcase, lowcase, whitechar, blank, num_strings, getstring, &
     stop_error, arange, loadtxt, savetxt, newunit, assert, str, init_random, &
-    zeros, mesh_exp, linspace, clock, strfmt, get_int_arg, get_float_arg
+    zeros, mesh_exp, linspace, clock, strfmt, get_int_arg, get_float_arg, &
+    allocate_mold
 
 interface str
     module procedure str_int, str_real, str_real_n
@@ -16,6 +17,10 @@ end interface
 
 interface strfmt
     module procedure strfmt_int, strfmt_real
+end interface
+
+interface allocate_mold
+    module procedure allocate_mold_real3d
 end interface
 
 contains
@@ -521,5 +526,13 @@ if (s /= 0) then
     call stop_error("get_int_arg: Failed to convert an argument to a float.")
 end if
 end function
+
+subroutine allocate_mold_real3d(A, B)
+real(dp), allocatable, intent(out) :: A(:,:,:)
+real(dp), intent(in) :: B(:,:,:)
+! Equivalent to allocate(A, mold=B). Use this with compilers that do not
+! support the F2008 syntax yet.
+allocate(A(size(B,1), size(B,2), size(B,3)))
+end subroutine
 
 end module
