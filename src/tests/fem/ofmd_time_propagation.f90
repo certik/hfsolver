@@ -49,6 +49,7 @@ print *, "    Done."
 
 call real_space_vectors([L, L, L], Xn)
 call reciprocal_space_vectors([L, L, L], G, G2)
+G2(1,1,1) = 1 ! To avoid division by 0
 call positions_bcc(X, L)
 !call loadtxt("../pos.txt", X)
 call assert(size(X, 1) == 3)

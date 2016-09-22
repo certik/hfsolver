@@ -105,6 +105,7 @@ end do
 end do
 
 call reciprocal_space_vectors([L, L, L], G, G2)
+G2(1,1,1) = 1 ! To avoid division by 0
 allocate(R(40000))
 R = linspace(1._dp/40000, 0.9_dp, 40000)
 call radial_potential_fourier(R, 1*erf(6*R)/R, L, 1._dp, Ven0G, V0)

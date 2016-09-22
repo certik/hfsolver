@@ -86,6 +86,7 @@ allocate(fullsol(maxval(fed%in)))
 nq_pos = func2quad(fed%nodes, fed%elems, fed%xiq, ne_fn)
 
 call reciprocal_space_vectors([L, L, L], G, G2)
+G2(1,1,1) = 1 ! To avoid division by 0
 
 call init_random()
 !call positions_random(X, L, 2**(1._dp/6)*sigma, 10)

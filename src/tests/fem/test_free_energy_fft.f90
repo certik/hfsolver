@@ -48,6 +48,7 @@ call radial_potential_fourier(R, Z*erf(alpha_nen*R)/R, L, Z, VenG0, V0)
 
 call real_space_vectors([L, L, L], Xn)
 call reciprocal_space_vectors([L, L, L], G, G2)
+G2(1,1,1) = 1 ! To avoid division by 0
 ne = 1
 do i = 1, Ng
 do j = 1, Ng

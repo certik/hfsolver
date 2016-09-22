@@ -129,7 +129,6 @@ Ng = shape(G2)
 forall(i=1:Ng(1), j=1:Ng(2), k=1:Ng(3))
     G(i, j, k, :) = 2*pi/L * ([i,j,k] - 1 - Ng*nint(([i,j,k]-1.5_dp)/Ng))
 end forall
-G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
