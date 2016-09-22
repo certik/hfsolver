@@ -638,7 +638,7 @@ res = sum(wtq * hq) / zeta
 res = res * exp(-zeta*x0)
 end function
 
-real(dp) function gauss_ab(n, zeta, f, a, b) result(res)
+real(dp) recursive function gauss_ab(n, zeta, f, a, b) result(res)
 ! Calculates the integral \int_a^b r^n * exp(-zeta*r) * f(r) \d r
 !
 ! A direct Gauss-Legendre quadrature is used.
