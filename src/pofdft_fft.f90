@@ -41,10 +41,15 @@ integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
 integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
 ! Temporary input array, will get trashed by pfft3
 complex(dp) :: tmp(size(x,1), size(x,2), size(x,3))
+real(dp) :: t1, t2
+t1 = clock()
 tmp = x
 ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
 call pfft3(tmp, xG, commy, commz, Ng, nsub)
 xG = xG / product(Ng)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 subroutine preal2fourier_real(x, xG, commy, commz, Ng, nsub)
@@ -56,10 +61,15 @@ integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
 integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
 ! Temporary input array, will get trashed by pfft3
 complex(dp) :: tmp(size(x,1), size(x,2), size(x,3))
+real(dp) :: t1, t2
+t1 = clock()
 tmp = x
 ! Calculates sum_{n=0}^{N-1} e^{-2*pi*i*k*n/N}*x(n)
 call pfft3(tmp, xG, commy, commz, Ng, nsub)
 xG = xG / product(Ng)     ! The proper normalization is to divide by N
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 subroutine pfourier2real_complex(xG, x, commy, commz, Ng, nsub)
@@ -76,10 +86,15 @@ integer, intent(in) :: Ng(:) ! Total (global) number of PW in each direction
 integer, intent(in) :: nsub(:) ! Number of subdomains in each direction
 ! Temporary input array, will get trashed by pfft3
 complex(dp) :: tmp(size(x,1), size(x,2), size(x,3))
+real(dp) :: t1, t2
+t1 = clock()
 tmp = xG
 ! Calculates sum_{k=0}^{N-1} e^{2*pi*i*k*n/N}*X(k)
 call pifft3(tmp, x, commy, commz, Ng, nsub)
 ! The result is already normalized
+t2 = clock()
+fft_counter = fft_counter + 1
+fft_time = fft_time + t2-t1
 end subroutine
 
 subroutine pfourier2real_real(xG, x, commy, commz, Ng, nsub)
