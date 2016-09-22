@@ -5,7 +5,7 @@ use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg, &
-    allocate_mold
+    allocate_mold, clock
 use ffte, only: factor
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
@@ -182,9 +182,14 @@ if (myid == 0) then
     print *, Etot
 end if
 ne_ = real(ne, dp)
-call free_energy_min(comm_all, commy, commz, Ng, nsub, &
+call mpi_barrier(comm_all, ierr)
+t1 = clock()
+call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
         1._dp, 1, L, G2, T_au, VenG, ne_, 1e-12_dp, &
         Eee, Een, Ts, Exc, Etot, cg_iter)
+call mpi_barrier(comm_all, ierr)
+t2 = clock()
+if (myid == 0) print *, "Minimization time:", t2-t1
 
 call mpi_finalize(ierr)
 end program
