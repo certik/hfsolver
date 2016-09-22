@@ -275,7 +275,7 @@ Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
 F_ = pintegral(comm, L, ne / beta * f(y) + (Ven+Vee/2+exc_density)*ne, Ng)
 end subroutine
 
-subroutine free_energy_min(comm, commy, commz, Ng, nsub, &
+subroutine free_energy_min(myid, comm, commy, commz, Ng, nsub, &
         Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
         Eee, Een, Ts, Exc, Etot, cg_iter)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
@@ -291,7 +291,7 @@ real(dp), intent(inout) :: ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
-integer, intent(in) :: comm, commy, commz, Ng(:), nsub(:)
+integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 
 real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
@@ -327,10 +327,10 @@ call allocate_mold(eta, ne)
 
 psi = sqrt(ne)
 psi_norm = pintegral(comm, L, psi**2, Ng)
-print *, "Initial norm of psi:", psi_norm
+if (myid == 0) print *, "Initial norm of psi:", psi_norm
 psi = sqrt(Nelec / psi_norm) * psi
 psi_norm = pintegral(comm, L, psi**2, Ng)
-print *, "norm of psi:", psi_norm
+if (myid == 0) print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
 call free_energy(comm, commy, commz, Ng, nsub, &
@@ -410,8 +410,10 @@ do iter = 1, max_iter
         last3 = maxval(free_energies(iter-2:iter)) - &
             minval(free_energies(iter-2:iter))
     end if
-    print "('# ', i3, ' Etot/atom = ', f18.8, ' eV; last2 = ', es10.2, ' last3 = ',es10.2)", &
+    if (myid == 0) then
+        print "('# ', i3, ' Etot/atom = ', f18.8, ' eV; last2 = ', es10.2, ' last3 = ',es10.2)", &
         iter, free_energy_ * Ha2eV / Natom, last2 * Ha2eV, last3 * Ha2eV
+    end if
     if (iter > 3) then
         if (last3 < energy_eps) then
             ne = psi**2
@@ -437,8 +439,10 @@ do iter = 1, max_iter
     phi_prime = phi - 1._dp / Nelec * pintegral(comm, L, phi * psi, Ng) * psi
     eta = sqrt(Nelec / pintegral(comm, L, phi_prime**2, Ng)) * phi_prime
     t2 = clock()
-    print "('time: ', f6.3, ' fft: ', f6.3, ' (', f5.2, '%) # fft: ', i3, ' line search', f6.3)", &
-        t2-t1, fft_time, fft_time / (t2-t1) * 100, fft_counter, t12-t11
+    if (myid == 0) then
+        print "('time: ', f6.3, ' fft: ', f6.3, ' (', f5.2, '%) # fft: ', i3, ' line search', f6.3)", &
+            t2-t1, fft_time, fft_time / (t2-t1) * 100, fft_counter, t12-t11
+    end if
 end do
 call stop_error("free_energy_minimization: The maximum number of iterations exceeded.")
 
