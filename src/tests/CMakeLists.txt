@@ -83,6 +83,9 @@ if(WITH_MPI)
     ADDMPITEST(test_ffte_par ffte6 3 2 2 2 32 30 30 1 1 3)
     set_tests_properties(ffte6 PROPERTIES WILL_FAIL TRUE)
     ADDMPITEST(test_ffte_par ffte7 3 2 2 2 36 36 36 1 1 3)
+
+    ADDMPIEXECUTABLE(test_ffte_par2)
+    ADDMPITEST(test_ffte_par2 ffte_par2 4)
 endif()
 
 ADDTEST(test_brent)
