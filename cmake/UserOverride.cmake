@@ -9,7 +9,7 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     # gfortran
     set(common "-std=f2008 -Wall -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -fmax-errors=1")
     set(CMAKE_Fortran_FLAGS_RELEASE_INIT "${common} -O3 -march=native -ffast-math -funroll-loops")
-    set(CMAKE_Fortran_FLAGS_DEBUG_INIT   "${common} -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan")
+    set(CMAKE_Fortran_FLAGS_DEBUG_INIT   "${common} -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999")
     # gcc
     set(CMAKE_C_FLAGS_RELEASE_INIT "-O3 -march=native -ffast-math -funroll-loops")
     set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3 -march=native -ffast-math -funroll-loops")
