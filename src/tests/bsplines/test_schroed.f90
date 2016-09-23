@@ -76,9 +76,12 @@ end do
 print *, "Checking symmetry"
 do j = 1, Nb
     do i = 1, j-1
-        if (abs(Am(i,j)-Am(j,i)) / max(Am(i,j), Am(j,i)) > 1e-8_dp) then
-            print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
-            call stop_error("Am not symmetric")
+        if (max(abs(Am(i,j)), abs(Am(j,i))) > tiny(1._dp)) then
+            if (abs(Am(i,j)-Am(j,i)) / max(abs(Am(i,j)), abs(Am(j,i))) &
+                    > 1e-8_dp) then
+                print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
+                call stop_error("Am not symmetric")
+            end if
         end if
         if (abs(Bm(i,j)-Bm(j,i)) > 1e-12_dp) call stop_error("Bm not symmetric")
    end do

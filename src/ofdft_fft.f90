@@ -59,7 +59,7 @@ interface fourier2real
 end interface
 
 integer :: fft_counter
-real(dp) :: fft_time
+real(dp) :: fft_time = 0
 
 contains
 
@@ -129,7 +129,6 @@ Ng = shape(G2)
 forall(i=1:Ng(1), j=1:Ng(2), k=1:Ng(3))
     G(i, j, k, :) = 2*pi/L * ([i,j,k] - 1 - Ng*nint(([i,j,k]-1.5_dp)/Ng))
 end forall
-G(1, 1, 1, :) = 1 ! To avoid division by 0
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
@@ -504,7 +503,6 @@ if (calc_derivative) then
     call fourier2real(VenG+VeeG, Ven_ee)
 
     dFdn = dF0dn + Ven_ee + Vxc
-    dFdn = dFdn * L**3
 end if
 end subroutine
 

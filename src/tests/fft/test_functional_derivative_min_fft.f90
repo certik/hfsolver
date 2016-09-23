@@ -48,12 +48,13 @@ print *, "Load initial position"
 allocate(X(3, natom))
 call positions_bcc(X, L)
 print *, "Radial nuclear potential FFT"
-call read_pseudo("D.pseudo", R, Ven_rad, Z, Ediff)
+call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
 call radial_potential_fourier(R, Ven_rad, L, Z, Ven0G, V0)
 print *, "    Done."
 
 call real_space_vectors([L, L, L], Xn)
 call reciprocal_space_vectors([L, L, L], G, G2)
+G2(1,1,1) = 1 ! To avoid division by 0
 VenG = 0
 do i = 1, natom
     VenG = VenG - Ven0G * exp(-i_ * &
@@ -80,7 +81,7 @@ print *, "Propagation"
 
 print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 dt = 1/maxval(abs(Hn)) / 10 ! set dt 10x smaller than the limit
-dt = 1e-4_dp
+dt = 1e-4_dp * L**3
 print *, "dt =", dt
 
 ! Do first step by hand:
@@ -141,7 +142,7 @@ end do
 print *, "Done"
 
 Etot_conv = -172.12475770606159_dp
-mu_conv = 96.415580964855209_dp
+mu_conv = 96.415580964855209_dp / L**3
 
 print *, "Etot:", Etot, abs(Etot - Etot_conv)
 print *, "mu:", mu, abs(mu - mu_conv)
@@ -175,7 +176,7 @@ print *, "mu:", mu, abs(mu - mu_conv)
 print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
 print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
 call assert(abs(Etot - Etot_conv) < 1e-10_dp)
-call assert(abs(mu - mu_conv) < 1e-5_dp)
+call assert(abs(mu - mu_conv) < 5e-5_dp)
 call assert(abs(mu - mu_Hn) < 5e-5_dp)
 
 end program
