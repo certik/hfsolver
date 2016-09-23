@@ -20,16 +20,16 @@ use md, only: positions_bcc
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG
-real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven
+real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven, psi
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:)
 real(dp) :: L(3), Z, Eee_conv
 integer :: i, j, k
 integer :: Ng(3)
 real(dp) :: t1, t2, t3
 integer :: LNPU(3)
-integer :: cg_iter, natom
+integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv, &
-    mu_conv, mu_Hn
+    mu_conv, mu_Hn, dt, E0, omega, psi_norm, t
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -101,6 +101,7 @@ call allocate_mold(Hn, ne)
 call allocate_mold(Ven, ne)
 call allocate_mold(Ven0G, ne)
 call allocate_mold(VenG, neG)
+call allocate_mold(psi, ne)
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 if (myid == 0) print *, "Load initial position"
@@ -141,8 +142,95 @@ if (myid == 0) then
 end if
 call assert(all(ne > 0))
 
+if (myid == 0) then
+    print *
+    print *, "------------------------------------------------------------------"
+    print *, "Propagation"
+end if
+
+! Propagate
+
+if (myid == 0) then
+    print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
+end if
+dt = 1e-4_dp * product(L)
+if (myid == 0) then
+    print *, "dt =", dt
+end if
+
+! Do first step by hand:
+if (myid == 0) print *, "First step"
+psi = sqrt(ne)
+
+t = 0
+
+psi = psi - dt*Hn*psi
+
+ne = psi**2
+psi_norm = pintegral(comm_all, L, ne, Ng)
+if (myid == 0) print *, "Initial norm of psi:", psi_norm
+psi = sqrt(natom / psi_norm) * psi
+ne = psi**2
+psi_norm = pintegral(comm_all, L, ne, Ng)
+if (myid == 0) print *, "norm of psi:", psi_norm
+
+E0 = 1e-3_dp
+omega = 0.05
+if (myid == 0) then
+    open(newunit=u, file="log.txt", status="replace")
+    close(u)
+end if
+
+do i = 1, 200
+    t = t + dt
+    print *, "iter =", i, "time =", t
+    psi = psi - dt*Hn*psi
+    ne = psi**2
+    psi_norm = pintegral(comm_all, L, ne, Ng)
+    print *, "Initial norm of psi:", psi_norm
+    psi = sqrt(natom / psi_norm) * psi
+    ne = psi**2
+    psi_norm = pintegral(comm_all, L, ne, Ng)
+    print *, "norm of psi:", psi_norm
+
+    call free_energy(comm_all, commy, commz, Ng, nsub, &
+            L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
+            .true., .true.)
+    Etot = Ts + Een + Eee + Exc
+
+    mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
+    mu_Hn = sum(Hn)/size(Hn)
+    if (myid == 0) then
+        print *, mu, mu_Hn
+        print *, "Summary of energies [a.u.]:"
+        print "('    Ts   = ', f14.8)", Ts
+        print "('    Een  = ', f14.8)", Een
+        print "('    Eee  = ', f14.8)", Eee
+        print "('    Exc  = ', f14.8)", Exc
+        print *, "   ---------------------"
+        print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+
+        open(newunit=u, file="log.txt", position="append", status="old")
+        write(u, *) i, Etot, mu, mu_Hn
+        close(u)
+    end if
+
+end do
+if (myid == 0) print *, "Done"
+
 Etot_conv = -172.12475770606159_dp
 mu_conv = 96.415580964855209_dp / product(L)
+
+if (myid == 0) then
+    print *, "Etot:", Etot, abs(Etot - Etot_conv)
+    print *, "mu:", mu, abs(mu - mu_conv)
+    print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
+    print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
+    call assert(abs(Etot - Etot_conv) < 1e-13_dp)
+    call assert(abs(mu - mu_conv) < 1e-13_dp)
+    call assert(abs(mu - mu_Hn) < 1e-13_dp)
+end if
 
 ! Now compare against CG minimization
 print *, "CG minimization:"
