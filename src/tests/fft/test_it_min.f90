@@ -1,36 +1,44 @@
 program test_ffte_par2
 use types, only: dp
-use constants, only: pi
+use constants, only: Ha2eV, i_
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg, &
     allocate_mold, clock
 use ffte, only: factor
+use ofdft, only: read_pseudo
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
-    pintegral, pintegralG, free_energy, free_energy_min
+    pintegral, pintegralG, free_energy, free_energy_min, &
+    radial_potential_fourier
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
     mpi_barrier, MPI_DOUBLE_PRECISION, mpi_bcast
+use md, only: positions_bcc
 implicit none
 
-complex(dp), dimension(:,:,:), allocatable :: ne, neG, ne2, VenG, Ven
-real(dp), allocatable :: G(:,:,:,:), G2(:,:,:), X(:,:,:,:), dFdn(:,:,:), &
-    ne_(:,:,:)
-real(dp) :: L(3), r2, alpha, Z, Eee_conv
+complex(dp), dimension(:,:,:), allocatable :: neG, VenG
+real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven
+real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:)
+real(dp) :: L(3), Z, Eee_conv
 integer :: i, j, k
 integer :: Ng(3)
 real(dp) :: t1, t2, t3
 integer :: LNPU(3)
-integer :: cg_iter
-real(dp) :: T_au, Eee, Een, Ts, Exc, Etot
+integer :: cg_iter, natom
+real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv, &
+    mu_conv, mu_Hn
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
+
+T_eV = 34.5_dp
+T_au = T_ev / Ha2eV
+natom = 128
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -43,7 +51,7 @@ if (myid == 0) then
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
         Ng = 32
-        L = 2
+        L = 8.1049178668765851_dp
     else
         if (command_argument_count() /= 9) then
             print *, "Usage:"
@@ -88,108 +96,84 @@ call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
 allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(ne2(Ng_local(1), Ng_local(2), Ng_local(3)))
+call allocate_mold(G2, ne)
+call allocate_mold(Hn, ne)
+call allocate_mold(Ven, ne)
+call allocate_mold(Ven0G, ne)
+call allocate_mold(VenG, neG)
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
-allocate(G2(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(dFdn(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(Ven(Ng_local(1), Ng_local(2), Ng_local(3)))
-allocate(VenG(Ng_local(1), Ng_local(2), Ng_local(3)))
-call allocate_mold(ne_, dFdn)
+if (myid == 0) print *, "Load initial position"
+allocate(Xion(3, natom))
+! For now assume a box, until positions_bcc can accept a vector L(:)
+! And radial_potential_fourier
+call assert(abs(L(2)-L(1)) < 1e-15_dp)
+call assert(abs(L(3)-L(1)) < 1e-15_dp)
+call positions_bcc(Xion, L(1))
+if (myid == 0) print *, "Radial nuclear potential FFT"
+call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
+call radial_potential_fourier(R, Ven_rad, L, Z, Ng, myxyz, Ven0G, V0)
+if (myid == 0) print *, "    Done."
+
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
+if (myid == 0) G2(1,1,1) = 1 ! To avoid division by 0 in free_energy
 
-! Setup two Gaussians with opposite charges, thus overall the density is net
-! neutral:
-alpha = 5
-Z = 3
-do k = 1, size(ne, 3)
-do j = 1, size(ne, 2)
-do i = 1, size(ne, 1)
-    r2 =sum((X(i,j,k,:)-L/2)**2)
-    ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2) &
-        - Z*(alpha+1)**3/pi**(3._dp/2)*exp(-(alpha+1)**2*r2)
-end do
-end do
+VenG = 0
+do i = 1, natom
+    VenG = VenG - Ven0G * exp(-i_ * &
+        (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
 end do
 
-! Setup VenG
-alpha = 5
-Z = 3
-do k = 1, size(ne, 3)
-do j = 1, size(ne, 2)
-do i = 1, size(ne, 1)
-    r2 =sum((X(i,j,k,:)-L/2)**2)
-    Ven(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
-end do
-end do
-end do
-call preal2fourier(Ven, VenG, commy, commz, Ng, nsub)
+! Minimization
 
-Eee = pintegral(comm_all, L, real(ne, dp), Ng)
-if (myid == 0) then
-    print *, "integral:", myid, Eee
-    call assert(abs(Eee) < 1e-10_dp)
-end if
-ne2 = 0
-call mpi_barrier(comm_all, ierr)
-call cpu_time(t1)
-call preal2fourier(ne, neG, commy, commz, Ng, nsub)
-call mpi_barrier(comm_all, ierr)
-call cpu_time(t2)
-call pfourier2real(neG, ne2, commy, commz, Ng, nsub)
-call mpi_barrier(comm_all, ierr)
-call cpu_time(t3)
-if (myid == 0) then
-    print *, "Timings (t, t*nproc):"
-    print *, t2-t1, (t2-t1)*nproc
-    print *, t3-t2, (t3-t2)*nproc
-    print *, "Error:", maxval(abs(ne-ne2))
-    call assert(all(abs(ne - ne2) < 1e-12_dp))
-end if
-call mpi_barrier(comm_all, ierr)
+ne = natom / product(L)
 
-if (myid == 0) then
-    neG(1,1,1) = 0
-    G(1, 1, 1, :) = 1 ! To avoid division by 0
-    G2(1, 1, 1) = 1 ! To avoid division by 0
-end if
-Eee = pintegralG(comm_all, L, 2*pi*abs(neG)**2/G2) - Z**2*alpha/sqrt(2*pi)
-if (myid == 0) then
-    print *, "integralG:", myid, Eee
-    Eee_conv = -17.465136801093962_dp
-    print *, "error:", abs(Eee-Eee_conv)
-    call assert(abs(Eee - Eee_conv) < 1e-12_dp)
-end if
-T_au = 1._dp
-! Setup (positive) ne for the free energy:
-alpha = 3
-Z = 3
-do k = 1, size(ne, 3)
-do j = 1, size(ne, 2)
-do i = 1, size(ne, 1)
-    r2 =sum((X(i,j,k,:)-L/2)**2)
-    ne(i, j, k) = Z*alpha**3/pi**(3._dp/2)*exp(-alpha**2*r2)
-end do
-end do
-end do
 call free_energy(comm_all, commy, commz, Ng, nsub, &
-        L, G2, T_au, VenG, real(ne, dp), Eee, Een, Ts, Exc, Etot, dFdn, &
+        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         .true., .true.)
+
+mu = sum(Hn)/size(Hn)
 if (myid == 0) then
-    print *, "Energy:"
-    print *, Eee, Een, Ts, Exc
-    print *, Etot
+    print *, "Etot =", Etot
+    print *, "mu = ", mu
+    print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
 end if
-ne_ = real(ne, dp)
-call mpi_barrier(comm_all, ierr)
-t1 = clock()
+call assert(all(ne > 0))
+
+Etot_conv = -172.12475770606159_dp
+mu_conv = 96.415580964855209_dp / product(L)
+
+! Now compare against CG minimization
+print *, "CG minimization:"
+ne = natom / product(L)
 call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
-        1._dp, 1, L, G2, T_au, VenG, ne_, 1e-12_dp, &
+        real(natom, dp), natom, L, G2, T_au, VenG, ne, 1e-12_dp, &
         Eee, Een, Ts, Exc, Etot, cg_iter)
-call mpi_barrier(comm_all, ierr)
-t2 = clock()
-if (myid == 0) print *, "Minimization time:", t2-t1
+call free_energy(comm_all, commy, commz, Ng, nsub, &
+        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
+        .true., .true.)
+
+mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
+mu_Hn = sum(Hn)/size(Hn)
+if (myid == 0) then
+    print *, mu, mu_Hn
+    print *, "Summary of energies [a.u.]:"
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+
+    print *, "Etot:", Etot, abs(Etot - Etot_conv)
+    print *, "mu:", mu, abs(mu - mu_conv)
+    print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
+    print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
+    call assert(abs(Etot - Etot_conv) < 1e-10_dp)
+    call assert(abs(mu - mu_conv) < 5e-8_dp)
+    call assert(abs(mu - mu_Hn) < 5e-8_dp)
+end if
 
 call mpi_finalize(ierr)
 end program
