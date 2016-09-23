@@ -21,8 +21,8 @@ if(WITH_MPI)
     set_tests_properties(ffte6 PROPERTIES WILL_FAIL TRUE)
     ADDMPITEST(test_ffte_par ffte7 3 2 2 2 36 36 36 1 1 3)
 
-    ADDMPIEXECUTABLE(test_ffte_par2)
-    ADDMPITEST(test_ffte_par2 ffte_par2 4)
+    ADDMPIEXECUTABLE(test_it_min)
+    ADDMPITEST(test_it_min it_min 4)
 endif()
 
 addtest(test_functional_derivative_min_fft)
