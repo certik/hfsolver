@@ -16,6 +16,7 @@ real(dp) :: t1, t2, t3
 ! This works, but is slow due to y,ydft not being aligned to exploit SIMD
 ! The dimensions (4, 8, 16) must be reversed:
 plan = fftw_plan_dft_3d(16, 8, 4, y3, ydft3, FFTW_FORWARD, FFTW_ESTIMATE)
+y3 = 0
 call fftw_execute_dft(plan, y3, ydft3)
 call fftw_destroy_plan(plan)
 
@@ -25,6 +26,7 @@ n = 1024**2
 print *, "1D FFT of size n=", n, "with FFTW allocation"
 x => alloc1d(n)
 xdft => alloc1d(n)
+x = 0
 call cpu_time(t1)
 !plan = fftw_plan_dft_1d(n, x, xdft, FFTW_FORWARD, FFTW_ESTIMATE)
 plan = fftw_plan_dft_1d(n, x, xdft, FFTW_FORWARD, FFTW_MEASURE)
@@ -44,6 +46,7 @@ n = 256
 print *, "1D FFT of size n=", n, "^3  with FFTW allocation"
 x3 => alloc3d(n, n, n)
 xdft3 => alloc3d(n, n, n)
+x3 = 0
 call cpu_time(t1)
 plan = fftw_plan_dft_3d(n, n, n, x3, xdft3, FFTW_FORWARD, FFTW_MEASURE)
 call cpu_time(t2)
