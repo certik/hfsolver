@@ -148,9 +148,9 @@ print *, "Etot:", Etot, abs(Etot - Etot_conv)
 print *, "mu:", mu, abs(mu - mu_conv)
 print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
 print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
-call assert(abs(Etot - Etot_conv) < 1e-12_dp)
-call assert(abs(mu - mu_conv) < 1e-11_dp)
-call assert(abs(mu - mu_Hn) < 1e-10_dp)
+call assert(abs(Etot - Etot_conv) < 1e-13_dp)
+call assert(abs(mu - mu_conv) < 1e-13_dp)
+call assert(abs(mu - mu_Hn) < 1e-13_dp)
 
 ! Now compare against CG minimization
 print *, "CG minimization:"
@@ -176,7 +176,7 @@ print *, "mu:", mu, abs(mu - mu_conv)
 print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
 print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
 call assert(abs(Etot - Etot_conv) < 1e-10_dp)
-call assert(abs(mu - mu_conv) < 5e-5_dp)
-call assert(abs(mu - mu_Hn) < 5e-5_dp)
+call assert(abs(mu - mu_conv) < 5e-8_dp)
+call assert(abs(mu - mu_Hn) < 5e-8_dp)
 
 end program
