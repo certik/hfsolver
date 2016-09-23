@@ -240,7 +240,6 @@ if (calc_derivative) then
     call pfourier2real(VenG+VeeG, Ven_ee, commy, commz, Ng, nsub)
 
     dFdn = dF0dn + Ven_ee + Vxc
-    dFdn = dFdn * product(L) ! FIXME: Do not multiply by L**3
 end if
 end subroutine
 
