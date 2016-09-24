@@ -184,15 +184,15 @@ end if
 
 do i = 1, 200
     t = t + dt
-    print *, "iter =", i, "time =", t
+    if (myid == 0) print *, "iter =", i, "time =", t
     psi = psi - dt*Hn*psi
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
-    print *, "Initial norm of psi:", psi_norm
+    if (myid == 0) print *, "Initial norm of psi:", psi_norm
     psi = sqrt(natom / psi_norm) * psi
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
-    print *, "norm of psi:", psi_norm
+    if (myid == 0) print *, "norm of psi:", psi_norm
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
@@ -234,7 +234,7 @@ if (myid == 0) then
 end if
 
 ! Now compare against CG minimization
-print *, "CG minimization:"
+if (myid == 0) print *, "CG minimization:"
 ne = natom / product(L)
 call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
         real(natom, dp), natom, L, G2, T_au, VenG, ne, 1e-12_dp, &
