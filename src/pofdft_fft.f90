@@ -14,7 +14,7 @@ implicit none
 private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
     reciprocal_space_vectors, calculate_myxyz, pintegral, pintegralG, &
-    free_energy, free_energy_min, radial_potential_fourier
+    free_energy, free_energy_min, radial_potential_fourier, psum
 
 interface preal2fourier
     module procedure preal2fourier_real
@@ -152,17 +152,24 @@ end do
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
+real(dp) function psum(comm, f) result(r)
+! Calculates the sum over 'f' in parallel, returns the answer on all
+! processors.
+integer, intent(in) :: comm
+real(dp), intent(in) :: f(:,:,:)
+real(dp) :: myr
+integer :: ierr
+myr = sum(f)
+call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
+end function
+
 real(dp) function pintegral(comm, L, f, Ng) result(r)
 ! Calculates the integral over 'f' in parallel, returns the answer on all
 ! processors.
 integer, intent(in) :: comm
 real(dp), intent(in) :: L(:), f(:,:,:)
 integer, intent(in) :: Ng(:)
-real(dp) :: myr
-integer :: ierr
-myr = sum(f)
-call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
-r = r * product(L/Ng)
+r = psum(comm, f) * product(L/Ng)
 end function
 
 real(dp) function pintegralG(comm, L, fG) result(r)
@@ -171,12 +178,7 @@ real(dp) function pintegralG(comm, L, fG) result(r)
 integer, intent(in) :: comm
 real(dp), intent(in) :: L(:)
 real(dp), intent(in) :: fG(:, :, :)
-real(dp) :: myr
-integer :: ierr
-!myr = sum(real(fG, dp))
-myr = sum(fG)
-call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
-r = r * product(L)
+r = psum(comm, fG) * product(L)
 end function
 
 real(dp) pure function integrate(Rp, f) result(s)
