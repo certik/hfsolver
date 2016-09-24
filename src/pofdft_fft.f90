@@ -8,13 +8,13 @@ use xc, only: xc_pz
 use ofdft, only: f
 use ofdft_fft, only: update_fletcher_reeves, update_polak_ribiere
 use optimize, only: bracket, brent, parabola_vertex
-use mpi2, only: MPI_DOUBLE_PRECISION, mpi_allreduce, MPI_SUM
+use mpi2, only: MPI_DOUBLE_PRECISION, mpi_allreduce, MPI_SUM, MPI_MAX
 use integration, only: integrate_trapz_1
 implicit none
 private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
     reciprocal_space_vectors, calculate_myxyz, pintegral, pintegralG, &
-    free_energy, free_energy_min, radial_potential_fourier, psum
+    free_energy, free_energy_min, radial_potential_fourier, psum, pmaxval
 
 interface preal2fourier
     module procedure preal2fourier_real
@@ -161,6 +161,17 @@ real(dp) :: myr
 integer :: ierr
 myr = sum(f)
 call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
+end function
+
+real(dp) function pmaxval(comm, f) result(r)
+! Calculates the maxval over 'f' in parallel, returns the answer on all
+! processors.
+integer, intent(in) :: comm
+real(dp), intent(in) :: f(:,:,:)
+real(dp) :: myr
+integer :: ierr
+myr = maxval(f)
+call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_MAX, comm, ierr)
 end function
 
 real(dp) function pintegral(comm, L, f, Ng) result(r)
