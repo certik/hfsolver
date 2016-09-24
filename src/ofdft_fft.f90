@@ -21,7 +21,8 @@ private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
     radial_potential_fourier, real2fourier, fourier2real, integralG, &
     logging_info, integral, real_space_vectors, radial_density_fourier, &
-    vtk_save, update_fletcher_reeves, update_polak_ribiere
+    vtk_save, update_fletcher_reeves, update_polak_ribiere, &
+    poisson_kernel
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1
@@ -389,23 +390,30 @@ Vee = C1*cos(theta)**2 + C2*sin(2*theta) + C3*sin(theta)**2
 F_ = integral(L, ne / beta * f(y) + (Ven+Vee/2+exc_density)*ne)
 end subroutine
 
+subroutine poisson_kernel(n, neG, G2, VeeG)
+! Calculates VeeG = 4*pi*neG / G2, but skips the (1,1,1) term
+integer, intent(in) :: n
+complex(dp), intent(in) :: neG(n)
+real(dp), intent(in) :: G2(n)
+complex(dp), intent(out) :: VeeG(n)
+VeeG(1) = 0
+VeeG(2:) = 4*pi*neG(2:) / G2(2:)
+end subroutine
+
 subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3)
 real(dp), dimension(:, :, :), intent(in) :: G2, psi, eta
 real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
 complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
 call real2fourier(psi**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 call fourier2real(VeeG, C1)
 
 call real2fourier(psi*eta, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 call fourier2real(VeeG, C2)
 
 call real2fourier(eta**2, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 call fourier2real(VeeG, C3)
 end subroutine
 
@@ -466,8 +474,7 @@ call assert(calc_value .or. calc_derivative)
 
 call real2fourier(ne, neG)
 
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use

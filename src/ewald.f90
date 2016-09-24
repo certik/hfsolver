@@ -594,7 +594,6 @@ allocate(rho_tilde_minus(Ng,Ng,Ng), rho_tilde_minusG(Ng,Ng,Ng))
 
 call real_space_vectors([L, L, L], Xn)
 call reciprocal_space_vectors([L, L, L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 
 rho_tilde_minus = 0
@@ -707,7 +706,6 @@ allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 allocate(rho0G(Ng,Ng,Ng))
 
 call reciprocal_space_vectors([L,L,L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 do i = 1, N_rad_grid
     R(i) = rc * i / N_rad_grid

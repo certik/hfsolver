@@ -2,7 +2,7 @@ program test_poisson_fft
 use types, only: dp
 use constants, only: pi, i_
 use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG, &
-        radial_potential_fourier
+        radial_potential_fourier, poisson_kernel
 use utils, only: assert, linspace
 use ewald_sums, only: ewald_box
 implicit none
@@ -39,15 +39,13 @@ Ng = 32
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors([L, L, L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 alpha = 5
 X(:, 1) = L/2
 Z = 3
 call gaussian_charges([Z], X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 Eee = Eee - Z**2 * alpha / sqrt(2*pi) ! subtract self-energy
@@ -74,7 +72,6 @@ do Ng = 32, 256, 16
     allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
     allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
     call reciprocal_space_vectors([L, L, L], G, G2)
-    G2(1,1,1) = 1 ! To avoid division by 0
 
     do ialpha = 1, 200, 10
         alpha = 5 + ialpha
@@ -90,8 +87,7 @@ do Ng = 32, 256, 16
             end do
         end do
         call real2fourier(ne, neG)
-        VeeG = 4*pi*neG / G2
-        VeeG(1, 1, 1) = 0
+        call poisson_kernel(size(neG), neG, G2, VeeG)
 
         Eee = integralG(L, VeeG*conjg(neG)) / 2
 
@@ -131,7 +127,6 @@ Ng = 32
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors([L, L, L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 alpha = 5
 X(:, 1) = [L/4, L/4, L/4]
@@ -139,8 +134,7 @@ X(:, 2) = 3*[L/4, L/4, L/4]
 Z = 3
 call gaussian_charges([Z, -Z], X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 Eee = Eee - 2 * Z**2 * alpha / sqrt(2*pi) ! subtract self-energy (2 charges)
@@ -210,7 +204,6 @@ Ng = 32
 allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng))
 call reciprocal_space_vectors([L, L, L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 alpha = 5
 ! Cl^-
@@ -227,8 +220,7 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 X = xred*L
 call gaussian_charges(q, X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 do i = 1, natom
@@ -266,7 +258,6 @@ allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng))
 allocate(ne0(Ng, Ng, Ng), ne0G(Ng, Ng, Ng), Vee0G(Ng, Ng, Ng))
 call reciprocal_space_vectors([L, L, L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 alpha = 14
 ! Cl^-
@@ -287,8 +278,7 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 X = xred*L
 call gaussian_charges(q, X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 do i = 1, natom
@@ -360,7 +350,6 @@ allocate(ne(Ng, Ng, Ng), neG(Ng, Ng, Ng), VeeG(Ng, Ng, Ng))
 allocate(G(Ng, Ng, Ng, 3), G2(Ng, Ng, Ng), fac(Ng, Ng, Ng))
 allocate(ne0(Ng, Ng, Ng), ne0G(Ng, Ng, Ng), Vee0G(Ng, Ng, Ng))
 call reciprocal_space_vectors([L, L, L], G, G2)
-G2(1,1,1) = 1 ! To avoid division by 0
 
 alpha = 14
 ! Cl^-
@@ -389,8 +378,7 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 X = xred*L
 call gaussian_charges(q, X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 do i = 1, natom

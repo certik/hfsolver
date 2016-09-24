@@ -8,12 +8,13 @@ use xc, only: xc_pz
 use ofdft, only: f
 use ofdft_fft, only: update_fletcher_reeves, update_polak_ribiere
 use optimize, only: bracket, brent, parabola_vertex
-use mpi2, only: MPI_DOUBLE_PRECISION, mpi_allreduce, MPI_SUM
+use mpi2, only: MPI_DOUBLE_PRECISION, mpi_allreduce, MPI_SUM, MPI_MAX
+use integration, only: integrate_trapz_1
 implicit none
 private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
     reciprocal_space_vectors, calculate_myxyz, pintegral, pintegralG, &
-    free_energy, free_energy_min
+    free_energy, free_energy_min, radial_potential_fourier, psum, pmaxval
 
 interface preal2fourier
     module procedure preal2fourier_real
@@ -151,17 +152,35 @@ end do
 G2 = G(:,:,:,1)**2 + G(:,:,:,2)**2 + G(:,:,:,3)**2
 end subroutine
 
+real(dp) function psum(comm, f) result(r)
+! Calculates the sum over 'f' in parallel, returns the answer on all
+! processors.
+integer, intent(in) :: comm
+real(dp), intent(in) :: f(:,:,:)
+real(dp) :: myr
+integer :: ierr
+myr = sum(f)
+call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
+end function
+
+real(dp) function pmaxval(comm, f) result(r)
+! Calculates the maxval over 'f' in parallel, returns the answer on all
+! processors.
+integer, intent(in) :: comm
+real(dp), intent(in) :: f(:,:,:)
+real(dp) :: myr
+integer :: ierr
+myr = maxval(f)
+call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_MAX, comm, ierr)
+end function
+
 real(dp) function pintegral(comm, L, f, Ng) result(r)
 ! Calculates the integral over 'f' in parallel, returns the answer on all
 ! processors.
 integer, intent(in) :: comm
 real(dp), intent(in) :: L(:), f(:,:,:)
 integer, intent(in) :: Ng(:)
-real(dp) :: myr
-integer :: ierr
-myr = sum(f)
-call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
-r = r * product(L/Ng)
+r = psum(comm, f) * product(L/Ng)
 end function
 
 real(dp) function pintegralG(comm, L, fG) result(r)
@@ -170,19 +189,81 @@ real(dp) function pintegralG(comm, L, fG) result(r)
 integer, intent(in) :: comm
 real(dp), intent(in) :: L(:)
 real(dp), intent(in) :: fG(:, :, :)
-real(dp) :: myr
-integer :: ierr
-!myr = sum(real(fG, dp))
-myr = sum(fG)
-call mpi_allreduce(myr, r, 1, MPI_DOUBLE_PRECISION, MPI_SUM, comm, ierr)
-r = r * product(L)
+r = psum(comm, fG) * product(L)
 end function
 
-subroutine free_energy(comm, commy, commz, Ng, nsub, &
+real(dp) pure function integrate(Rp, f) result(s)
+real(dp), intent(in) :: Rp(:), f(:)
+s = integrate_trapz_1(Rp, f)
+end function
+
+subroutine radial_potential_fourier(R, V, L, Z, Ng, myxyz, VenG, V0)
+! Takes radial potential (given at origin) defined by:
+!   V(R) on a grid R
+!   Z/r for r > maxval(R)
+! and calculates a 3D Fourier transform of it into the VenG grid. 'L' is the
+! length of the box.
+real(dp), intent(in) :: R(:), V(:), L(:), Z
+integer, intent(in) :: Ng(:), myxyz(:)
+real(dp), intent(out) :: VenG(:, :, :)
+real(dp), intent(out) :: V0
+integer :: Ng_local(3), ijk_global(3), i, j, k, idx
+real(dp) :: Rp(size(R)), dk(3), Rc, w, Vk(0:3*(maxval(Ng)/2+1)**2)
+! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
+! the mesh step (rmax-rmin)/N:
+Rp = (R(size(R)) - R(1)) / (size(R)-1)
+Rc = R(size(R))
+Ng_local = shape(VenG)
+dk = 2*pi/L
+
+! V0 =      \int V(r) - Z/r d^3x
+!    = 4*pi*\int_0^Rc (V(r) - Z/r) r^2 dr
+!    = 4*pi*\int_0^Rc V(r) r^2 dr - Z*Rc^2 / 2
+! So these two are equivalent, we use the one that is faster:
+!V0 = -4*pi*integrate(Rp, R**2*(V-Z/R))
+V0 = -4*pi*(integrate(Rp, R**2*V) - Z*Rc**2/2)
+
+! We prepare the values of the radial Fourier transform on a 3D grid
+Vk(0) = 0
+do i = 1, 3*(maxval(Ng)/2+1)**2
+    ! TODO: this formula recovers the sqrt(i)*dk result when dk is a constant
+    ! vector. Figure out how to extend this algorithm when dk (or L) is not a
+    ! constant vector.
+    w = sqrt(i*sum(dk**2)/3)
+    Vk(i) = 4*pi/(product(L) * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + Z*cos(w*Rc))
+end do
+
+! We fill out the 3D grid using the values from Vk
+do k = 1, Ng_local(3)
+do j = 1, Ng_local(2)
+do i = 1, Ng_local(1)
+    ijk_global = [i, j, k] + myxyz*Ng_local
+    idx = sum((ijk_global - 1 - Ng*nint((ijk_global-1.5_dp)/Ng))**2)
+    VenG(i, j, k) = Vk(idx)
+end do
+end do
+end do
+end subroutine
+
+subroutine poisson_kernel(myid, n, neG, G2, VeeG)
+! Calculates VeeG = 4*pi*neG / G2, but skips the (1,1,1) term on zero rank
+integer, intent(in) :: myid, n
+complex(dp), intent(in) :: neG(n)
+real(dp), intent(in) :: G2(n)
+complex(dp), intent(out) :: VeeG(n)
+if (myid == 0) then
+    VeeG(1) = 0
+    VeeG(2:) = 4*pi*neG(2:) / G2(2:)
+else
+    VeeG = 4*pi*neG / G2
+end if
+end subroutine
+
+subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
         calc_value, calc_derivative)
 use ofdft, only: f
-integer, intent(in) :: comm, commy, commz, Ng(:), nsub(:)
+integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
@@ -203,8 +284,7 @@ call assert(calc_value .or. calc_derivative)
 
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
@@ -240,28 +320,26 @@ if (calc_derivative) then
     call pfourier2real(VenG+VeeG, Ven_ee, commy, commz, Ng, nsub)
 
     dFdn = dF0dn + Ven_ee + Vxc
-    dFdn = dFdn * product(L) ! FIXME: Do not multiply by L**3
 end if
 end subroutine
 
-subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3, commy, commz, Ng, nsub)
+subroutine precalc_C1C2C2(myid, G2, psi, eta, C1, C2, C3, commy, commz, Ng, &
+        nsub)
+integer, intent(in) :: myid
 real(dp), dimension(:, :, :), intent(in) :: G2, psi, eta
 real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
 integer, intent(in) :: commy, commz, Ng(:), nsub(:)
 complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
 call preal2fourier(psi**2, neG, commy, commz, Ng, nsub)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 call pfourier2real(VeeG, C1, commy, commz, Ng, nsub)
 
 call preal2fourier(psi*eta, neG, commy, commz, Ng, nsub)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 call pfourier2real(VeeG, C2, commy, commz, Ng, nsub)
 
 call preal2fourier(eta**2, neG, commy, commz, Ng, nsub)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 call pfourier2real(VeeG, C3, commy, commz, Ng, nsub)
 end subroutine
 
@@ -348,7 +426,7 @@ psi_norm = pintegral(comm, L, psi**2, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(comm, commy, commz, Ng, nsub, &
+call free_energy(myid, comm, commy, commz, Ng, nsub, &
     L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
     Hpsi, calc_value=.false., calc_derivative=.true.)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
@@ -387,7 +465,7 @@ do iter = 1, max_iter
             free_energy_, verbose=.false.)
         else
             call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
-            call precalc_C1C2C2(G2, psi, eta, C1, C2, C3, &
+            call precalc_C1C2C2(myid, G2, psi, eta, C1, C2, C3, &
                 commy, commz, Ng, nsub)
             call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
             call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
@@ -401,7 +479,7 @@ do iter = 1, max_iter
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
-    call free_energy(comm, commy, commz, Ng, nsub, &
+    call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
 !    print *, "Iteration:", iter
@@ -471,7 +549,7 @@ contains
     real(dp) function func_fft(theta) result(energy)
     real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
-    call free_energy(comm, commy, commz, Ng, nsub, &
+    call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi, calc_value=.true., calc_derivative=.false.)
     end function
