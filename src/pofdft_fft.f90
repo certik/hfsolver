@@ -283,9 +283,10 @@ real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
     exc_density, Ven_ee, Vxc, dF0dn, psi, d2psi, dFvWsdn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
     neG, VeeG, psiG
-real(dp) :: beta, dydn
+real(dp) :: beta, dydn, lambda
 logical :: vWs_
 vWs_ = .false.
+lambda = 1./9_dp
 if (present(vWs)) vWs_ = vWs
 
 call assert(calc_value .or. calc_derivative)
@@ -322,7 +323,7 @@ if (calc_value) then
     Exc = pintegral(comm, L, exc_density * ne, Ng)
     Etot = Ts + Een + Eee + Exc
     if (vWs_) then
-        EvWs = -pintegralG(comm, L, G2*abs(psiG)**2)/2
+        EvWs = -pintegralG(comm, L, G2*abs(psiG)**2)/2 * lambda
         Etot = Etot + EvWs
     end if
 end if
@@ -340,7 +341,7 @@ if (calc_derivative) then
 
     if (vWs_) then
         call pfourier2real(-G2*psiG, d2psi, commy, commz, Ng, nsub)
-        dFvWsdn = -d2psi/(2*psi)
+        dFvWsdn = -d2psi/(2*psi) * lambda
         dFdn = dFdn + dFvWsdn
     end if
 end if
