@@ -130,7 +130,7 @@ end do
 
 ne = natom / product(L)
 
-call free_energy(comm_all, commy, commz, Ng, nsub, &
+call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         .true., .true.)
 
@@ -193,7 +193,7 @@ do i = 1, 200
     psi_norm = pintegral(comm_all, L, ne, Ng)
     print *, "norm of psi:", psi_norm
 
-    call free_energy(comm_all, commy, commz, Ng, nsub, &
+    call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
             .true., .true.)
     Etot = Ts + Een + Eee + Exc
@@ -238,7 +238,7 @@ ne = natom / product(L)
 call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
         real(natom, dp), natom, L, G2, T_au, VenG, ne, 1e-12_dp, &
         Eee, Een, Ts, Exc, Etot, cg_iter)
-call free_energy(comm_all, commy, commz, Ng, nsub, &
+call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         .true., .true.)
 

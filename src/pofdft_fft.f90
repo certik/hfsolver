@@ -211,11 +211,11 @@ end do
 end do
 end subroutine
 
-subroutine free_energy(comm, commy, commz, Ng, nsub, &
+subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
         calc_value, calc_derivative)
 use ofdft, only: f
-integer, intent(in) :: comm, commy, commz, Ng(:), nsub(:)
+integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
@@ -237,7 +237,9 @@ call assert(calc_value .or. calc_derivative)
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 
 VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+if (myid == 0) then
+    VeeG(1, 1, 1) = 0
+end if
 
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
@@ -380,7 +382,7 @@ psi_norm = pintegral(comm, L, psi**2, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 ! This returns H[n] = delta F / delta n, we save it to the Hpsi variable to
 ! save space:
-call free_energy(comm, commy, commz, Ng, nsub, &
+call free_energy(myid, comm, commy, commz, Ng, nsub, &
     L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
     Hpsi, calc_value=.false., calc_derivative=.true.)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
@@ -433,7 +435,7 @@ do iter = 1, max_iter
     ! TODO: We probably don't need to recalculate free_energy_ here:
     psi_prev = psi
     psi = cos(theta) * psi + sin(theta) * eta
-    call free_energy(comm, commy, commz, Ng, nsub, &
+    call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
 !    print *, "Iteration:", iter
@@ -503,7 +505,7 @@ contains
     real(dp) function func_fft(theta) result(energy)
     real(dp), intent(in) :: theta
     psi_ = cos(theta) * psi + sin(theta) * eta
-    call free_energy(comm, commy, commz, Ng, nsub, &
+    call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi, calc_value=.true., calc_derivative=.false.)
     end function
