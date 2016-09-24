@@ -181,7 +181,12 @@ end if
 do i = 1, 200
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    psi = psi - dt*Hn*psi
+    !psi = psi - dt*Hn*psi
+    psi = psi * exp(-Hn*dt/2)
+    !call real2fourier(psi, psiG)
+    !psiG = psiG * exp(-G2*dt/2)
+    !call fourier2real(psiG, psi)
+    psi = psi * exp(-Hn*dt/2)
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "Initial norm of psi:", psi_norm
