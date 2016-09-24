@@ -245,6 +245,20 @@ end do
 end do
 end subroutine
 
+subroutine poisson_kernel(myid, n, neG, G2, VeeG)
+! Calculates VeeG = 4*pi*neG / G2, but skips the (1,1,1) term on zero rank
+integer, intent(in) :: myid, n
+complex(dp), intent(in) :: neG(n)
+real(dp), intent(in) :: G2(n)
+complex(dp), intent(out) :: VeeG(n)
+if (myid == 0) then
+    VeeG(1) = 0
+    VeeG(2:) = 4*pi*neG(2:) / G2(2:)
+else
+    VeeG = 4*pi*neG / G2
+end if
+end subroutine
+
 subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
         calc_value, calc_derivative)
@@ -270,10 +284,7 @@ call assert(calc_value .or. calc_derivative)
 
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 
-VeeG = 4*pi*neG / G2
-if (myid == 0) then
-    VeeG(1, 1, 1) = 0
-end if
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
@@ -320,18 +331,15 @@ real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
 integer, intent(in) :: commy, commz, Ng(:), nsub(:)
 complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
 call preal2fourier(psi**2, neG, commy, commz, Ng, nsub)
-VeeG = 4*pi*neG / G2
-if (myid == 0) VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 call pfourier2real(VeeG, C1, commy, commz, Ng, nsub)
 
 call preal2fourier(psi*eta, neG, commy, commz, Ng, nsub)
-VeeG = 4*pi*neG / G2
-if (myid == 0) VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 call pfourier2real(VeeG, C2, commy, commz, Ng, nsub)
 
 call preal2fourier(eta**2, neG, commy, commz, Ng, nsub)
-VeeG = 4*pi*neG / G2
-if (myid == 0) VeeG(1, 1, 1) = 0
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
 call pfourier2real(VeeG, C3, commy, commz, Ng, nsub)
 end subroutine
 
