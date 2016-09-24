@@ -114,7 +114,6 @@ if (myid == 0) print *, "    Done."
 
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
-if (myid == 0) G2(1,1,1) = 1 ! To avoid division by 0 in free_energy
 
 VenG = 0
 do i = 1, natom
