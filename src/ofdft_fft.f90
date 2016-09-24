@@ -21,7 +21,8 @@ private
 public reciprocal_space_vectors, free_energy, free_energy_min, &
     radial_potential_fourier, real2fourier, fourier2real, integralG, &
     logging_info, integral, real_space_vectors, radial_density_fourier, &
-    vtk_save, update_fletcher_reeves, update_polak_ribiere
+    vtk_save, update_fletcher_reeves, update_polak_ribiere, &
+    poisson_kernel
 
 ! Update types for nonlinear conjugate gradient method:
 integer, parameter :: update_fletcher_reeves = 1

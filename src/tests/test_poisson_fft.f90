@@ -2,7 +2,7 @@ program test_poisson_fft
 use types, only: dp
 use constants, only: pi, i_
 use ofdft_fft, only: reciprocal_space_vectors, real2fourier, integralG, &
-        radial_potential_fourier
+        radial_potential_fourier, poisson_kernel
 use utils, only: assert, linspace
 use ewald_sums, only: ewald_box
 implicit none
@@ -45,8 +45,7 @@ X(:, 1) = L/2
 Z = 3
 call gaussian_charges([Z], X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 Eee = Eee - Z**2 * alpha / sqrt(2*pi) ! subtract self-energy
@@ -88,8 +87,7 @@ do Ng = 32, 256, 16
             end do
         end do
         call real2fourier(ne, neG)
-        VeeG = 4*pi*neG / G2
-        VeeG(1, 1, 1) = 0
+        call poisson_kernel(size(neG), neG, G2, VeeG)
 
         Eee = integralG(L, VeeG*conjg(neG)) / 2
 
@@ -136,8 +134,7 @@ X(:, 2) = 3*[L/4, L/4, L/4]
 Z = 3
 call gaussian_charges([Z, -Z], X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 Eee = Eee - 2 * Z**2 * alpha / sqrt(2*pi) ! subtract self-energy (2 charges)
@@ -223,8 +220,7 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 X = xred*L
 call gaussian_charges(q, X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 do i = 1, natom
@@ -282,8 +278,7 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 X = xred*L
 call gaussian_charges(q, X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 do i = 1, natom
@@ -383,8 +378,7 @@ q = [-1, -1, -1, -1, 1, 1, 1, 1]*1._dp
 X = xred*L
 call gaussian_charges(q, X, L, alpha, ne)
 call real2fourier(ne, neG)
-VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+call poisson_kernel(size(neG), neG, G2, VeeG)
 
 Eee = integralG(L, VeeG*conjg(neG)) / 2
 do i = 1, natom
