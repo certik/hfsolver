@@ -28,8 +28,8 @@ integer :: Ng(3)
 real(dp) :: t1, t2, t3
 integer :: LNPU(3)
 integer :: cg_iter, natom, u
-real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv, &
-    mu_conv, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff
+real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv32, &
+    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -216,17 +216,24 @@ do i = 1, 200
 end do
 if (myid == 0) print *, "Done"
 
-Etot_conv = -172.12475770606159_dp
-mu_conv = 96.415580964855209_dp / product(L)
+! Converged values for 32^3 PW
+Etot_conv32 = -172.12475770606159_dp
+mu_conv32 = 96.415580964855209_dp / product(L)
+
+Etot_it = Etot
 
 if (myid == 0) then
-    print *, "Etot:", Etot, abs(Etot - Etot_conv)
-    print *, "mu:", mu, abs(mu - mu_conv)
-    print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
+    print *, "Etot: ", Etot_it
     print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
-    call assert(abs(Etot - Etot_conv) < 5e-11_dp)
-    call assert(abs(mu - mu_conv) < 1e-13_dp)
-    call assert(abs(mu - mu_Hn) < 1e-13_dp)
+    if (all(Ng == [32, 32, 32])) then
+        print *, "Ng=32^3, compare to gold result"
+        print *, "Etot:", Etot, abs(Etot - Etot_conv32)
+        print *, "mu:", mu, abs(mu - mu_conv32)
+        print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv32)
+        call assert(abs(Etot - Etot_conv32) < 5e-11_dp)
+        call assert(abs(mu - mu_conv32) < 1e-13_dp)
+    end if
+    call assert(abs(mu - mu_Hn) < 1e-12_dp)
 end if
 
 ! Now compare against CG minimization
@@ -251,12 +258,17 @@ if (myid == 0) then
     print *, "   ---------------------"
     print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
-    print *, "Etot:", Etot, abs(Etot - Etot_conv)
-    print *, "mu:", mu, abs(mu - mu_conv)
-    print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv)
+    print *, "abs(Etot-Etot_it):", abs(Etot-Etot_it)
     print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
-    call assert(abs(Etot - Etot_conv) < 1e-10_dp)
-    call assert(abs(mu - mu_conv) < 5e-8_dp)
+    if (all(Ng == [32, 32, 32])) then
+        print *, "Ng=32^3, compare to gold result"
+        print *, "Etot:", Etot, abs(Etot - Etot_conv32)
+        print *, "mu:", mu, abs(mu - mu_conv32)
+        print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv32)
+        call assert(abs(Etot - Etot_conv32) < 1e-10_dp)
+        call assert(abs(mu - mu_conv32) < 5e-8_dp)
+    end if
+    call assert(abs(Etot-Etot_it) < 5e-8_dp)
     call assert(abs(mu - mu_Hn) < 5e-8_dp)
 end if
 
