@@ -229,14 +229,16 @@ Etot_it = Etot
 
 if (myid == 0) then
     print *, "Etot: ", Etot_it
+    print *, "mu:", mu
+    print *, "mu_Hn:", mu_Hn
     print *, "abs(mu-mu_Hn):", abs(mu - mu_Hn)
     if (all(Ng == [32, 32, 32])) then
         print *, "Ng=32^3, compare to gold result"
-        print *, "Etot:", Etot, abs(Etot - Etot_conv32)
-        print *, "mu:", mu, abs(mu - mu_conv32)
-        print *, "mu_Hn:", mu_Hn, abs(mu_Hn - mu_conv32)
+        print *, "abs(Etot - Etot_conv32) =", abs(Etot - Etot_conv32)
+        print *, "abs(mu - mu_conv32) =", abs(mu - mu_conv32)
+        print *, "abs(mu_Hn - mu_conv32) =", abs(mu_Hn - mu_conv32)
         call assert(abs(Etot - Etot_conv32) < 5e-11_dp)
-        call assert(abs(mu - mu_conv32) < 1e-13_dp)
+        call assert(abs(mu - mu_conv32) < 1e-12_dp)
     end if
     call assert(abs(mu - mu_Hn) < 1e-12_dp)
 end if
