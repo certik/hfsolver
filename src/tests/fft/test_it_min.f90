@@ -1,4 +1,4 @@
-program test_ffte_par2
+program test_it_min
 use types, only: dp
 use constants, only: Ha2eV, i_
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
