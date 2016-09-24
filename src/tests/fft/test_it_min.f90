@@ -11,7 +11,7 @@ use ofdft, only: read_pseudo
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
     pintegral, pintegralG, free_energy, free_energy_min, &
-    radial_potential_fourier
+    radial_potential_fourier, psum, pmaxval
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -29,7 +29,7 @@ real(dp) :: t1, t2, t3
 integer :: LNPU(3)
 integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv, &
-    mu_conv, mu_Hn, dt, E0, omega, psi_norm, t
+    mu_conv, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -134,11 +134,12 @@ call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         .true., .true.)
 
-mu = sum(Hn)/size(Hn)
+mu = psum(comm_all, Hn)/product(Ng)
+Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
 if (myid == 0) then
     print *, "Etot =", Etot
     print *, "mu = ", mu
-    print *, "max(abs(H-mu)) = ", maxval(abs(Hn - mu))
+    print *, "max(abs(H-mu)) = ", Hn_mu_diff
 end if
 call assert(all(ne > 0))
 
@@ -199,7 +200,7 @@ do i = 1, 200
     Etot = Ts + Een + Eee + Exc
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
-    mu_Hn = sum(Hn)/size(Hn)
+    mu_Hn = psum(comm_all, Hn)/product(Ng)
     if (myid == 0) then
         print *, mu, mu_Hn
         print *, "Summary of energies [a.u.]:"
@@ -243,7 +244,7 @@ call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         .true., .true.)
 
 mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
-mu_Hn = sum(Hn)/size(Hn)
+mu_Hn = psum(comm_all, Hn)/product(Ng)
 if (myid == 0) then
     print *, mu, mu_Hn
     print *, "Summary of energies [a.u.]:"
