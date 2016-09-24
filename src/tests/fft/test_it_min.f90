@@ -39,6 +39,7 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
 natom = 128
+L = 8.1049178668765851_dp
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -51,23 +52,19 @@ if (myid == 0) then
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
         Ng = 32
-        L = 8.1049178668765851_dp
     else
-        if (command_argument_count() /= 9) then
+        if (command_argument_count() /= 6) then
             print *, "Usage:"
             print *
-            print *, "test_ffte_par L(3) Ng(3) nsub(3)"
+            print *, "test_ffte_par Ng(3) nsub(3)"
             call stop_error("Incorrect number of arguments.")
         end if
-        L(1) = get_float_arg(1)
-        L(2) = get_float_arg(2)
-        L(3) = get_float_arg(3)
-        Ng(1) = get_int_arg(4)
-        Ng(2) = get_int_arg(5)
-        Ng(3) = get_int_arg(6)
-        nsub(1) = get_int_arg(7)
-        nsub(2) = get_int_arg(8)
-        nsub(3) = get_int_arg(9)
+        Ng(1) = get_int_arg(1)
+        Ng(2) = get_int_arg(2)
+        Ng(3) = get_int_arg(3)
+        nsub(1) = get_int_arg(4)
+        nsub(2) = get_int_arg(5)
+        nsub(3) = get_int_arg(6)
     end if
     Ng_local = Ng / nsub
 
@@ -81,7 +78,6 @@ if (myid == 0) then
         call stop_error("nproc must be equal to the number of subdomains")
     end if
 end if
-call mpi_bcast(L, size(L), MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(Ng_local, size(Ng_local), MPI_INTEGER, 0, comm_all, ierr)
