@@ -312,24 +312,26 @@ if (calc_derivative) then
 end if
 end subroutine
 
-subroutine precalc_C1C2C2(G2, psi, eta, C1, C2, C3, commy, commz, Ng, nsub)
+subroutine precalc_C1C2C2(myid, G2, psi, eta, C1, C2, C3, commy, commz, Ng, &
+        nsub)
+integer, intent(in) :: myid
 real(dp), dimension(:, :, :), intent(in) :: G2, psi, eta
 real(dp), dimension(:, :, :), intent(out) :: C1, C2, C3
 integer, intent(in) :: commy, commz, Ng(:), nsub(:)
 complex(dp), dimension(size(psi,1), size(psi,2), size(psi,3)) :: neG, VeeG
 call preal2fourier(psi**2, neG, commy, commz, Ng, nsub)
 VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+if (myid == 0) VeeG(1, 1, 1) = 0
 call pfourier2real(VeeG, C1, commy, commz, Ng, nsub)
 
 call preal2fourier(psi*eta, neG, commy, commz, Ng, nsub)
 VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+if (myid == 0) VeeG(1, 1, 1) = 0
 call pfourier2real(VeeG, C2, commy, commz, Ng, nsub)
 
 call preal2fourier(eta**2, neG, commy, commz, Ng, nsub)
 VeeG = 4*pi*neG / G2
-VeeG(1, 1, 1) = 0
+if (myid == 0) VeeG(1, 1, 1) = 0
 call pfourier2real(VeeG, C3, commy, commz, Ng, nsub)
 end subroutine
 
@@ -455,7 +457,7 @@ do iter = 1, max_iter
             free_energy_, verbose=.false.)
         else
             call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
-            call precalc_C1C2C2(G2, psi, eta, C1, C2, C3, &
+            call precalc_C1C2C2(myid, G2, psi, eta, C1, C2, C3, &
                 commy, commz, Ng, nsub)
             call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
             call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
