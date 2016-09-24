@@ -261,13 +261,17 @@ end subroutine
 
 subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
-        calc_value, calc_derivative)
+        calc_value, calc_derivative, vWs, EvWs)
 use ofdft, only: f
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 logical, intent(in) :: calc_value, calc_derivative
+! include von Weizsäcker term, default .false.
+logical, intent(in), optional :: vWs
+! If vWs == .true., this contains the von Weizsäcker part of the energy
+real(dp), intent(out), optional :: EvWs
 
 ! dFdn returns "delta F / delta n", the functional derivative with respect to
 ! the density "n". Use the relation
@@ -276,15 +280,24 @@ logical, intent(in) :: calc_value, calc_derivative
 real(dp), intent(out) :: dFdn(:, :, :)
 
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
-    exc_density, Ven_ee, Vxc, dF0dn
+    exc_density, Ven_ee, Vxc, dF0dn, psi, d2psi, dFvWsdn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG
+    neG, VeeG, psiG
 real(dp) :: beta, dydn
+logical :: vWs_
+vWs_ = .false.
+if (present(vWs)) vWs_ = vWs
+
 call assert(calc_value .or. calc_derivative)
 
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 
 call poisson_kernel(myid, size(neG), neG, G2, VeeG)
+
+if (vWs_) then
+    psi = sqrt(ne)
+    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
+end if
 
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
@@ -308,6 +321,10 @@ if (calc_value) then
     ! Exchange and correlation potential
     Exc = pintegral(comm, L, exc_density * ne, Ng)
     Etot = Ts + Een + Eee + Exc
+    if (vWs_) then
+        EvWs = -pintegralG(comm, L, G2*abs(psiG)**2)/2
+        Etot = Etot + EvWs
+    end if
 end if
 
 if (calc_derivative) then
@@ -320,6 +337,12 @@ if (calc_derivative) then
     call pfourier2real(VenG+VeeG, Ven_ee, commy, commz, Ng, nsub)
 
     dFdn = dF0dn + Ven_ee + Vxc
+
+    if (vWs_) then
+        call pfourier2real(-G2*psiG, d2psi, commy, commz, Ng, nsub)
+        dFvWsdn = -d2psi/(2*psi)
+        dFdn = dFdn + dFvWsdn
+    end if
 end if
 end subroutine
 
