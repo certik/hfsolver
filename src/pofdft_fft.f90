@@ -393,7 +393,7 @@ end subroutine
 
 subroutine free_energy_min(myid, comm, commy, commz, Ng, nsub, &
         Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
-        Eee, Een, Ts, Exc, Etot, cg_iter)
+        Eee, Een, Ts, Exc, Etot, cg_iter, vWs, EvWs)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
 ! components are returned in Eee, Een, Ts and Exc. The relation is:
@@ -408,6 +408,10 @@ complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
+! include von Weizsäcker term, default .false.
+logical, intent(in), optional :: vWs
+! If vWs == .true., this contains the von Weizsäcker part of the energy
+real(dp), intent(out), optional :: EvWs
 
 real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
@@ -422,6 +426,9 @@ integer :: update_type
 real(dp) :: t1, t2, t11, t12
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
 logical :: func_use_fft
+logical :: vWs_
+vWs_ = .false.
+if (present(vWs)) vWs_ = vWs
 
 brent_eps = 1e-3_dp
 max_iter = 2000
@@ -451,7 +458,7 @@ if (myid == 0) print *, "norm of psi:", psi_norm
 ! save space:
 call free_energy(myid, comm, commy, commz, Ng, nsub, &
     L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
-    Hpsi, calc_value=.false., calc_derivative=.true.)
+    Hpsi, calc_value=.false., calc_derivative=.true., vWs=vWs_, EvWs=EvWs)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * pintegral(comm, L, 0.5_dp * psi * Hpsi, Ng)
@@ -490,8 +497,8 @@ do iter = 1, max_iter
             call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
             call precalc_C1C2C2(myid, G2, psi, eta, C1, C2, C3, &
                 commy, commz, Ng, nsub)
-            call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
-            call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+            call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+            call brent(func_fft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
         end if
     else
@@ -504,7 +511,8 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
-        free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
+        free_energy_, Hpsi, calc_value=.true., calc_derivative=.true., &
+        vWs=vWs_, EvWs=EvWs)
 !    print *, "Iteration:", iter
 !    psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
@@ -574,7 +582,8 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
-        energy, Hpsi, calc_value=.true., calc_derivative=.false.)
+        energy, Hpsi, calc_value=.true., calc_derivative=.false., &
+        vWs=vWs_, EvWs=EvWs)
     end function
 
 end subroutine
