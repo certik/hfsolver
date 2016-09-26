@@ -149,7 +149,7 @@ end if
 if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
-dt = 1e-4_dp * product(L)
+dt = 0.1_dp
 if (myid == 0) then
     print *, "dt =", dt
 end if
@@ -177,7 +177,7 @@ if (myid == 0) then
     close(u)
 end if
 
-do i = 1, 200
+do i = 1, 70
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     !psi = psi - dt*Hn*psi
