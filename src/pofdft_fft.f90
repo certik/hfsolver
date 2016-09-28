@@ -261,7 +261,7 @@ end subroutine
 
 subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
-        calc_value, calc_derivative, vWs, EvWs)
+        calc_value, calc_derivative, vWs, lambda, EvWs)
 use ofdft, only: f
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
@@ -270,6 +270,8 @@ real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 logical, intent(in) :: calc_value, calc_derivative
 ! include von Weizsäcker term, default .false.
 logical, intent(in), optional :: vWs
+! The coefficient of the von Weizsäcker term
+real(dp), intent(in), optional :: lambda
 ! If vWs == .true., this contains the von Weizsäcker part of the energy
 real(dp), intent(out), optional :: EvWs
 
@@ -283,11 +285,14 @@ real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
     exc_density, Ven_ee, Vxc, dF0dn, psi, d2psi, dFvWsdn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
     neG, VeeG, psiG
-real(dp) :: beta, dydn, lambda
+real(dp) :: beta, dydn
 logical :: vWs_
 vWs_ = .false.
-lambda = 1./9_dp
 if (present(vWs)) vWs_ = vWs
+if (vWs_) then
+    call assert(present(lambda))
+    call assert(present(EvWs))
+end if
 
 call assert(calc_value .or. calc_derivative)
 
@@ -394,7 +399,7 @@ end subroutine
 
 subroutine free_energy_min(myid, comm, commy, commz, Ng, nsub, &
         Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
-        Eee, Een, Ts, Exc, Etot, cg_iter, vWs, EvWs)
+        Eee, Een, Ts, Exc, Etot, cg_iter, vWs, lambda, EvWs)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
 ! components are returned in Eee, Een, Ts and Exc. The relation is:
@@ -411,6 +416,8 @@ integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 ! include von Weizsäcker term, default .false.
 logical, intent(in), optional :: vWs
+! The coefficient of the von Weizsäcker term
+real(dp), intent(in), optional :: lambda
 ! If vWs == .true., this contains the von Weizsäcker part of the energy
 real(dp), intent(out), optional :: EvWs
 
@@ -459,7 +466,8 @@ if (myid == 0) print *, "norm of psi:", psi_norm
 ! save space:
 call free_energy(myid, comm, commy, commz, Ng, nsub, &
     L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
-    Hpsi, calc_value=.false., calc_derivative=.true., vWs=vWs_, EvWs=EvWs)
+    Hpsi, calc_value=.false., calc_derivative=.true., vWs=vWs_, &
+    lambda=lambda, EvWs=EvWs)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * pintegral(comm, L, 0.5_dp * psi * Hpsi, Ng)
@@ -513,7 +521,7 @@ do iter = 1, max_iter
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi, calc_value=.true., calc_derivative=.true., &
-        vWs=vWs_, EvWs=EvWs)
+        vWs=vWs_, lambda=lambda, EvWs=EvWs)
 !    print *, "Iteration:", iter
 !    psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
@@ -584,7 +592,7 @@ contains
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi, calc_value=.true., calc_derivative=.false., &
-        vWs=vWs_, EvWs=EvWs)
+        vWs=vWs_, lambda=lambda, EvWs=EvWs)
     end function
 
 end subroutine

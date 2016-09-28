@@ -29,7 +29,8 @@ real(dp) :: t1, t2, t3
 integer :: LNPU(3)
 integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv32, &
-    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it, EvWs
+    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it, EvWs, &
+    lambda
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -40,6 +41,7 @@ T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
 natom = 128
 L = 8.1049178668765851_dp
+lambda = 0
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -128,7 +130,7 @@ ne = natom / product(L)
 
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., EvWs)
+        .true., .true., .true., lambda, EvWs)
 
 mu = psum(comm_all, Hn)/product(Ng)
 Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
@@ -151,7 +153,6 @@ if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
 dt = 1e-3_dp
-dt = 0.1_dp
 if (myid == 0) then
     print *, "dt =", dt
 end if
@@ -184,13 +185,13 @@ do i = 1, 70
     if (myid == 0) print *, "iter =", i, "time =", t
     !psi = psi - dt*Hn*psi
     psi = psi * exp(-Hn*dt/2)
-!    psi_norm = pintegral(comm_all, L, psi**2, Ng)
-!    psi = sqrt(natom / psi_norm) * psi
-!    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-!    psiG = psiG * exp(-G2*dt/2)
-!    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-!    psi_norm = pintegral(comm_all, L, psi**2, Ng)
-!    psi = sqrt(natom / psi_norm) * psi
+    psi_norm = pintegral(comm_all, L, psi**2, Ng)
+    psi = sqrt(natom / psi_norm) * psi
+    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
+    psiG = psiG * exp(-G2*dt/2)
+    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
+    psi_norm = pintegral(comm_all, L, psi**2, Ng)
+    psi = sqrt(natom / psi_norm) * psi
     psi = psi * exp(-Hn*dt/2)
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
@@ -203,15 +204,14 @@ do i = 1, 70
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-            .true., .true., .true., EvWs)
-    !Etot = Ts + Een + Eee + Exc
+            .true., .true., .true., lambda-1, EvWs)
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     mu_Hn = psum(comm_all, Hn)/product(Ng)
     if (myid == 0) then
         print *, mu, mu_Hn
         print *, "Summary of energies [a.u.]:"
-        !print "('    EvWs = ', f14.8)", EvWs
+        print "('    EvWs = ', f14.8)", EvWs
         print "('    Ts   = ', f14.8)", Ts
         print "('    Een  = ', f14.8)", Een
         print "('    Eee  = ', f14.8)", Eee
@@ -255,10 +255,10 @@ if (myid == 0) print *, "CG minimization:"
 ne = natom / product(L)
 call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
         real(natom, dp), natom, L, G2, T_au, VenG, ne, 1e-12_dp, &
-        Eee, Een, Ts, Exc, Etot, cg_iter, .true., EvWs)
+        Eee, Een, Ts, Exc, Etot, cg_iter, .true., lambda, EvWs)
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., EvWs)
+        .true., .true., .true., lambda, EvWs)
 
 mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
 mu_Hn = psum(comm_all, Hn)/product(Ng)
