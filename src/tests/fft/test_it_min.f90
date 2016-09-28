@@ -41,7 +41,7 @@ T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
 natom = 128
 L = 8.1049178668765851_dp
-lambda = 0
+lambda = 1._dp/9
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
