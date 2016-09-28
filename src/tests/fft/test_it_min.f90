@@ -180,7 +180,7 @@ if (myid == 0) then
     close(u)
 end if
 
-do i = 1, 70
+do i = 1, 3000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     !psi = psi - dt*Hn*psi
@@ -206,6 +206,7 @@ do i = 1, 70
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
             .true., .true., .true., lambda-1, EvWs)
 
+    Etot = Ts + Een + Eee + Exc
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     mu_Hn = psum(comm_all, Hn)/product(Ng)
     if (myid == 0) then
@@ -265,7 +266,7 @@ mu_Hn = psum(comm_all, Hn)/product(Ng)
 if (myid == 0) then
     print *, mu, mu_Hn
     print *, "Summary of energies [a.u.]:"
-    !print "('    EvWs = ', f14.8)", EvWs
+    print "('    EvWs = ', f14.8)", EvWs
     print "('    Ts   = ', f14.8)", Ts
     print "('    Een  = ', f14.8)", Een
     print "('    Eee  = ', f14.8)", Eee
