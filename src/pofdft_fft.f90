@@ -328,7 +328,7 @@ if (calc_value) then
     Exc = pintegral(comm, L, exc_density * ne, Ng)
     Etot = Ts + Een + Eee + Exc
     if (vWs_) then
-        EvWs = -pintegralG(comm, L, G2*abs(psiG)**2)/2 * lambda
+        EvWs = pintegralG(comm, L, G2*abs(psiG)**2)/2 * lambda
         Etot = Etot + EvWs
     end if
 end if

@@ -221,13 +221,28 @@ do i = 1, 3000
         print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
 
 
-        open(newunit=u, file="log.txt", position="append", status="old")
-        write(u, *) i, Etot, mu, mu_Hn
-        close(u)
+!        open(newunit=u, file="log.txt", position="append", status="old")
+!        write(u, *) i, Etot, mu, mu_Hn
+!        close(u)
     end if
 
 end do
 if (myid == 0) print *, "Done"
+
+call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
+        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
+        .true., .true., .true., lambda, EvWs)
+if (myid == 0) then
+    print *, mu, mu_Hn
+    print *, "Summary of energies [a.u.]:"
+    print "('    EvWs = ', f14.8)", EvWs
+    print "('    Ts   = ', f14.8)", Ts
+    print "('    Een  = ', f14.8)", Een
+    print "('    Eee  = ', f14.8)", Eee
+    print "('    Exc  = ', f14.8)", Exc
+    print *, "   ---------------------"
+    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+end if
 
 ! Converged values for 32^3 PW
 Etot_conv32 = -172.12475770606159_dp
