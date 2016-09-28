@@ -193,6 +193,7 @@ do i = 1, 70
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
+    call assert(all(ne > 0))
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
