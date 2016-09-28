@@ -130,7 +130,7 @@ ne = natom / product(L)
 
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, EvWs)
+        .true., .true., .true., lambda-1, EvWs)
 
 mu = psum(comm_all, Hn)/product(Ng)
 Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
@@ -206,7 +206,7 @@ do i = 1, 3000
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
             .true., .true., .true., lambda-1, EvWs)
 
-    Etot = Ts + Een + Eee + Exc
+    !Etot = Ts + Een + Eee + Exc
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     mu_Hn = psum(comm_all, Hn)/product(Ng)
     if (myid == 0) then
