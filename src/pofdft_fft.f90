@@ -261,13 +261,19 @@ end subroutine
 
 subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
-        calc_value, calc_derivative)
+        calc_value, calc_derivative, vWs, lambda, EvWs)
 use ofdft, only: f
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
 complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 logical, intent(in) :: calc_value, calc_derivative
+! include von Weizsäcker term, default .false.
+logical, intent(in), optional :: vWs
+! The coefficient of the von Weizsäcker term
+real(dp), intent(in), optional :: lambda
+! If vWs == .true., this contains the von Weizsäcker part of the energy
+real(dp), intent(out), optional :: EvWs
 
 ! dFdn returns "delta F / delta n", the functional derivative with respect to
 ! the density "n". Use the relation
@@ -276,15 +282,28 @@ logical, intent(in) :: calc_value, calc_derivative
 real(dp), intent(out) :: dFdn(:, :, :)
 
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: y, F0, &
-    exc_density, Ven_ee, Vxc, dF0dn
+    exc_density, Ven_ee, Vxc, dF0dn, psi, d2psi, dFvWsdn
 complex(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: &
-    neG, VeeG
+    neG, VeeG, psiG
 real(dp) :: beta, dydn
+logical :: vWs_
+vWs_ = .false.
+if (present(vWs)) vWs_ = vWs
+if (vWs_) then
+    call assert(present(lambda))
+    call assert(present(EvWs))
+end if
+
 call assert(calc_value .or. calc_derivative)
 
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 
 call poisson_kernel(myid, size(neG), neG, G2, VeeG)
+
+if (vWs_) then
+    psi = sqrt(ne)
+    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
+end if
 
 beta = 1/T_au
 ! The density must be positive, the f(y) fails for negative "y". Thus we use
@@ -308,6 +327,10 @@ if (calc_value) then
     ! Exchange and correlation potential
     Exc = pintegral(comm, L, exc_density * ne, Ng)
     Etot = Ts + Een + Eee + Exc
+    if (vWs_) then
+        EvWs = pintegralG(comm, L, G2*abs(psiG)**2)/2 * lambda
+        Etot = Etot + EvWs
+    end if
 end if
 
 if (calc_derivative) then
@@ -320,6 +343,12 @@ if (calc_derivative) then
     call pfourier2real(VenG+VeeG, Ven_ee, commy, commz, Ng, nsub)
 
     dFdn = dF0dn + Ven_ee + Vxc
+
+    if (vWs_) then
+        call pfourier2real(-G2*psiG, d2psi, commy, commz, Ng, nsub)
+        dFvWsdn = -d2psi/(2*psi) * lambda
+        dFdn = dFdn + dFvWsdn
+    end if
 end if
 end subroutine
 
@@ -370,7 +399,7 @@ end subroutine
 
 subroutine free_energy_min(myid, comm, commy, commz, Ng, nsub, &
         Nelec, Natom, L, G2, T_au, VenG, ne, energy_eps, &
-        Eee, Een, Ts, Exc, Etot, cg_iter)
+        Eee, Een, Ts, Exc, Etot, cg_iter, vWs, lambda, EvWs)
 ! Minimize the electronic free energy using the initial condition 'ne'. Returns
 ! the ground state in 'ne'. The free energy is returned in Etot, and it's
 ! components are returned in Eee, Een, Ts and Exc. The relation is:
@@ -385,6 +414,12 @@ complex(dp), intent(in) :: VenG(:, :, :)
 real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 integer, intent(out) :: cg_iter ! # of CG iterations needed to converge
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
+! include von Weizsäcker term, default .false.
+logical, intent(in), optional :: vWs
+! The coefficient of the von Weizsäcker term
+real(dp), intent(in), optional :: lambda
+! If vWs == .true., this contains the von Weizsäcker part of the energy
+real(dp), intent(out), optional :: EvWs
 
 real(dp), allocatable :: free_energies(:)
 real(dp), allocatable, dimension(:, :, :) :: Hpsi, &
@@ -399,6 +434,9 @@ integer :: update_type
 real(dp) :: t1, t2, t11, t12
 real(dp), dimension(size(VenG,1), size(VenG,2), size(VenG,3)) :: Ven, C1, C2, C3
 logical :: func_use_fft
+logical :: vWs_
+vWs_ = .false.
+if (present(vWs)) vWs_ = vWs
 
 brent_eps = 1e-3_dp
 max_iter = 2000
@@ -428,7 +466,8 @@ if (myid == 0) print *, "norm of psi:", psi_norm
 ! save space:
 call free_energy(myid, comm, commy, commz, Ng, nsub, &
     L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
-    Hpsi, calc_value=.false., calc_derivative=.true.)
+    Hpsi, calc_value=.false., calc_derivative=.true., vWs=vWs_, &
+    lambda=lambda, EvWs=EvWs)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * pintegral(comm, L, 0.5_dp * psi * Hpsi, Ng)
@@ -467,8 +506,8 @@ do iter = 1, max_iter
             call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
             call precalc_C1C2C2(myid, G2, psi, eta, C1, C2, C3, &
                 commy, commz, Ng, nsub)
-            call bracket(func_nofft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
-            call brent(func_nofft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
+            call bracket(func_fft, theta_a, theta_b, theta_c, fa, fb, fc, 100._dp, 20, verbose=.false.)
+            call brent(func_fft, theta_a, theta_b, theta_c, brent_eps, 50, theta, &
             free_energy_, verbose=.false.)
         end if
     else
@@ -481,7 +520,8 @@ do iter = 1, max_iter
     psi = cos(theta) * psi + sin(theta) * eta
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
-        free_energy_, Hpsi, calc_value=.true., calc_derivative=.true.)
+        free_energy_, Hpsi, calc_value=.true., calc_derivative=.true., &
+        vWs=vWs_, lambda=lambda, EvWs=EvWs)
 !    print *, "Iteration:", iter
 !    psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
@@ -551,7 +591,8 @@ contains
     psi_ = cos(theta) * psi + sin(theta) * eta
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
-        energy, Hpsi, calc_value=.true., calc_derivative=.false.)
+        energy, Hpsi, calc_value=.true., calc_derivative=.false., &
+        vWs=vWs_, lambda=lambda, EvWs=EvWs)
     end function
 
 end subroutine
