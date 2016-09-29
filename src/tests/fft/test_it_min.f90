@@ -130,7 +130,7 @@ ne = natom / product(L)
 
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda-1, EvWs)
+        .true., .true., .true., lambda, EvWs)
 
 mu = psum(comm_all, Hn)/product(Ng)
 Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
@@ -152,7 +152,7 @@ end if
 if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
-dt = 1e-3_dp
+dt = 1e-2_dp
 if (myid == 0) then
     print *, "dt =", dt
 end if
@@ -185,13 +185,13 @@ do i = 1, 3000
     if (myid == 0) print *, "iter =", i, "time =", t
     !psi = psi - dt*Hn*psi
     psi = psi * exp(-Hn*dt/2)
-    psi_norm = pintegral(comm_all, L, psi**2, Ng)
-    psi = sqrt(natom / psi_norm) * psi
-    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    psiG = psiG * exp(-G2*dt/2)
-    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi_norm = pintegral(comm_all, L, psi**2, Ng)
-    psi = sqrt(natom / psi_norm) * psi
+!    psi_norm = pintegral(comm_all, L, psi**2, Ng)
+!    psi = sqrt(natom / psi_norm) * psi
+!    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
+!    psiG = psiG * exp(-G2*dt/2)
+!    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
+!    psi_norm = pintegral(comm_all, L, psi**2, Ng)
+!    psi = sqrt(natom / psi_norm) * psi
     psi = psi * exp(-Hn*dt/2)
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
@@ -204,7 +204,7 @@ do i = 1, 3000
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-            .true., .true., .true., lambda-1, EvWs)
+            .true., .true., .true., lambda, EvWs)
 
     !Etot = Ts + Een + Eee + Exc
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
