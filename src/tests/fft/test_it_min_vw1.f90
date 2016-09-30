@@ -135,7 +135,7 @@ ne = natom / product(L)
 
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, EvW)
+        .true., .true., .true., lambda, lambda, EvW)
 
 mu = psum(comm_all, Hn)/product(Ng)
 Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
@@ -193,7 +193,7 @@ do i = 1, 80
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-            .true., .true., .true., lambda, EvW)
+            .true., .true., .true., lambda, lambda, EvW)
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     mu_Hn = psum(comm_all, Hn)/product(Ng)
@@ -253,7 +253,7 @@ call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
         Eee, Een, Ts, Exc, Etot, cg_iter, .true., lambda, EvW)
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, EvW)
+        .true., .true., .true., lambda, lambda, EvW)
 
 mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
 mu_Hn = psum(comm_all, Hn)/product(Ng)
