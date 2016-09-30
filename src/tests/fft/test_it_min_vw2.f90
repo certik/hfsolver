@@ -140,7 +140,7 @@ ne = natom / product(L)
 
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda-1, EvW)
+        .true., .true., .true., lambda, lambda-1, EvW)
 
 mu = psum(comm_all, Hn)/product(Ng)
 Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
@@ -206,7 +206,7 @@ do i = 1, 300
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-            .true., .true., .true., lambda-1, EvW)
+            .true., .true., .true., lambda, lambda-1, EvW)
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     mu_Hn = psum(comm_all, Hn)/product(Ng)
@@ -223,21 +223,6 @@ do i = 1, 300
     end if
 end do
 if (myid == 0) print *, "Done"
-
-call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
-        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, EvW)
-if (myid == 0) then
-    print *, mu, mu_Hn
-    print *, "Summary of energies [a.u.]:"
-    print "('    EvW  = ', f14.8)", EvW
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eee
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
-end if
 
 ! Converged values for 32^3 PW
 Etot_conv32 = -162.58659306421535_dp
@@ -269,7 +254,7 @@ call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
         Eee, Een, Ts, Exc, Etot, cg_iter, .true., lambda, EvW)
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, EvW)
+        .true., .true., .true., lambda, lambda, EvW)
 
 mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
 mu_Hn = psum(comm_all, Hn)/product(Ng)

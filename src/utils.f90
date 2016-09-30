@@ -21,6 +21,7 @@ end interface
 
 interface allocate_mold
     module procedure allocate_mold_real3d
+    module procedure allocate_mold_real4d
     module procedure allocate_mold_complex3d
 end interface
 
@@ -534,6 +535,14 @@ real(dp), intent(in) :: B(:,:,:)
 ! Equivalent to allocate(A, mold=B). Use this with compilers that do not
 ! support the F2008 syntax yet.
 allocate(A(size(B,1), size(B,2), size(B,3)))
+end subroutine
+
+subroutine allocate_mold_real4d(A, B)
+real(dp), allocatable, intent(out) :: A(:,:,:,:)
+real(dp), intent(in) :: B(:,:,:,:)
+! Equivalent to allocate(A, mold=B). Use this with compilers that do not
+! support the F2008 syntax yet.
+allocate(A(size(B,1), size(B,2), size(B,3), size(B,4)))
 end subroutine
 
 subroutine allocate_mold_complex3d(A, B)
