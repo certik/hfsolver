@@ -261,7 +261,7 @@ end subroutine
 
 subroutine free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, dFdn, &
-        calc_value, calc_derivative, vW, lambda, EvW)
+        calc_value, calc_derivative, vW, lambda1, lambda2, EvW)
 use ofdft, only: f
 integer, intent(in) :: myid, comm, commy, commz, Ng(:), nsub(:)
 real(dp), intent(in) :: L(:), G2(:, :, :), T_au, ne(:, :, :)
@@ -270,8 +270,9 @@ real(dp), intent(out) :: Eee, Een, Ts, Exc, Etot
 logical, intent(in) :: calc_value, calc_derivative
 ! include von Weizsäcker term, default .false.
 logical, intent(in), optional :: vW
-! The coefficient of the von Weizsäcker term
-real(dp), intent(in), optional :: lambda
+! The coefficient of the von Weizsäcker term. lambda1 is used when calculating
+! energy, lambda2 when calculating the potential
+real(dp), intent(in), optional :: lambda1, lambda2
 ! If vW == .true., this contains the von Weizsäcker part of the energy
 real(dp), intent(out), optional :: EvW
 
@@ -290,7 +291,8 @@ logical :: vW_
 vW_ = .false.
 if (present(vW)) vW_ = vW
 if (vW_) then
-    call assert(present(lambda))
+    call assert(present(lambda1))
+    call assert(present(lambda2))
     call assert(present(EvW))
 end if
 
@@ -328,7 +330,7 @@ if (calc_value) then
     Exc = pintegral(comm, L, exc_density * ne, Ng)
     Etot = Ts + Een + Eee + Exc
     if (vW_) then
-        EvW = pintegralG(comm, L, G2*abs(psiG)**2)/2 * lambda
+        EvW = pintegralG(comm, L, G2*abs(psiG)**2)/2 * lambda1
         Etot = Etot + EvW
     end if
 end if
@@ -346,7 +348,7 @@ if (calc_derivative) then
 
     if (vW_) then
         call pfourier2real(-G2*psiG, d2psi, commy, commz, Ng, nsub)
-        dFvWdn = -d2psi/(2*psi) * lambda
+        dFvWdn = -d2psi/(2*psi) * lambda2
         dFdn = dFdn + dFvWdn
     end if
 end if
@@ -467,7 +469,7 @@ if (myid == 0) print *, "norm of psi:", psi_norm
 call free_energy(myid, comm, commy, commz, Ng, nsub, &
     L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, free_energy_, &
     Hpsi, calc_value=.false., calc_derivative=.true., vW=vW_, &
-    lambda=lambda, EvW=EvW)
+    lambda1=lambda, lambda2=lambda, EvW=EvW)
 ! Hpsi = H[psi] = delta F / delta psi = 2*H[n]*psi, due to d/dpsi = 2 psi d/dn
 Hpsi = Hpsi * 2*psi
 mu = 1._dp / Nelec * pintegral(comm, L, 0.5_dp * psi * Hpsi, Ng)
@@ -521,7 +523,7 @@ do iter = 1, max_iter
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi**2, Eee, Een, Ts, Exc, &
         free_energy_, Hpsi, calc_value=.true., calc_derivative=.true., &
-        vW=vW_, lambda=lambda, EvW=EvW)
+        vW=vW_, lambda1=lambda, lambda2=lambda, EvW=EvW)
 !    print *, "Iteration:", iter
 !    psi_norm = integral(L, psi**2)
 !    print *, "Norm of psi:", psi_norm
@@ -592,7 +594,7 @@ contains
     call free_energy(myid, comm, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, psi_**2, Eee, Een, Ts, Exc, &
         energy, Hpsi, calc_value=.true., calc_derivative=.false., &
-        vW=vW_, lambda=lambda, EvW=EvW)
+        vW=vW_, lambda1=lambda, lambda2=lambda, EvW=EvW)
     end function
 
 end subroutine
