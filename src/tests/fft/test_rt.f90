@@ -31,7 +31,7 @@ integer :: LNPU(3)
 integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     mu_Hn, dt, psi_norm, t, Hn_mu_diff, EvW, &
-    lambda, current_avg(3), E0, Ex, td, tw
+    lambda, current_avg(3), E0, Ex, td, tw, lambdaK
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -43,6 +43,7 @@ T_au = T_ev / Ha2eV
 natom = 128
 L = 8.1049178668765851_dp
 lambda = 0
+lambdaK = 1 ! Coefficient of the Laplace operator in the kinetic term
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -156,7 +157,7 @@ end if
 
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, lambda-1, EvW)
+        .true., .true., .true., lambda, lambda-lambdaK, EvW)
 
 mu = psum(comm_all, Hn)/product(Ng)
 Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
@@ -196,7 +197,7 @@ t = 0
 
 psi = psi * exp(-i_*Hn*dt/2)
 call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-psiG = psiG * exp(-i_*G2*dt/2)
+psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
 call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
 psi = psi * exp(-i_*Hn*dt/2)
 
@@ -211,7 +212,7 @@ do i = 1, 10
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
     psi = psi * exp(-i_*(Hn+X(:,:,:,1)*Ex)*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    psiG = psiG * exp(-i_*G2*dt/2)
+    psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
     psi = psi * exp(-i_*(Hn+X(:,:,:,1)*Ex)*dt/2)
     ne = abs(psi)**2
@@ -220,7 +221,7 @@ do i = 1, 10
 
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-            .true., .true., .true., lambda, lambda-1, EvW)
+            .true., .true., .true., lambda, lambda-lambdaK, EvW)
 
     !Calculate Current
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
