@@ -213,6 +213,10 @@ do i = 1, 70
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
             .true., .true.)
+    Ts = Ts / natom
+    Een = Een / natom
+    Eee = Eee / natom
+    Exc = Exc / natom
     Etot = Ts + Een + Eee + Exc
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
@@ -237,7 +241,7 @@ end do
 if (myid == 0) print *, "Done"
 
 ! Converged values for 32^3 PW
-Etot_conv32 = -172.12475770606159_dp
+Etot_conv32 = -172.12475770606159_dp / 128
 mu_conv32 = 96.415580964855209_dp / product(L)
 
 Etot_it = Etot
@@ -267,6 +271,11 @@ call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         .true., .true.)
+Ts = Ts / natom
+Een = Een / natom
+Eee = Eee / natom
+Exc = Exc / natom
+Etot = Ts + Een + Eee + Exc
 
 mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
 mu_Hn = psum(comm_all, Hn)/product(Ng)
