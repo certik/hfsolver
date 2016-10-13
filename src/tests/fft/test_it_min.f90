@@ -23,13 +23,13 @@ complex(dp), dimension(:,:,:), allocatable :: neG, VenG
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven, psi
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:)
 real(dp) :: L(3), Z, Eee_conv
-integer :: i, j, k
+integer :: i, j, k, idx
 integer :: Ng(3)
 real(dp) :: t1, t2, t3
-integer :: LNPU(3)
-integer :: cg_iter, natom, u
+integer :: LNPU(3), nrepl(3)
+integer :: cg_iter, natom, u, na
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv32, &
-    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it
+    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it, L0
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -38,8 +38,10 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
-natom = 128
-L = 8.1049178668765851_dp
+nrepl = [1, 1, 1]
+natom = 128 * product(nrepl)
+L0 = 8.1049178668765851_dp
+L = L0 * nrepl
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -51,7 +53,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 32
+        Ng = 32 * nrepl
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -104,9 +106,20 @@ if (myid == 0) print *, "Load initial position"
 allocate(Xion(3, natom))
 ! For now assume a box, until positions_bcc can accept a vector L(:)
 ! And radial_potential_fourier
-call assert(abs(L(2)-L(1)) < 1e-15_dp)
-call assert(abs(L(3)-L(1)) < 1e-15_dp)
-call positions_bcc(Xion, L(1))
+na = natom / product(nrepl)
+call positions_bcc(Xion(:,:na), L0)
+idx = 0
+do i = 1, nrepl(1)
+do j = 1, nrepl(2)
+do k = 1, nrepl(3)
+    if (i == 1 .and. j == 1 .and. k == 1) cycle
+    idx = idx + 1
+    Xion(1,idx*na+1:(idx+1)*na) = Xion(1,:na) + (i-1)*L(1)/nrepl(1)
+    Xion(2,idx*na+1:(idx+1)*na) = Xion(2,:na) + (j-1)*L(2)/nrepl(2)
+    Xion(3,idx*na+1:(idx+1)*na) = Xion(3,:na) + (k-1)*L(3)/nrepl(3)
+end do
+end do
+end do
 if (myid == 0) print *, "Radial nuclear potential FFT"
 call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
 call radial_potential_fourier(R, Ven_rad, L, Z, Ng, myxyz, Ven0G, V0)
