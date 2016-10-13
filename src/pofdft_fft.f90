@@ -207,7 +207,7 @@ real(dp), intent(in) :: R(:), V(:), L(:), Z
 integer, intent(in) :: Ng(:), myxyz(:)
 real(dp), intent(out) :: VenG(:, :, :)
 real(dp), intent(out) :: V0
-integer :: Ng_local(3), ijk_global(3), i, j, k, idx
+integer :: Ng_local(3), ijk_global(3), i, j, k, idx(3)
 real(dp) :: Rp(size(R)), dk(3), Rc, w
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
@@ -227,11 +227,11 @@ do k = 1, Ng_local(3)
 do j = 1, Ng_local(2)
 do i = 1, Ng_local(1)
     ijk_global = [i, j, k] + myxyz*Ng_local
-    idx = sum((ijk_global - 1 - Ng*nint((ijk_global-1.5_dp)/Ng))**2)
-    if (idx == 0) then
+    idx = ijk_global - 1 - Ng*nint((ijk_global-1.5_dp)/Ng)
+    if (sum(idx**2) == 0) then
         VenG(i, j, k) = 0
     else
-        w = sqrt(idx*sum(dk**2)/3)
+        w = sqrt(sum((idx*dk)**2))
         VenG(i, j, k) = 4*pi/(product(L) * w**2) * &
             (w*integrate(Rp, R*sin(w*R)*V) + Z*cos(w*Rc))
     end if
