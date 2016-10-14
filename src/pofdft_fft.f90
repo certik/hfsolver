@@ -197,24 +197,22 @@ real(dp), intent(in) :: Rp(:), f(:)
 s = integrate_trapz_1(Rp, f)
 end function
 
-subroutine radial_potential_fourier(R, V, L, Z, Ng, myxyz, VenG, V0)
+subroutine radial_potential_fourier(R, V, L, Z, G2, VenG, V0)
 ! Takes radial potential (given at origin) defined by:
 !   V(R) on a grid R
 !   Z/r for r > maxval(R)
 ! and calculates a 3D Fourier transform of it into the VenG grid. 'L' is the
 ! length of the box.
-real(dp), intent(in) :: R(:), V(:), L(:), Z
-integer, intent(in) :: Ng(:), myxyz(:)
+real(dp), intent(in) :: R(:), V(:), L(:), Z, G2(:,:,:)
 real(dp), intent(out) :: VenG(:, :, :)
 real(dp), intent(out) :: V0
-integer :: Ng_local(3), ijk_global(3), i, j, k, idx
-real(dp) :: Rp(size(R)), dk(3), Rc, w, Vk(0:3*(maxval(Ng)/2+1)**2)
+integer :: Ng_local(3), i, j, k
+real(dp) :: Rp(size(R)), Rc, w
 ! Rp is the derivative of the mesh R'(t), which for uniform mesh is equal to
 ! the mesh step (rmax-rmin)/N:
 Rp = (R(size(R)) - R(1)) / (size(R)-1)
 Rc = R(size(R))
 Ng_local = shape(VenG)
-dk = 2*pi/L
 
 ! V0 =      \int V(r) - Z/r d^3x
 !    = 4*pi*\int_0^Rc (V(r) - Z/r) r^2 dr
@@ -223,23 +221,16 @@ dk = 2*pi/L
 !V0 = -4*pi*integrate(Rp, R**2*(V-Z/R))
 V0 = -4*pi*(integrate(Rp, R**2*V) - Z*Rc**2/2)
 
-! We prepare the values of the radial Fourier transform on a 3D grid
-Vk(0) = 0
-do i = 1, 3*(maxval(Ng)/2+1)**2
-    ! TODO: this formula recovers the sqrt(i)*dk result when dk is a constant
-    ! vector. Figure out how to extend this algorithm when dk (or L) is not a
-    ! constant vector.
-    w = sqrt(i*sum(dk**2)/3)
-    Vk(i) = 4*pi/(product(L) * w**2) * (w*integrate(Rp, R*sin(w*R)*V) + Z*cos(w*Rc))
-end do
-
-! We fill out the 3D grid using the values from Vk
 do k = 1, Ng_local(3)
 do j = 1, Ng_local(2)
 do i = 1, Ng_local(1)
-    ijk_global = [i, j, k] + myxyz*Ng_local
-    idx = sum((ijk_global - 1 - Ng*nint((ijk_global-1.5_dp)/Ng))**2)
-    VenG(i, j, k) = Vk(idx)
+    w = sqrt(G2(i,j,k))
+    if (w < tiny(1._dp)) then
+        VenG(i, j, k) = 0
+    else
+        VenG(i, j, k) = 4*pi/(product(L) * w**2) * &
+            (w*integrate(Rp, R*sin(w*R)*V) + Z*cos(w*Rc))
+    end if
 end do
 end do
 end do

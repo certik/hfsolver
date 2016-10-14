@@ -15,21 +15,20 @@ use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
-    mpi_barrier, MPI_DOUBLE_PRECISION, mpi_bcast
+    mpi_barrier, mpi_bcast
 use md, only: positions_bcc
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven, psi
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:)
-real(dp) :: L(3), Z, Eee_conv
-integer :: i, j, k
+real(dp) :: L(3), Z
+integer :: i, j, k, idx
 integer :: Ng(3)
-real(dp) :: t1, t2, t3
-integer :: LNPU(3)
-integer :: cg_iter, natom, u
+integer :: LNPU(3), nrepl(3)
+integer :: cg_iter, natom, u, na
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv32, &
-    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it
+    mu_conv32, mu_Hn, dt, psi_norm, t, Hn_mu_diff, Etot_it, L0
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -38,8 +37,14 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
-natom = 128
-L = 8.1049178668765851_dp
+! nrepl: how many times to replicate the unit cell in each dimension
+! if you increase nrepl, decrease dt if the imaginary time (IT) convergence
+! blows up. Also increase the number of IT iterations in the IT loop below.
+nrepl = [1, 1, 1]
+dt = 0.1_dp
+natom = 128 * product(nrepl)
+L0 = 8.1049178668765851_dp
+L = L0 * nrepl
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -51,7 +56,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 32
+        Ng = 32 * nrepl
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -103,18 +108,28 @@ allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 if (myid == 0) print *, "Load initial position"
 allocate(Xion(3, natom))
 ! For now assume a box, until positions_bcc can accept a vector L(:)
-! And radial_potential_fourier
-call assert(abs(L(2)-L(1)) < 1e-15_dp)
-call assert(abs(L(3)-L(1)) < 1e-15_dp)
-call positions_bcc(Xion, L(1))
-if (myid == 0) print *, "Radial nuclear potential FFT"
-call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
-call radial_potential_fourier(R, Ven_rad, L, Z, Ng, myxyz, Ven0G, V0)
-if (myid == 0) print *, "    Done."
-
+na = natom / product(nrepl)
+call positions_bcc(Xion(:,:na), L0)
+idx = 0
+do i = 1, nrepl(1)
+do j = 1, nrepl(2)
+do k = 1, nrepl(3)
+    if (i == 1 .and. j == 1 .and. k == 1) cycle
+    idx = idx + 1
+    Xion(1,idx*na+1:(idx+1)*na) = Xion(1,:na) + (i-1)*L(1)/nrepl(1)
+    Xion(2,idx*na+1:(idx+1)*na) = Xion(2,:na) + (j-1)*L(2)/nrepl(2)
+    Xion(3,idx*na+1:(idx+1)*na) = Xion(3,:na) + (k-1)*L(3)/nrepl(3)
+end do
+end do
+end do
+if (myid == 0) print *, "Real and reciprocal space vectors"
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
-
+if (myid == 0) print *, "Reading pseudopotential"
+call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
+if (myid == 0) print *, "Radial nuclear potential FFT"
+call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
+if (myid == 0) print *, "VenG calculation from Ven0G"
 VenG = 0
 do i = 1, natom
     VenG = VenG - Ven0G * exp(-i_ * &
@@ -122,6 +137,7 @@ do i = 1, natom
 end do
 
 ! Minimization
+if (myid == 0) print *, "IT minimization"
 
 ne = natom / product(L)
 
@@ -149,7 +165,6 @@ end if
 if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
-dt = 0.1_dp
 if (myid == 0) then
     print *, "dt =", dt
 end if
@@ -160,7 +175,7 @@ psi = sqrt(ne)
 
 t = 0
 
-psi = psi - dt*Hn*psi
+psi = psi * exp(-Hn*dt)
 
 ne = psi**2
 psi_norm = pintegral(comm_all, L, ne, Ng)
@@ -170,8 +185,6 @@ ne = psi**2
 psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
-E0 = 1e-3_dp
-omega = 0.05
 if (myid == 0) then
     open(newunit=u, file="log.txt", status="replace")
     close(u)
@@ -180,12 +193,7 @@ end if
 do i = 1, 70
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    !psi = psi - dt*Hn*psi
-    psi = psi * exp(-Hn*dt/2)
-    !call real2fourier(psi, psiG)
-    !psiG = psiG * exp(-G2*dt/2)
-    !call fourier2real(psiG, psi)
-    psi = psi * exp(-Hn*dt/2)
+    psi = psi * exp(-Hn*dt)
     ne = psi**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "Initial norm of psi:", psi_norm
@@ -197,6 +205,10 @@ do i = 1, 70
     call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
             L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
             .true., .true.)
+    Ts = Ts / natom
+    Een = Een / natom
+    Eee = Eee / natom
+    Exc = Exc / natom
     Etot = Ts + Een + Eee + Exc
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
@@ -221,7 +233,7 @@ end do
 if (myid == 0) print *, "Done"
 
 ! Converged values for 32^3 PW
-Etot_conv32 = -172.12475770606159_dp
+Etot_conv32 = -172.12475770606159_dp / 128
 mu_conv32 = 96.415580964855209_dp / product(L)
 
 Etot_it = Etot
@@ -251,6 +263,11 @@ call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
 call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
         L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
         .true., .true.)
+Ts = Ts / natom
+Een = Een / natom
+Eee = Eee / natom
+Exc = Exc / natom
+Etot = Ts + Een + Eee + Exc
 
 mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
 mu_Hn = psum(comm_all, Hn)/product(Ng)
