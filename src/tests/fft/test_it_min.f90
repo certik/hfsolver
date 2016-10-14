@@ -38,7 +38,11 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
+! nrepl: how many times to replicate the unit cell in each dimension
+! if you increase nrepl, decrease dt if the imaginary time (IT) convergence
+! blows up. Also increase the number of IT iterations in the IT loop below.
 nrepl = [1, 1, 1]
+dt = 0.1_dp
 natom = 128 * product(nrepl)
 L0 = 8.1049178668765851_dp
 L = L0 * nrepl
@@ -165,7 +169,6 @@ end if
 if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
-dt = 0.1_dp
 if (myid == 0) then
     print *, "dt =", dt
 end if
