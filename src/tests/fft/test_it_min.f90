@@ -108,7 +108,6 @@ allocate(G(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 if (myid == 0) print *, "Load initial position"
 allocate(Xion(3, natom))
 ! For now assume a box, until positions_bcc can accept a vector L(:)
-! And radial_potential_fourier
 na = natom / product(nrepl)
 call positions_bcc(Xion(:,:na), L0)
 idx = 0
