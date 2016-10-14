@@ -115,13 +115,12 @@ allocate(Xion(3, natom))
 call assert(abs(L(2)-L(1)) < 1e-15_dp)
 call assert(abs(L(3)-L(1)) < 1e-15_dp)
 call positions_bcc(Xion, L(1))
-if (myid == 0) print *, "Radial nuclear potential FFT"
-call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
-call radial_potential_fourier(R, Ven_rad, L, Z, Ng, myxyz, Ven0G, V0)
-if (myid == 0) print *, "    Done."
-
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
+if (myid == 0) print *, "Radial nuclear potential FFT"
+call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
+call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
+if (myid == 0) print *, "    Done."
 
 VenG = 0
 do i = 1, natom

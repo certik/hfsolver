@@ -122,15 +122,13 @@ do k = 1, nrepl(3)
 end do
 end do
 end do
-call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
-if (myid == 0) print *, "Radial nuclear potential FFT"
-call radial_potential_fourier(R, Ven_rad, L, Z, Ng, myxyz, Ven0G, V0)
-if (myid == 0) print *, "    Done."
-
 if (myid == 0) print *, "Real and reciprocal space vectors"
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
-
+if (myid == 0) print *, "Reading pseudopotential"
+call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
+if (myid == 0) print *, "Radial nuclear potential FFT"
+call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
 if (myid == 0) print *, "VenG calculation from Ven0G"
 VenG = 0
 do i = 1, natom
