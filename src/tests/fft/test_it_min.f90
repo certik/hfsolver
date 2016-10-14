@@ -15,21 +15,20 @@ use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
-    mpi_barrier, MPI_DOUBLE_PRECISION, mpi_bcast
+    mpi_barrier, mpi_bcast
 use md, only: positions_bcc
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven, psi
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:)
-real(dp) :: L(3), Z, Eee_conv
+real(dp) :: L(3), Z
 integer :: i, j, k, idx
 integer :: Ng(3)
-real(dp) :: t1, t2, t3
 integer :: LNPU(3), nrepl(3)
 integer :: cg_iter, natom, u, na
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, Etot_conv32, &
-    mu_conv32, mu_Hn, dt, E0, omega, psi_norm, t, Hn_mu_diff, Etot_it, L0
+    mu_conv32, mu_Hn, dt, psi_norm, t, Hn_mu_diff, Etot_it, L0
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -189,8 +188,6 @@ ne = psi**2
 psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
-E0 = 1e-3_dp
-omega = 0.05
 if (myid == 0) then
     open(newunit=u, file="log.txt", status="replace")
     close(u)
