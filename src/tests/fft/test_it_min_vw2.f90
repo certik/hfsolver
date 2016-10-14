@@ -279,7 +279,7 @@ if (myid == 0) then
 !        call assert(abs(mu - mu_conv32) < 5e-8_dp)
     end if
     call assert(abs(Etot-Etot_it) < 1.3e-2_dp)
-    call assert(abs(mu - mu_Hn) < 1e-8_dp)
+    call assert(abs(mu - mu_Hn) < 2e-8_dp)
 end if
 
 call mpi_finalize(ierr)
