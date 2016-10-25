@@ -203,15 +203,15 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 10
+do i = 1, 10000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    psi = psi * exp(-i_*Hn*dt/2)
+    psi = psi * exp(-i_*(Hn+A0**2)*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
     psiG = psiG * exp(A0*G(:,:,:,1)*dt)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi = psi * exp(-i_*Hn*dt/2)
+    psi = psi * exp(-i_*(Hn+A0**2)*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
@@ -226,6 +226,7 @@ do i = 1, 10
         call pfourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j), &
                 commy, commz, Ng, nsub)
         tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
+        if (j == 1) tmp = tmp - A0*ne/natom
         if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
             print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
         end if
