@@ -38,10 +38,12 @@ integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
-T_eV = 34.5_dp
+T_eV = 1e-6_dp
 T_au = T_ev / Ha2eV
 natom = 16
-L = 8.1049178668765851_dp
+L = 4._dp
+dt = 1e-3_dp
+A0 = 1e-2_dp
 lambda = 0
 lambdaK = 1 ! Coefficient of the Laplace operator in the kinetic term
 
@@ -179,7 +181,6 @@ if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
 
-dt = 1e-3_dp
 
 if (myid == 0) then
     print *, "dt =", dt
@@ -190,7 +191,6 @@ if (myid == 0) print *, "First step"
 psi = sqrt(ne)
 
 t = 0
-A0 = 1e-2_dp
 
 psi = psi * exp(-i_*Hn*dt/2)
 call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
