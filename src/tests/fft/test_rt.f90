@@ -31,7 +31,7 @@ integer :: LNPU(3)
 integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     mu_Hn, dt, psi_norm, t, Hn_mu_diff, EvW, &
-    lambda, current_avg(3), A0, lambdaK
+    lambda, current_avg(3), A0, A, lambdaK
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -40,7 +40,7 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
 T_eV = 34.5_dp
 T_au = T_ev / Ha2eV
-natom = 128
+natom = 16
 L = 8.1049178668765851_dp
 lambda = 0
 lambdaK = 1 ! Coefficient of the Laplace operator in the kinetic term
@@ -190,7 +190,7 @@ if (myid == 0) print *, "First step"
 psi = sqrt(ne)
 
 t = 0
-A0 = 1e-3_dp
+A0 = 1e-2_dp
 
 psi = psi * exp(-i_*Hn*dt/2)
 call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
@@ -203,15 +203,20 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 10000
+do i = 1, 5000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    psi = psi * exp(-i_*(Hn+A0**2)*dt/2)
+    if (t < 1) then
+        A = 0
+    else
+        A = A0
+    end if
+    psi = psi * exp(-i_*(Hn+A**2)*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
-    psiG = psiG * exp(A0*G(:,:,:,1)*dt)
+    psiG = psiG * exp(A*G(:,:,:,1)*dt)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi = psi * exp(-i_*(Hn+A0**2)*dt/2)
+    psi = psi * exp(-i_*(Hn+A**2)*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
@@ -226,7 +231,7 @@ do i = 1, 10000
         call pfourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j), &
                 commy, commz, Ng, nsub)
         tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
-        if (j == 1) tmp = tmp - A0*ne/natom
+        if (j == 1) tmp = tmp  + A*ne/natom
         if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
             print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
         end if
@@ -246,7 +251,7 @@ do i = 1, 10000
         print "('    Exc  = ', f14.8)", Exc
         print *, "   ---------------------"
         print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
-        write(u,*) i, t, current_avg
+        write(u,*) i, t, current_avg, Etot
     end if
 end do
 if (myid == 0) close(u)
