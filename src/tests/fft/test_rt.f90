@@ -16,7 +16,7 @@ use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
     mpi_barrier, mpi_bcast
-use md, only: positions_bcc
+use md, only: positions_bcc, positions_fcc
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
@@ -39,11 +39,11 @@ integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
-rho = 1 / density2gcm3  ! g/cc
-T_eV = 1e-1_dp
+rho = 10._dp / density2gcm3  ! g/cc
+T_eV = 50._dp
 T_au = T_ev / Ha2eV
-natom = 2
-dt = 1e-3_dp
+natom = 1
+dt = 1e-4_dp
 alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
@@ -132,7 +132,8 @@ allocate(Xion(3, natom))
 ! And radial_potential_fourier
 call assert(abs(L(2)-L(1)) < 1e-15_dp)
 call assert(abs(L(3)-L(1)) < 1e-15_dp)
-call positions_bcc(Xion, L(1))
+!call positions_fcc(Xion, L(1))
+Xion(:, 1) = L/2
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 if (myid == 0) print *, "Radial nuclear potential FFT"
@@ -219,10 +220,10 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 5000
+do i = 1, 20000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    if (t < 1) then
+    if (t < 0.5_dp) then
         A = 0
     else
         A = A0
