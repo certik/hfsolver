@@ -1,6 +1,6 @@
 program test_rt
 use types, only: dp
-use constants, only: Ha2eV, i_
+use constants, only: Ha2eV, i_, density2gcm3, u2au, s2au, K2au
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
@@ -31,22 +31,28 @@ integer :: LNPU(3)
 integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     mu_Hn, dt, psi_norm, t, Hn_mu_diff, EvW, &
-    lambda, current_avg(3), A0, A, lambdaK, alpha
+    lambda, current_avg(3), A0, A, lambdaK, alpha, rho
+real(dp), allocatable :: m(:)
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
-T_eV = 1e-6_dp
+rho = 1 / density2gcm3  ! g/cc
+T_eV = 1e-1_dp
 T_au = T_ev / Ha2eV
-natom = 16
-L = 4._dp
+natom = 2
 dt = 1e-3_dp
 alpha = 137
+allocate(m(natom))
+m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 A0 = 1e-3_dp * alpha
 lambda = 0
 lambdaK = 1 ! Coefficient of the Laplace operator in the kinetic term
+
+L = (sum(m) / rho)**(1._dp/3)
+rho = sum(m) / product(L)
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
@@ -75,7 +81,16 @@ if (myid == 0) then
     end if
     Ng_local = Ng / nsub
 
-    print *, "L:       ", L
+    print *, "Input:"
+    print *, "N =", natom
+    print *, "rho = ", rho * density2gcm3, "g/cm^3 = ", rho, "a.u."
+    print *, "T =", T_au / K2au, "K =", T_au, "a.u. =", T_au * Ha2eV, "eV"
+    print "('dt =', es10.2, ' s = ', es10.2, ' ps = ', es10.2, ' a.u.')", &
+        dt/s2au, dt/s2au * 1e12_dp, dt
+    print *
+    print *, "Calculated quantities:"
+    print *, "L =", L, "a.u."
+    print *
     print *, "nproc:   ", nproc
     print *, "nsub:    ", nsub
     print *, "Ng:      ", Ng
