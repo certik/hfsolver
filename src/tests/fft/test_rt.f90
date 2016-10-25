@@ -48,7 +48,7 @@ alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 A0 = 1e-3_dp * alpha
-lambda = 0
+lambda = 1./9_dp
 lambdaK = 1 ! Coefficient of the Laplace operator in the kinetic term
 
 L = (sum(m) / rho)**(1._dp/3)
