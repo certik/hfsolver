@@ -1,6 +1,6 @@
 program test_rt
 use types, only: dp
-use constants, only: Ha2eV, i_, pi
+use constants, only: Ha2eV, i_
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
@@ -31,7 +31,7 @@ integer :: LNPU(3)
 integer :: cg_iter, natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     mu_Hn, dt, psi_norm, t, Hn_mu_diff, EvW, &
-    lambda, current_avg(3), E0, Ex, td, tw, lambdaK
+    lambda, current_avg(3), A0, lambdaK
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -180,9 +180,6 @@ if (myid == 0) then
 end if
 
 dt = 1e-3_dp
-E0 = 0.003_dp
-td = 0.2_dp
-tw = 0.04_dp
 
 if (myid == 0) then
     print *, "dt =", dt
@@ -193,6 +190,7 @@ if (myid == 0) print *, "First step"
 psi = sqrt(ne)
 
 t = 0
+A0 = 1e-3_dp
 
 psi = psi * exp(-i_*Hn*dt/2)
 call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
@@ -208,12 +206,12 @@ if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
 do i = 1, 10
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
-    psi = psi * exp(-i_*(Hn+X(:,:,:,1)*Ex)*dt/2)
+    psi = psi * exp(-i_*Hn*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
+    psiG = psiG * exp(A0*G(:,:,:,1)*dt)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi = psi * exp(-i_*(Hn+X(:,:,:,1)*Ex)*dt/2)
+    psi = psi * exp(-i_*Hn*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
