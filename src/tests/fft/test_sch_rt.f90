@@ -28,10 +28,10 @@ real(dp) :: L(3), Z
 integer :: i, j
 integer :: Ng(3)
 integer :: LNPU(3)
-integer :: cg_iter, natom, u
+integer :: natom, u
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
-    mu_Hn, dt, psi_norm, t, Hn_mu_diff, EvW, &
-    lambda, current_avg(3), A0, A, lambdaK, alpha, rho
+    dt, psi_norm, t, EvW, &
+    current_avg(3), A0, A, alpha, rho
 real(dp), allocatable :: m(:)
 
 !  parallel variables
@@ -48,8 +48,6 @@ alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 A0 = 1e-3_dp * alpha
-lambda = 1./9_dp
-lambdaK = 1 ! Coefficient of the Laplace operator in the kinetic term
 
 L = (sum(m) / rho)**(1._dp/3)
 rho = sum(m) / product(L)
@@ -147,44 +145,38 @@ do i = 1, natom
         (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
 end do
 
+call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+Hn = Ven
 
 ! Do CG minimization
-if (myid == 0) print *, "CG minimization:"
+if (myid == 0) print *, "IT minimization:"
 ne = natom / product(L)
-call free_energy_min(myid, comm_all, commy, commz, Ng, nsub, &
-        real(natom, dp), natom, L, G2, T_au, VenG, ne, 1e-12_dp, &
-        Eee, Een, Ts, Exc, Etot, cg_iter, .true., lambda, EvW)
-call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
-        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, lambda, EvW)
 
-mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
-mu_Hn = psum(comm_all, Hn)/product(Ng)
-if (myid == 0) then
-    print *, mu, mu_Hn
-    print *, "Summary of energies [a.u.]:"
-    print "('    EvW  = ', f14.8)", EvW
-    print "('    Ts   = ', f14.8)", Ts
-    print "('    Een  = ', f14.8)", Een
-    print "('    Eee  = ', f14.8)", Eee
-    print "('    Exc  = ', f14.8)", Exc
-    print *, "   ---------------------"
-    print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
-end if
+do i = 1, 100
+    t = t + dt
+    if (myid == 0) print *, "iter =", i, "time =", t
+    psi = psi * exp(-i_*(Hn)*dt/2)
+    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
+    psiG = psiG * exp(-i_*G2*dt/2)
+    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
+    psi = psi * exp(-i_*(Hn)*dt/2)
+    ne = abs(psi)**2
+    psi_norm = pintegral(comm_all, L, ne, Ng)
+    if (myid == 0) print *, "Initial norm of psi:", psi_norm
+    psi = sqrt(natom / psi_norm) * psi
+    ne = abs(psi)**2
+    psi_norm = pintegral(comm_all, L, ne, Ng)
+    if (myid == 0) print *, "norm of psi:", psi_norm
 
-
-call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
-        L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-        .true., .true., .true., lambda, lambda-lambdaK, EvW)
-
-mu = psum(comm_all, Hn)/product(Ng)
-Hn_mu_diff = pmaxval(comm_all, abs(Hn - mu))
-if (myid == 0) then
-    print *, "Etot =", Etot
-    print *, "mu = ", mu
-    print *, "max(abs(H-mu)) = ", Hn_mu_diff
-end if
-call assert(all(ne > 0))
+    mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
+    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
+    Etot = pintegralG(comm_all, L, G2*abs(psiG)**2)/2
+    if (myid == 0) then
+        print *, mu
+        print *, "Summary of energies [a.u.]:"
+        print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+    end if
+end do
 
 if (myid == 0) then
     print *
@@ -211,7 +203,7 @@ t = 0
 
 psi = psi * exp(-i_*Hn*dt/2)
 call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
+psiG = psiG * exp(-i_*G2*dt/2)
 call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
 psi = psi * exp(-i_*Hn*dt/2)
 
@@ -230,17 +222,13 @@ do i = 1, 10
     end if
     psi = psi * exp(-i_*(Hn+A**2/alpha**2)*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    psiG = psiG * exp(-i_*G2*dt/2*lambdaK)
+    psiG = psiG * exp(-i_*G2*dt/2)
     psiG = psiG * exp(A/alpha*G(:,:,:,1)*dt)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
     psi = psi * exp(-i_*(Hn+A**2/alpha**2)*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
-
-    call free_energy(myid, comm_all, commy, commz, Ng, nsub, &
-            L, G2, T_au, VenG, ne, Eee, Een, Ts, Exc, Etot, Hn, &
-            .true., .true., .true., lambda, lambda-lambdaK, EvW)
 
     !Calculate Current
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
