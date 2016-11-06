@@ -24,8 +24,8 @@ real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
     current(:,:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
-real(dp) :: L(3), Z
-integer :: i, j
+real(dp) :: L(3), Z, omega
+integer :: i, j, k
 integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom, u
@@ -136,30 +136,42 @@ call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 if (myid == 0) print *, "Radial nuclear potential FFT"
 call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
-call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
+!call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
 if (myid == 0) print *, "    Done."
 
-VenG = 0
-do i = 1, natom
-    VenG = VenG - Ven0G * exp(-i_ * &
-        (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
-end do
+!VenG = 0
+!do i = 1, natom
+!    VenG = VenG - Ven0G * exp(-i_ * &
+!        (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
+!end do
 
-call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+!call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+omega = 1.123_dp
+do k = 1, Ng_local(3)
+do j = 1, Ng_local(2)
+do i = 1, Ng_local(1)
+    Ven(i,j,k) = omega**2*(sqrt(sum((X(i,j,k,:)-L/2)**2)))**2 / 2
+end do
+end do
+end do
 Hn = Ven
 
 ! Do CG minimization
 if (myid == 0) print *, "IT minimization:"
 ne = natom / product(L)
+psi = sqrt(ne)
+
+t = 0
+dt = 2e-1_dp
 
 do i = 1, 100
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
-    psi = psi * exp(-i_*(Hn)*dt/2)
+    psi = psi * exp(-(Hn)*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    psiG = psiG * exp(-i_*G2*dt/2)
+    psiG = psiG * exp(-G2*dt/2)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi = psi * exp(-i_*(Hn)*dt/2)
+    psi = psi * exp(-(Hn)*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "Initial norm of psi:", psi_norm
@@ -170,11 +182,13 @@ do i = 1, 100
 
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    Etot = pintegralG(comm_all, L, G2*abs(psiG)**2)/2
+    Etot = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2) &
+        + pintegral(comm_all, L, Ven*ne, Ng)
     if (myid == 0) then
         print *, mu
         print *, "Summary of energies [a.u.]:"
         print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
+        print *, "Exact:", 3*omega/2
     end if
 end do
 
@@ -190,6 +204,7 @@ if (myid == 0) then
     print *, "E_max =", maxval(abs(Hn)), "; dt <", 1/maxval(abs(Hn))
 end if
 
+dt = 1e-3_dp
 
 if (myid == 0) then
     print *, "dt =", dt
@@ -230,6 +245,9 @@ do i = 1, 10
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
 
+    Etot = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2) &
+        + pintegral(comm_all, L, Ven*ne, Ng)
+
     !Calculate Current
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     do j = 1, 3
@@ -249,12 +267,6 @@ do i = 1, 10
     if (myid == 0) then
         print *, mu
         print *, "Summary of energies [a.u.]:"
-        print "('    EvW  = ', f14.8)", EvW
-        print "('    Ts   = ', f14.8)", Ts
-        print "('    Een  = ', f14.8)", Een
-        print "('    Eee  = ', f14.8)", Eee
-        print "('    Exc  = ', f14.8)", Exc
-        print *, "   ---------------------"
         print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
         write(u,*) i, t, current_avg, Etot
     end if
