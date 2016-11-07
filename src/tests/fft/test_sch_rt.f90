@@ -1,6 +1,6 @@
 program test_sch_rt
 use types, only: dp
-use constants, only: Ha2eV, i_, density2gcm3, u2au, s2au, K2au
+use constants, only: Ha2eV, i_, density2gcm3, u2au, s2au, K2au, pi
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
@@ -20,7 +20,7 @@ use md, only: positions_bcc, positions_fcc
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
-real(dp), dimension(:,:,:), allocatable :: G2, Hn, Ven0G, ne, Ven
+real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, Ven0G, ne, Ven
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
     current(:,:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
@@ -29,9 +29,10 @@ integer :: i, j, k
 integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom, u
+logical :: velocity_gauge
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     dt, psi_norm, t, EvW, &
-    current_avg(3), A0, A, alpha, rho
+    current_avg(3), A0, A, alpha, rho, E0, td, tw, Ex
 real(dp), allocatable :: m(:)
 
 !  parallel variables
@@ -48,6 +49,7 @@ alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 A0 = 1e-3_dp * alpha
+velocity_gauge = .false. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
 rho = sum(m) / product(L)
@@ -114,6 +116,7 @@ allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 call allocate_mold(G2, ne)
 call allocate_mold(Hn, ne)
+call allocate_mold(Htot, ne)
 call allocate_mold(Ven, ne)
 call allocate_mold(Ven0G, ne)
 call allocate_mold(VenG, neG)
@@ -205,6 +208,9 @@ if (myid == 0) then
 end if
 
 dt = 1e-3_dp
+E0 = 0.003_dp
+td = 0.2_dp
+tw = 0.04_dp
 
 if (myid == 0) then
     print *, "dt =", dt
@@ -227,20 +233,31 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 10
+do i = 1, 2000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
+    Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+    ! TODO: use erf for A, to exactly reproduce the result
     if (t < 0.5_dp) then
         A = 0
     else
         A = A0
     end if
-    psi = psi * exp(-i_*(Hn+A**2/alpha**2)*dt/2)
+    if (velocity_gauge) then
+        ! velocity gauge
+        Htot = Hn+A**2/alpha**2
+    else
+        ! length gauge
+        Htot = Hn+X(:,:,:,1)*Ex
+    end if
+    psi = psi * exp(-i_*Htot*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     psiG = psiG * exp(-i_*G2*dt/2)
-    psiG = psiG * exp(A/alpha*G(:,:,:,1)*dt)
+    if (velocity_gauge) then
+        psiG = psiG * exp(A/alpha*G(:,:,:,1)*dt)
+    end if
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi = psi * exp(-i_*(Hn+A**2/alpha**2)*dt/2)
+    psi = psi * exp(-i_*Htot*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
@@ -254,7 +271,9 @@ do i = 1, 10
         call pfourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j), &
                 commy, commz, Ng, nsub)
         tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
-        if (j == 1) tmp = tmp - A/alpha*ne/natom
+        if (velocity_gauge) then
+            if (j == 1) tmp = tmp - A/alpha*ne/natom
+        end if
         if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
             print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
         end if
