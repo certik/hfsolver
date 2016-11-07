@@ -177,7 +177,7 @@ psi = sqrt(ne)
 t = 0
 dt = 2e-1_dp
 
-do i = 1, 1000
+do i = 1, 500
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     psi = psi * exp(-(Hn)*dt/2)
@@ -250,7 +250,7 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 50000
+do i = 1, 10000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
