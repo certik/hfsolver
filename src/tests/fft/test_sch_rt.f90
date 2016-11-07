@@ -139,24 +139,24 @@ call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 if (myid == 0) print *, "Radial nuclear potential FFT"
 call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
-!call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
+call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
 if (myid == 0) print *, "    Done."
 
-!VenG = 0
-!do i = 1, natom
-!    VenG = VenG - Ven0G * exp(-i_ * &
-!        (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
-!end do
+VenG = 0
+do i = 1, natom
+    VenG = VenG - Ven0G * exp(-i_ * &
+        (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
+end do
 
-!call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
 omega = 1.123_dp
-do k = 1, Ng_local(3)
-do j = 1, Ng_local(2)
-do i = 1, Ng_local(1)
-    Ven(i,j,k) = omega**2*(sqrt(sum((X(i,j,k,:)-L/2)**2)))**2 / 2
-end do
-end do
-end do
+!do k = 1, Ng_local(3)
+!do j = 1, Ng_local(2)
+!do i = 1, Ng_local(1)
+!    Ven(i,j,k) = omega**2*(sqrt(sum((X(i,j,k,:)-L/2)**2)))**2 / 2
+!end do
+!end do
+!end do
 Hn = Ven
 
 ! Do CG minimization
@@ -167,7 +167,7 @@ psi = sqrt(ne)
 t = 0
 dt = 2e-1_dp
 
-do i = 1, 100
+do i = 1, 1000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     psi = psi * exp(-(Hn)*dt/2)
@@ -233,7 +233,7 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 2000
+do i = 1, 50000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
