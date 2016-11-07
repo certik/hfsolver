@@ -28,7 +28,7 @@ real(dp) :: L(3), Z, omega
 integer :: i, j, k
 integer :: Ng(3)
 integer :: LNPU(3)
-integer :: natom, u
+integer :: natom, u, u2
 logical :: velocity_gauge
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     dt, psi_norm, t, EvW, &
@@ -149,6 +149,11 @@ do i = 1, natom
 end do
 
 call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+if (myid == 0) then
+    open(newunit=u2, file="sch_pot.txt", status="replace")
+    write(u2,*) Ven
+    close(u2)
+end if
 omega = 1.123_dp
 !do k = 1, Ng_local(3)
 !do j = 1, Ng_local(2)
@@ -194,6 +199,13 @@ do i = 1, 1000
         print *, "Exact:", 3*omega/2
     end if
 end do
+
+if (myid == 0) then
+    open(newunit=u2, file="sch_ne.txt", status="replace")
+    write(u2,*) ne
+    close(u2)
+end if
+stop "OK"
 
 if (myid == 0) then
     print *
