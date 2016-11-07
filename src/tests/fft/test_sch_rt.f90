@@ -11,7 +11,7 @@ use ofdft, only: read_pseudo
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
     pintegral, pintegralG, free_energy, free_energy_min, &
-    radial_potential_fourier, psum, pmaxval
+    radial_potential_fourier, psum, pmaxval, collate
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -22,13 +22,14 @@ implicit none
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, Ven0G, ne, Ven
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
-    current(:,:,:,:)
+    current(:,:,:,:), tmp_global(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
 real(dp) :: L(3), Z, omega
 integer :: i, j, k
 integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom, u, u2
+real(dp) :: Lmul
 logical :: velocity_gauge
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     dt, psi_norm, t, EvW, &
@@ -52,6 +53,8 @@ A0 = 1e-3_dp * alpha
 velocity_gauge = .false. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
+Lmul = 1._dp
+L = L * Lmul
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
@@ -64,7 +67,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 32
+        Ng = 32 * Lmul
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -112,6 +115,7 @@ call mpi_comm_split(comm_all, myxyz(3), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
 
+allocate(tmp_global(Ng(1), Ng(2), Ng(3)))
 allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 call allocate_mold(G2, ne)
@@ -149,9 +153,10 @@ do i = 1, natom
 end do
 
 call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+call collate(comm_all, myid, nsub, 0, Ven, tmp_global)
 if (myid == 0) then
     open(newunit=u2, file="sch_pot.txt", status="replace")
-    write(u2,*) Ven
+    write(u2,*) tmp_global
     close(u2)
 end if
 omega = 1.123_dp
@@ -191,7 +196,7 @@ do i = 1, 1000
     mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     Etot = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2) &
-        + pintegral(comm_all, L, Ven*ne, Ng)
+        + pintegral(comm_all, L, Hn*ne, Ng)
     if (myid == 0) then
         print *, mu
         print *, "Summary of energies [a.u.]:"
@@ -200,12 +205,12 @@ do i = 1, 1000
     end if
 end do
 
+call collate(comm_all, myid, nsub, 0, ne, tmp_global)
 if (myid == 0) then
     open(newunit=u2, file="sch_ne.txt", status="replace")
-    write(u2,*) ne
+    write(u2,*) tmp_global
     close(u2)
 end if
-stop "OK"
 
 if (myid == 0) then
     print *
@@ -275,7 +280,7 @@ do i = 1, 50000
     if (myid == 0) print *, "norm of psi:", psi_norm
 
     Etot = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2) &
-        + pintegral(comm_all, L, Ven*ne, Ng)
+        + pintegral(comm_all, L, Htot*ne, Ng)
 
     !Calculate Current
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
@@ -301,6 +306,15 @@ do i = 1, 50000
         print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
         write(u,*) i, t, current_avg, Etot
     end if
+
+!    if (mod(i, 1) == 0) then
+!        call collate(comm_all, myid, nsub, 0, ne, tmp_global)
+!        if (myid == 0) then
+!            open(newunit=u2, file="sch_ne.txt", position="append", status="old")
+!            write(u2,*) tmp_global
+!            close(u2)
+!        end if
+!    end if
 end do
 if (myid == 0) close(u)
 if (myid == 0) print *, "Done"
