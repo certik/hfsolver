@@ -49,8 +49,8 @@ dt = 1e-4_dp
 alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
-A0 = 1e-3_dp * alpha
-velocity_gauge = .false. ! velocity or length gauge?
+A0 = 1e-3_dp
+velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
 Lmul = 1._dp
@@ -226,7 +226,7 @@ end if
 
 dt = 1e-3_dp
 E0 = 0.003_dp
-td = 0.2_dp
+td = 2._dp
 tw = 0.04_dp
 
 if (myid == 0) then
@@ -250,19 +250,27 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 10000
+do i = 1, 50000
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
+    ! In SymPy:
+    ! >>> td = Symbol("td", positive=True)
+    ! >>> tw = Symbol("tw", positive=True)
+    ! >>> var("t")
+    ! >>> Et = exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
+    ! >>> integrate(Et, (t, -oo, oo))
+    ! 1
+    ! >>> At = -integrate(Et, t)
+    ! >>> At
+    ! -erf(sqrt(2)*(t - td)/(2*tw))/2
+    ! >>> limit(At, t, -oo)
+    ! 1/2
+
     Ex = E0 * exp(-(t-td)**2/(2*tw**2)) / (sqrt(2*pi)*tw)
-    ! TODO: use erf for A, to exactly reproduce the result
-    if (t < 0.5_dp) then
-        A = 0
-    else
-        A = A0
-    end if
+    A = -E0 * (erf(sqrt(2._dp)*(t - td)/(2*tw))/2 + 1._dp/2)
     if (velocity_gauge) then
         ! velocity gauge
-        Htot = Hn+A**2/alpha**2
+        Htot = Hn+A**2/2
     else
         ! length gauge
         Htot = Hn+X(:,:,:,1)*Ex
@@ -271,7 +279,7 @@ do i = 1, 10000
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
     psiG = psiG * exp(-i_*G2*dt/2)
     if (velocity_gauge) then
-        psiG = psiG * exp(A/alpha*G(:,:,:,1)*dt)
+        psiG = psiG * exp(-i_*A*G(:,:,:,1)*dt)
     end if
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
     psi = psi * exp(-i_*Htot*dt/2)
@@ -289,7 +297,7 @@ do i = 1, 10000
                 commy, commz, Ng, nsub)
         tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
         if (velocity_gauge) then
-            if (j == 1) tmp = tmp - A/alpha*ne/natom
+            if (j == 1) tmp = tmp + A*ne/natom
         end if
         if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
             print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
