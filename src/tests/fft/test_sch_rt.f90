@@ -20,7 +20,7 @@ use md, only: positions_bcc, positions_fcc
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
-real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, Ven0G, ne, Ven
+real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Ven
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
     current(:,:,:,:), tmp_global(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
@@ -121,6 +121,7 @@ allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 call allocate_mold(G2, ne)
 call allocate_mold(Hn, ne)
 call allocate_mold(Htot, ne)
+call allocate_mold(HtotG, ne)
 call allocate_mold(Ven, ne)
 call allocate_mold(Ven0G, ne)
 call allocate_mold(VenG, neG)
@@ -271,23 +272,22 @@ do i = 1, 50000
     if (velocity_gauge) then
         ! velocity gauge
         Htot = Hn+A**2/2
+        HtotG = G2/2 + A*G(:,:,:,1)
     else
         ! length gauge
         Htot = Hn+X(:,:,:,1)*Ex
+        HtotG = G2/2
     end if
     psi = psi * exp(-i_*Htot*dt/2)
     call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    psiG = psiG * exp(-i_*G2*dt/2)
-    if (velocity_gauge) then
-        psiG = psiG * exp(-i_*A*G(:,:,:,1)*dt)
-    end if
+    psiG = psiG * exp(-i_*HtotG*dt)
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
     psi = psi * exp(-i_*Htot*dt/2)
     ne = abs(psi)**2
     psi_norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) print *, "norm of psi:", psi_norm
 
-    Etot = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2) &
+    Etot = pintegralG(comm_all, L, HtotG*abs(psiG)**2) &
         + pintegral(comm_all, L, Htot*ne, Ng)
 
     !Calculate Current
