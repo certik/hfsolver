@@ -250,7 +250,7 @@ psi_norm = pintegral(comm_all, L, ne, Ng)
 if (myid == 0) print *, "norm of psi:", psi_norm
 
 if (myid == 0) open(newunit=u, file="of_cond.txt", status="replace")
-do i = 1, 50000
+do i = 1, 100
     t = t + dt
     if (myid == 0) print *, "iter =", i, "time =", t
     ! In SymPy:
