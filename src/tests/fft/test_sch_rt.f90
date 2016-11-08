@@ -227,7 +227,7 @@ end if
 dt = 1e-3_dp
 E0 = 0.003_dp
 td = 2._dp
-tw = 0.04_dp
+tw = 0.04_dp ! width of the Gaussian
 
 if (myid == 0) then
     print *, "dt =", dt
