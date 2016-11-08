@@ -33,7 +33,7 @@ real(dp) :: Lmul
 logical :: velocity_gauge
 real(dp) :: T_eV, T_au, Eee, Een, Ts, Exc, Etot, Ediff, V0, mu, &
     dt, psi_norm, t, EvW, &
-    current_avg(3), A0, A, alpha, rho, E0, td, tw, Ex
+    current_avg(3), A, alpha, rho, E0, td, tw, Ex
 real(dp), allocatable :: m(:)
 
 !  parallel variables
@@ -49,7 +49,6 @@ dt = 1e-4_dp
 alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
-A0 = 1e-3_dp
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
