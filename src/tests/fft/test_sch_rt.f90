@@ -295,9 +295,9 @@ do i = 1, 50000
     do j = 1, 3
         call pfourier2real(i_*G(:,:,:,j)*psiG, dpsi(:,:,:,j), &
                 commy, commz, Ng, nsub)
-        tmp = (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j))) / (2*natom*i_)
+        tmp = i_/(2*natom) * (conjg(psi)*dpsi(:,:,:,j)-psi*conjg(dpsi(:,:,:,j)))
         if (velocity_gauge) then
-            if (j == 1) tmp = tmp + A*ne/natom
+            if (j == 1) tmp = tmp - A*ne/natom
         end if
         if (maxval(abs(aimag(tmp))) > 1e-12_dp) then
             print *, "INFO: current  max imaginary part:", maxval(aimag(tmp))
