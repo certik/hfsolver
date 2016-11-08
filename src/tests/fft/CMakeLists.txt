@@ -29,6 +29,8 @@ if(WITH_MPI)
     ADDMPITEST(test_it_min_vw2 it_min_vw2 4)
     ADDMPIEXECUTABLE(test_rt)
     ADDMPITEST(test_rt rt 4)
+    ADDMPIEXECUTABLE(test_sch_rt)
+    ADDMPITEST(test_sch_rt sch_rt 4)
 endif()
 
 addtest(test_functional_derivative_min_fft)
