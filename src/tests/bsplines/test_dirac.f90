@@ -9,7 +9,7 @@ implicit none
 
 integer, parameter :: n = 30, k = 6, Nq=7
 integer, parameter :: N_intervals = n-k+1
-integer, parameter :: Nq_total = Nq*N_intervals, Nb=n-1
+integer, parameter :: Nq_total = Nq*N_intervals, Nb=n-1 + 1
 real(dp) :: t(n+k), rmin, rmax, a
 real(dp) :: xiq(Nq), wtq(Nq), xa, xb, jac, x(Nq)
 real(dp), allocatable :: xq(:), wq(:), hq(:)
@@ -18,7 +18,7 @@ real(dp), allocatable :: Bipp(:), Bjpp(:)
 real(dp), allocatable :: Vq(:), Vqp(:)
 real(dp), allocatable :: Am(:,:), Bm(:,:), sol(:,:), lam(:)
 real(dp), allocatable :: solsP(:,:), solsQ(:,:)
-real(dp) :: En, c
+real(dp) :: En, c, beta
 integer :: i, j, kappa, Z, l, relat, u
 
 allocate(Am(2*Nb,2*Nb), Bm(2*Nb,2*Nb), sol(2*Nb,2*Nb), lam(2*Nb))
@@ -38,6 +38,8 @@ a = 1e4
 Z = 83
 kappa = 2
 c = 137.03599907_dp
+beta = sqrt(kappa**2-(Z/c)**2)
+print *, beta
 
 t(:k-1) = rmin
 t(k:n+1) = meshexp(rmin, rmax, a, N_intervals)
@@ -65,11 +67,14 @@ end do
 print *, "Evaluating basis functions"
 ! Evaluate basis functions and their derivatives on quadrature grid
 ! Skip the first and last B-spline (that's why Nb=n-2).
-do i = 1, Nb
+do i = 1, Nb-1
     B(:,i)   = bspline     (t, i, k, xq)
     Bp(:,i)  = bspline_der (t, i, k, xq)
     Bpp(:,i) = bspline_der2(t, i, k, xq)
 end do
+B(:,Nb)   = xq**beta
+Bp(:,Nb)  = beta*xq**(beta-1)
+Bpp(:,Nb) = beta*(beta-1)*xq**(beta-2)
 
 print *, "Assembly"
 ! Construct matrices A and B
@@ -141,8 +146,10 @@ end do
 
 do i = 1, Nb
     solsP(:,i) = 0
+    solsQ(:,i) = 0
     do j = 1, Nb
         solsP(:,i) = solsP(:,i) + sol(j,i)*B(:,j)
+        solsQ(:,i) = solsQ(:,i) + sol(j+Nb,i)*B(:,j)
     end do
 end do
 
