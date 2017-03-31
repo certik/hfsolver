@@ -96,6 +96,13 @@ else()
     )
 endif()
 
+# ARPACK
+if(WITH_ARPACK)
+    set(SRC ${SRC}
+        arpack.f90
+    )
+endif()
+
 # FFTW
 if(WITH_FFTW)
     set(SRC ${SRC}
@@ -137,6 +144,9 @@ add_subdirectory(ffte)
 add_subdirectory(tests)
 
 target_link_libraries(hfsolver PUBLIC hfsolver::ffte)
+if(WITH_ARPACK)
+    target_link_libraries(hfsolver PUBLIC p::arpack)
+endif()
 
 install(TARGETS hfsolver
         RUNTIME DESTINATION bin

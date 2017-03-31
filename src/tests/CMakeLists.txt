@@ -122,6 +122,10 @@ if(WITH_UMFPACK)
     add_test(test_umfpack_c ${PROJECT_BINARY_DIR}/test_umfpack_c)
 endif()
 
+if(WITH_ARPACK)
+    ADDTEST(test_arpack)
+endif()
+
 add_subdirectory(thesis)
 add_subdirectory(fem)
 add_subdirectory(feast)
