@@ -11,24 +11,27 @@ use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc, positions_bcc
 use linalg, only: eigvals, inv, solve
+use arpack, only: eig
 use sorting, only: argsort
 implicit none
 integer :: Ng
 real(dp), allocatable :: G(:,:,:,:), G2(:,:,:)
 real(dp), allocatable :: Xn(:,:,:,:), Vn(:,:,:), r(:,:,:)
 complex(dp), allocatable, dimension(:) :: lam
-complex(dp), allocatable :: H(:,:), psi(:,:,:)
+complex(dp), allocatable :: H(:,:), psi(:,:,:), psiG(:,:,:)
 integer, allocatable :: idx(:)
 real(dp) :: L
 real(dp) :: lambda !, omega
 integer :: i, ai, aj, ak, bi, bj, bk, ci, cj, ck, a_idx, b_idx !, a, b
 complex(dp) :: lam0
+integer :: n, nev, ncv
+real(dp), allocatable :: d(:), v(:,:)
 
 Ng = 8
 
 L = 10._dp
 
-allocate(G(Ng,Ng,Ng,3), G2(Ng,Ng,Ng), psi(Ng,Ng,Ng))
+allocate(G(Ng,Ng,Ng,3), G2(Ng,Ng,Ng), psi(Ng,Ng,Ng), psiG(Ng,Ng,Ng))
 allocate(Xn(Ng, Ng, Ng, 3), Vn(Ng, Ng, Ng), r(Ng, Ng, Ng))
 allocate(H(Ng**3, Ng**3))
 allocate(lam(Ng**3), idx(Ng**3))
@@ -111,6 +114,17 @@ print *, "Inverse iteration"
 lam0 = inverse_iteration(H, -0.20_dp)
 print *, lam0
 
+print *, "Arpack"
+
+n = Ng**3
+nev = 4
+ncv = 100
+allocate(v(n,ncv), d(ncv))
+call eig(n, nev, ncv, "SA", av, d, v)
+do i = 1, nev
+    print *, d(i)
+end do
+
 !print *, "E_tot_exact =", 3*omega/2
 
 contains
@@ -166,5 +180,15 @@ contains
         print *, i, lam
     end do
     end function
+
+    subroutine av(x, y)
+    ! Compute y = A*x
+    real(dp), intent(in) :: x(:)
+    real(dp), intent(out) :: y(:)
+    call real2fourier(reshape(x, [Ng,Ng,Ng]), psiG)
+    call fourier2real(G2/2*psiG, psi)
+    !print *, maxval(abs(aimag(psi)))
+    y = reshape(real(psi,dp), [Ng**3]) + reshape(Vn, [Ng**3])*x
+    end
 
 end program
