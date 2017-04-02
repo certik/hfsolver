@@ -16,16 +16,18 @@ use sorting, only: argsort
 implicit none
 integer :: Ng
 real(dp), allocatable :: G(:,:,:,:), G2(:,:,:)
-real(dp), allocatable :: Xn(:,:,:,:), Vn(:,:,:), r(:,:,:)
+real(dp), allocatable :: Xn(:,:,:,:), Vn(:,:,:), r(:,:,:), psi(:,:,:), H(:,:)
 complex(dp), allocatable, dimension(:) :: lam
-complex(dp), allocatable :: H(:,:), psi(:,:,:), psiG(:,:,:)
+complex(dp), allocatable :: psiG(:,:,:)
 integer, allocatable :: idx(:)
 real(dp) :: L
 real(dp) :: lambda !, omega
 integer :: i, ai, aj, ak, bi, bj, bk, ci, cj, ck, a_idx, b_idx !, a, b
-complex(dp) :: lam0
+real(dp) :: lam0
 integer :: n, nev, ncv
 real(dp), allocatable :: d(:), v(:,:)
+real(dp), parameter :: lam_ref(2) = [-0.25808952900095627_dp, &
+    9.4209719071036897_dp]
 
 Ng = 8
 
@@ -104,15 +106,21 @@ idx = argsort(real(lam, dp))
 print *, "Power iteration"
 call init_random()
 lam0 = power_iteration(H)
-print *, lam0
+print *, lam0, abs(lam0 - lam_ref(2))
+call assert(abs(lam0 - lam_ref(2)) < 1e-5_dp)
 print *, "Eigenvalues:"
 do i = Ng**3, 1, -1
     print *, i, lam(idx(i))
 end do
+print *, lam(idx(Ng**3)), abs(lam(idx(Ng**3)) - lam_ref(2))
+call assert(abs(lam(idx(Ng**3)) - lam_ref(2)) < 1e-13_dp)
+print *, lam(idx(1)), abs(lam(idx(1)) - lam_ref(1))
+call assert(abs(lam(idx(1)) - lam_ref(1)) < 1e-13_dp)
 
 print *, "Inverse iteration"
 lam0 = inverse_iteration(H, -0.20_dp)
-print *, lam0
+print *, lam0, abs(lam0 - lam_ref(1))
+call assert(abs(lam0 - lam_ref(1)) < 1e-13_dp)
 
 print *, "Arpack"
 
@@ -124,32 +132,34 @@ call eig(n, nev, ncv, "SA", av, d, v)
 do i = 1, nev
     print *, d(i)
 end do
+print *, d(1), abs(d(1) - lam_ref(1))
+call assert(abs(d(1) - lam_ref(1)) < 1e-13_dp)
 
 !print *, "E_tot_exact =", 3*omega/2
 
 contains
 
-    complex(dp) function power_iteration(A) result(lam)
-    complex(dp), intent(in) :: A(:, :)
-    complex(dp) :: y(size(A, 1)), v(size(A, 1))
+    real(dp) function power_iteration(A) result(lam)
+    real(dp), intent(in) :: A(:, :)
+    real(dp) :: y(size(A, 1)), v(size(A, 1))
     real(dp) :: y0(size(A, 1))
     integer :: i
     call random_number(y0)
     y = y0
     print *
-    do i = 1, 40
+    do i = 1, 70
         v = y / sqrt(sum(abs(y)**2))
         y = matmul(A, v)
-        lam = dot_product(conjg(v), y)
+        lam = dot_product(v, y)
         print *, i, lam
     end do
     end function
 
-    complex(dp) function inverse_iteration(A, mu) result(lam)
-    complex(dp), intent(in) :: A(:, :)
+    real(dp) function inverse_iteration(A, mu) result(lam)
+    real(dp), intent(in) :: A(:, :)
     real(dp), intent(in) :: mu
-    complex(dp) :: M(size(A, 1), size(A, 2))
-    complex(dp) :: y(size(A, 1)), v(size(A, 1)), theta
+    real(dp) :: M(size(A, 1), size(A, 2))
+    real(dp) :: y(size(A, 1)), v(size(A, 1)), theta
     real(dp) :: y0(size(A, 1))
     integer :: i, N
     logical, parameter :: invert = .false.
@@ -168,14 +178,14 @@ contains
     call random_number(y0)
     y = y0
     print *
-    do i = 1, 15
+    do i = 1, 13
         v = y / sqrt(sum(abs(y)**2))
         if (invert) then
             y = matmul(M, v)
         else
             y = solve(M, v)
         end if
-        theta = dot_product(conjg(v), y)
+        theta = dot_product(v, y)
         lam = mu + 1/theta
         print *, i, lam
     end do
@@ -187,8 +197,8 @@ contains
     real(dp), intent(out) :: y(:)
     call real2fourier(reshape(x, [Ng,Ng,Ng]), psiG)
     call fourier2real(G2/2*psiG, psi)
-    !print *, maxval(abs(aimag(psi)))
-    y = reshape(real(psi,dp), [Ng**3]) + reshape(Vn, [Ng**3])*x
+    y = reshape(psi, [Ng**3]) + reshape(Vn, [Ng**3])*x
+    !y = reshape(psi + Vn * reshape(x, [Ng,Ng,Ng]), [Ng**3])
     end
 
 end program
