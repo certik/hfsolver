@@ -124,6 +124,10 @@ endif()
 
 if(WITH_ARPACK)
     ADDTEST(test_arpack)
+    if(WITH_MPI)
+        ADDMPIEXECUTABLE(test_parpack)
+        ADDMPITEST(test_parpack parpack 4)
+    endif()
 endif()
 
 add_subdirectory(thesis)
