@@ -45,6 +45,7 @@ contains
   real(dp) :: dd, dl, du, buf
   integer :: j, status(MPI_STATUS_SIZE)
 
+  call assert(size(x) >= 2)
   dd = 4
   dl = -1
   du = -1
