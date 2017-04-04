@@ -240,7 +240,6 @@ if (myid == 0) then
     print *, ' _SSIMP '
     print *, ' ====== '
     print *, ' '
-    print *, ' Size of the matrix is ', n
     print *, ' The number of Ritz values requested is ', nev
     print *, ' The number of Arnoldi vectors generated', ' (NCV) is ', ncv
     print *, ' What portion of the spectrum: ', which
