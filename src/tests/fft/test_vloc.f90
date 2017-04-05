@@ -26,7 +26,7 @@ complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Vloc
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:,:,:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
-    Vee(:,:,:), Vee_old(:,:,:), exc(:,:,:), Vxc(:,:,:)
+    Vee(:,:,:), V_old(:,:,:), V_new(:,:,:), exc(:,:,:), Vxc(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:)
 real(dp) :: L(3)
 integer :: i, j, k
@@ -45,7 +45,7 @@ integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
-rho = 0.1_dp / density2gcm3  ! g/cc
+rho = 0.01_dp / density2gcm3  ! g/cc
 T_eV = 50._dp
 T_au = T_ev / Ha2eV
 natom = 1
@@ -67,7 +67,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 16
+        Ng = 64
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -127,7 +127,8 @@ call allocate_mold(Vxc, ne)
 call allocate_mold(exc, ne)
 call allocate_mold(Ven0G, ne)
 call allocate_mold(Vee, ne)
-call allocate_mold(Vee_old, ne)
+call allocate_mold(V_new, ne)
+call allocate_mold(V_old, ne)
 call allocate_mold(psiG, neG)
 call allocate_mold(psi, neG)
 call allocate_mold(tmp, neG)
@@ -188,8 +189,8 @@ if (myid == 0) then
     end do
 end if
 
-allocate(occ(2))
-occ = [2, 3]
+allocate(occ(4))
+occ = [2, 1, 1, 1]
 do j = 1, 100
 
     ! Poisson
@@ -207,11 +208,16 @@ do j = 1, 100
     call xc_vwn2(ne, exc, Vxc)
 
     alpha = 0.6_dp
-    if (j > 1) Vxc = Vee_old + alpha*(Vxc-Vee_old)
-    Vee_old = Vxc
+    alpha = 1
+    if (j == 1) then
+        V_new = Vee + Vxc
+    else
+        V_new = V_old + alpha*(Vee + Vxc - V_old)
+    end if
+    V_old = V_new
 
     ! Schroedinger:
-    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+Vxc, &
+    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+V_new,&
             L, G2, nev, ncv, eigs, orbitals)
     if (myid == 0) then
         print *, "n E"
