@@ -185,26 +185,29 @@ if (myid == 0) then
     end do
 end if
 
-! Poisson
 allocate(occ(2))
 occ = [2, 3]
-ne = 0
-do i = 1, size(occ)
-    ne = occ(i)*orbitals(:,:,:,i)**2
-end do
-call preal2fourier(ne, neG, commy, commz, Ng, nsub)
-call poisson_kernel(myid, size(neG), neG, G2, VeeG)
-call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
+do j = 1, 10
 
-! Schroedinger:
-call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+Vee, &
-        G2, nev, ncv, eigs, orbitals)
-if (myid == 0) then
-    print *, "n E"
-    do i = 1, nev
-        print *, i, eigs(i)
+    ! Poisson
+    ne = 0
+    do i = 1, size(occ)
+        ne = occ(i)*orbitals(:,:,:,i)**2
     end do
-end if
+    call preal2fourier(ne, neG, commy, commz, Ng, nsub)
+    call poisson_kernel(myid, size(neG), neG, G2, VeeG)
+    call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
+
+    ! Schroedinger:
+    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+Vee, &
+            G2, nev, ncv, eigs, orbitals)
+    if (myid == 0) then
+        print *, "n E"
+        do i = 1, nev
+            print *, i, eigs(i)
+        end do
+    end if
+end do
 
 
 if (myid == 0) print *, "Done"
