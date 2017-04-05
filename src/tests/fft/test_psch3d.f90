@@ -231,7 +231,7 @@ nev = 4
 ncv = 64
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Ven, &
-        G2, nev, ncv, eigs, orbitals)
+        L, G2, nev, ncv, eigs, orbitals)
 if (myid == 0) then
     print *, "Eigenvalues:"
     do i = 1, nev

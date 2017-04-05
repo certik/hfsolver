@@ -10,10 +10,10 @@ public solve_schroedinger
 contains
 
 subroutine solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
-        G2, nev, ncv, eigs, orbitals)
+        L, G2, nev, ncv, eigs, orbitals)
 integer, intent(in) :: myid, comm_all, commy, commz, Ng(3), nsub(3), nev, ncv
 real(dp), intent(in) :: Vloc(:,:,:) ! Local effective potential
-real(dp), intent(in) :: G2(:,:,:)
+real(dp), intent(in) :: G2(:,:,:), L(:)
 real(dp), intent(out) :: eigs(:) ! eigs(nev)
 ! orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev)
 real(dp), intent(out) :: orbitals(:,:,:,:)
@@ -28,7 +28,8 @@ call cpu_time(t1)
 call peig(comm_all, myid, n, nev, ncv, "SA", av, d, v)
 call cpu_time(t2)
 eigs = d(:nev)
-orbitals = reshape(v(:,:nev), [Ng_local(1),Ng_local(2),Ng_local(3),nev])
+orbitals = reshape(v(:,:nev), [Ng_local(1),Ng_local(2),Ng_local(3),nev]) &
+    * sqrt(product(Ng/L))
 if (myid == 0) then
     print *, "Arpack Time:", t2-t1
 end if

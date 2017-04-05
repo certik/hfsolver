@@ -33,7 +33,7 @@ integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
-real(dp) :: T_eV, T_au, dt, alpha, rho
+real(dp) :: T_eV, T_au, dt, alpha, rho, norm
 real(dp), allocatable :: m(:)
 integer :: nev, ncv
 real(dp), parameter :: D(5) = [0.65435_dp, 2.45106_dp, -1.536643785333E-01_dp, &
@@ -163,7 +163,7 @@ nev = 5
 ncv = 40
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
-        G2, nev, ncv, eigs, orbitals)
+        L, G2, nev, ncv, eigs, orbitals)
 allocate(eigs_ref(10))
 ! Reference energies as calculated using dftatom:
 eigs_ref = [ &     ! n l
@@ -194,13 +194,18 @@ do j = 1, 10
     do i = 1, size(occ)
         ne = ne + occ(i)*orbitals(:,:,:,i)**2
     end do
+    norm = pintegral(comm_all, L, ne, Ng)
+    if (myid == 0) then
+        print *, "Density norm:", norm
+    end if
     call preal2fourier(ne, neG, commy, commz, Ng, nsub)
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
+    Vee = Vee - Vee(1,1,1)
 
     ! Schroedinger:
     call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+Vee, &
-            G2, nev, ncv, eigs, orbitals)
+            L, G2, nev, ncv, eigs, orbitals)
     if (myid == 0) then
         print *, "n E"
         do i = 1, nev
