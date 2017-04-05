@@ -11,7 +11,7 @@ use ofdft, only: read_pseudo
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
     pintegral, pintegralG, free_energy, free_energy_min, &
-    radial_potential_fourier, psum, pmaxval, collate
+    radial_potential_fourier, psum, pmaxval, collate, poisson_kernel
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -24,8 +24,9 @@ implicit none
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Vloc
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:,:,:), &
-    current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:)
-complex(dp), allocatable :: dpsi(:,:,:,:)
+    current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
+    Vee(:,:,:)
+complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:)
 real(dp) :: L(3)
 integer :: i, j, k
 integer :: Ng(3)
@@ -66,7 +67,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 32
+        Ng = 16
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -123,9 +124,11 @@ call allocate_mold(Htot, ne)
 call allocate_mold(HtotG, ne)
 call allocate_mold(Vloc, ne)
 call allocate_mold(Ven0G, ne)
+call allocate_mold(Vee, ne)
 call allocate_mold(psiG, neG)
 call allocate_mold(psi, neG)
 call allocate_mold(tmp, neG)
+call allocate_mold(VeeG, neG)
 allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(dpsi(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 call allocate_mold(G, X)
@@ -156,7 +159,7 @@ Hn = Vloc
 
 if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 
-nev = 10
+nev = 5
 ncv = 40
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
@@ -181,6 +184,18 @@ if (myid == 0) then
         print *, i, eigs(i), abs(eigs(i) - eigs_ref(i))
     end do
 end if
+
+! Poisson
+allocate(occ(2))
+occ = [2, 3]
+ne = 0
+do i = 1, size(occ)
+    ne = occ(i)*orbitals(:,:,:,i)**2
+end do
+call preal2fourier(ne, neG, commy, commz, Ng, nsub)
+call poisson_kernel(myid, size(neG), neG, G2, VeeG)
+call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
+
 
 if (myid == 0) print *, "Done"
 
