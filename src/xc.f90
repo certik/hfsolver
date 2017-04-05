@@ -6,7 +6,7 @@ use types, only: dp
 use constants, only: pi
 implicit none
 private
-public get_Vxc_vwn, xc_pz, xc_pz2
+public get_Vxc_vwn, xc_pz, xc_pz2, xc_vwn2
 
 contains
 
@@ -71,6 +71,49 @@ Vxc = Vx + Vc
 contains
 
     real(dp) function get_Y(y, b, c)
+    real(dp), intent(in) :: y, b, c
+    get_Y = y**2 + b*y + c
+    end function
+
+end subroutine
+
+elemental subroutine xc_vwn2(n, exc, Vxc)
+! Same as xc_vwn, but an elemental procedure, and non-relativistic only
+real(dp), intent(in) :: n ! charge density (scalar)
+real(dp), intent(out) :: exc ! XC density
+real(dp), intent(out) :: Vxc ! XC potential
+
+real(dp), parameter :: y0 = -0.10498_dp
+real(dp), parameter :: b = 3.72744_dp
+real(dp), parameter :: c = 12.9352_dp
+real(dp), parameter :: A = 0.0621814_dp
+
+real(dp) :: Q, rs, y, ec, ex, Vc, Vx
+
+if (abs(n) < tiny(1._dp)) then
+    exc = 0
+    Vxc = 0
+    return
+end if
+
+Q = sqrt(4*c - b**2)
+rs = (3/(4*pi*n))**(1.0_dp/3)
+y = sqrt(rs)
+ec = A/2 * (log(y**2/get_Y(y, b, c)) + 2*b/Q * atan(Q/(2*y+b))  &
+   - b*y0/get_Y(y0, b, c) * ( &
+            log((y-y0)**2 / get_Y(y, b, c)) &
+            + 2*(b+2*y0) / Q * atan(Q/(2*y+b)) &
+          ) )
+Vc = ec - A/6 * (c*(y-y0)-b*y0*y)/((y-y0)*get_Y(y, b, c))
+ex = -3/(4*pi) * (3*pi**2*n)**(1.0_dp/3)
+Vx = 4*ex/3
+
+exc = ex + ec
+Vxc = Vx + Vc
+
+contains
+
+    real(dp) pure function get_Y(y, b, c)
     real(dp), intent(in) :: y, b, c
     get_Y = y**2 + b*y + c
     end function
