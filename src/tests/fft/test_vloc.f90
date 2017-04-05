@@ -25,7 +25,7 @@ complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Vloc
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:,:,:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
-    Vee(:,:,:)
+    Vee(:,:,:), Vee_old(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:)
 real(dp) :: L(3)
 integer :: i, j, k
@@ -49,7 +49,6 @@ T_eV = 50._dp
 T_au = T_ev / Ha2eV
 natom = 1
 dt = 1e-4_dp
-alpha = 137
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
@@ -125,6 +124,7 @@ call allocate_mold(HtotG, ne)
 call allocate_mold(Vloc, ne)
 call allocate_mold(Ven0G, ne)
 call allocate_mold(Vee, ne)
+call allocate_mold(Vee_old, ne)
 call allocate_mold(psiG, neG)
 call allocate_mold(psi, neG)
 call allocate_mold(tmp, neG)
@@ -202,6 +202,10 @@ do j = 1, 10
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
     Vee = Vee - Vee(1,1,1)
+
+    alpha = 0.1_dp
+    if (j > 1) Vee = Vee_old + alpha*(Vee-Vee_old)
+    Vee_old = Vee
 
     ! Schroedinger:
     call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+Vee, &
