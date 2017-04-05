@@ -192,7 +192,7 @@ do j = 1, 10
     ! Poisson
     ne = 0
     do i = 1, size(occ)
-        ne = occ(i)*orbitals(:,:,:,i)**2
+        ne = ne + occ(i)*orbitals(:,:,:,i)**2
     end do
     call preal2fourier(ne, neG, commy, commz, Ng, nsub)
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
