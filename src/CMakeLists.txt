@@ -127,6 +127,7 @@ if(WITH_MPI)
         mpi_dispatch.f90
         pffte.f90
         pofdft_fft.f90
+        pksdft_fft.f90
     )
 endif()
 

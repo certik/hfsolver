@@ -18,12 +18,13 @@ use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_barrier, mpi_bcast
 use md, only: positions_bcc, positions_fcc
 use arpack, only: peig, eig
+use pksdft_fft, only: solve_schroedinger
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Ven
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
-    current(:,:,:,:), tmp_global(:,:,:)
+    current(:,:,:,:), tmp_global(:,:,:), eigs(:), orbitals(:,:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
 real(dp) :: L(3), Z, omega
 integer :: i
@@ -37,8 +38,7 @@ real(dp) :: T_eV, T_au, Etot, Ediff, V0, mu, &
     alpha, rho, Ekin, Epot, Etot_last
 real(dp), allocatable :: m(:)
 real(dp) :: t1, t2, eps
-integer :: n, nev, ncv
-real(dp), allocatable :: d(:), v(:,:)
+integer :: nev, ncv
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -227,47 +227,23 @@ if (myid == 0) print *, "IT Time:", t2-t1
 
 if (myid == 0) print *, "Arpack"
 
-n = product(Ng_local)
 nev = 4
 ncv = 64
-allocate(v(n,ncv), d(ncv))
-call cpu_time(t1)
-call peig(comm_all, myid, n, nev, ncv, "SA", av, d, v)
-call cpu_time(t2)
-if (myid == 0) print *, "Arpack Time:", t2-t1
+allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
+call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Ven, &
+        G2, nev, ncv, eigs, orbitals)
 if (myid == 0) then
+    print *, "Eigenvalues:"
     do i = 1, nev
-        print *, d(i)
+        print *, i, eigs(i)
     end do
     print *, "Arpack vs IT:"
-    print *, abs(d(1) - Etot)
-    call assert(abs(d(1) - Etot) < 1e-12_dp)
-end if
-
-if (nproc == 1) then
-    print *, "Running serial version of Arpack for nproc == 1."
-    call eig(n, nev, ncv, "SA", av, d, v)
-    if (myid == 0) then
-        do i = 1, nev
-            print *, d(i)
-        end do
-    end if
+    print *, abs(eigs(1) - Etot)
+    call assert(abs(eigs(1) - Etot) < 1e-12_dp)
 end if
 
 if (myid == 0) print *, "Done"
 
 call mpi_finalize(ierr)
-
-contains
-
-    subroutine av(x, y)
-    ! Compute y = A*x
-    real(dp), intent(in) :: x(:)
-    real(dp), intent(out) :: y(:)
-    call preal2fourier(reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)]), &
-        psiG, commy, commz, Ng, nsub)
-    call pfourier2real(G2/2*psiG, psi, commy, commz, Ng, nsub)
-    y = reshape(real(psi,dp), [product(Ng_local)]) + reshape(Ven, [product(Ng_local)])*x
-    end
 
 end program
