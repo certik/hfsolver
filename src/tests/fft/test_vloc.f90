@@ -56,7 +56,7 @@ m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
-L = 10
+L = 2
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
@@ -146,8 +146,8 @@ allocate(Xion(3, natom))
 call assert(abs(L(2)-L(1)) < 1e-15_dp)
 call assert(abs(L(3)-L(1)) < 1e-15_dp)
 !call positions_fcc(Xion, L(1))
-Xion(:,1) = [-0.7_dp+L(1), 0._dp, 0._dp]
-Xion(:,2) = [+0.7_dp     , 0._dp, 0._dp]
+Xion(:,1) = [-0.7_dp+L(1)/2, 0._dp, 0._dp]
+Xion(:,2) = [+0.7_dp+L(1)/2, 0._dp, 0._dp]
 !Xion = Xion + 1e-6_dp ! Shift the atoms, so that 1/R is defined
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
