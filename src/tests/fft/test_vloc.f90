@@ -231,8 +231,8 @@ if (myid == 0) then
     end do
 end if
 
-allocate(occ(2))
-occ = [1, 1]
+allocate(occ(1))
+occ = [2]
 do j = 1, 100
 
     ! Poisson
