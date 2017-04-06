@@ -35,7 +35,7 @@ integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
 real(dp) :: T_eV, T_au, dt, alpha, rho, norm
-real(dp) :: rloc, C1, C2, Z
+real(dp) :: rloc, C1, C2, Zion
 real(dp), allocatable :: m(:)
 integer :: nev, ncv
 real(dp), parameter :: D(5) = [0.65435_dp, 2.45106_dp, -1.536643785333E-01_dp, &
@@ -164,8 +164,8 @@ end do
 rloc = 0.2_dp
 C1 = -4.180237_dp
 C2 =  0.725075_dp
-Z = 1
-Vloc = -Z/R * erf(R/(sqrt(2._dp)*rloc)) + exp(-1._dp/2*(R/rloc)**2) &
+Zion = 1
+Vloc = -Zion/R * erf(R/(sqrt(2._dp)*rloc)) + exp(-1._dp/2*(R/rloc)**2) &
     * (C1 + C2*(R/rloc)**2)
 
 Hn = Vloc
