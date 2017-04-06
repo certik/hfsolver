@@ -165,6 +165,10 @@ rloc = 0.2_dp
 C1 = -4.180237_dp
 C2 =  0.725075_dp
 Zion = 1
+! He
+C1 = -9.112023_dp
+C2 = 1.698368_dp
+Zion = 2
 Vloc = -Zion/R * erf(R/(sqrt(2._dp)*rloc)) + exp(-1._dp/2*(R/rloc)**2) &
     * (C1 + C2*(R/rloc)**2)
 
@@ -199,7 +203,7 @@ if (myid == 0) then
 end if
 
 allocate(occ(1))
-occ = [1]
+occ = [1, 1]
 do j = 1, 100
 
     ! Poisson
