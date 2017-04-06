@@ -19,7 +19,7 @@ use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
 use md, only: positions_bcc, positions_fcc
 use arpack, only: peig, eig
 use pksdft_fft, only: solve_schroedinger
-use xc, only: xc_vwn2
+use xc, only: xc_pz
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
@@ -35,6 +35,7 @@ integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
 real(dp) :: T_eV, T_au, dt, alpha, rho, norm
+real(dp) :: rloc, C1, C2, Z
 real(dp), allocatable :: m(:)
 integer :: nev, ncv
 real(dp), parameter :: D(5) = [0.65435_dp, 2.45106_dp, -1.536643785333E-01_dp, &
@@ -55,6 +56,7 @@ m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
+L = 10
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
@@ -67,7 +69,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 64
+        Ng = 32
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -157,14 +159,21 @@ end do
 end do
 end do
 !Vloc = R**2 / 2
-Vloc = -D(5)/R * (D(3)*erf(sqrt(D(1)) * R) + D(4)*erf(sqrt(D(2)) * R))
+!Vloc = -D(5)/R * (D(3)*erf(sqrt(D(1)) * R) + D(4)*erf(sqrt(D(2)) * R))
+! HDH pseudopotential for Hydrogen
+rloc = 0.2_dp
+C1 = -4.180237_dp
+C2 =  0.725075_dp
+Z = 1
+Vloc = -Z/R * erf(R/(sqrt(2._dp)*rloc)) + exp(-1._dp/2*(R/rloc)**2) &
+    * (C1 + C2*(R/rloc)**2)
 
 Hn = Vloc
 
 if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 
-nev = 5
-ncv = 40
+nev = 2
+ncv = 20
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
         L, G2, nev, ncv, eigs, orbitals)
@@ -189,8 +198,8 @@ if (myid == 0) then
     end do
 end if
 
-allocate(occ(4))
-occ = [2, 1, 1, 1]
+allocate(occ(1))
+occ = [1]
 do j = 1, 100
 
     ! Poisson
@@ -205,7 +214,7 @@ do j = 1, 100
     call preal2fourier(ne, neG, commy, commz, Ng, nsub)
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
-    call xc_vwn2(ne, exc, Vxc)
+    call xc_pz(ne, exc, Vxc)
 
     alpha = 0.6_dp
     alpha = 1
