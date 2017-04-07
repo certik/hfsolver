@@ -176,7 +176,7 @@ Ven0G = Ven0G / product(L)
 
 VenG = 0
 do i = 1, natom
-    VenG = VenG - Ven0G * exp(-i_ * &
+    VenG = VenG + Ven0G * exp(-i_ * &
         (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
 end do
 
