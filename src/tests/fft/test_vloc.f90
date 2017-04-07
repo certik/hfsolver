@@ -29,12 +29,12 @@ real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), &
     Vee(:,:,:), V_old(:,:,:), V_new(:,:,:), exc(:,:,:), Vxc(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:), VenG(:,:,:)
 real(dp) :: L(3), r
-integer :: i, j, k
+integer :: i, j, k, u
 integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
-real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2
+real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2, Vmin
 real(dp) :: rloc, C1, C2, Zion
 real(dp), allocatable :: m(:)
 integer :: nev, ncv, na
@@ -49,14 +49,14 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 rho = 0.01_dp / density2gcm3  ! g/cc
 T_eV = 50._dp
 T_au = T_ev / Ha2eV
-natom = 2
+natom = 1
 dt = 1e-4_dp
 allocate(m(natom))
 m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
-L = 2
+L = 40
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
@@ -69,7 +69,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 32
+        Ng = 64
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -146,9 +146,12 @@ allocate(Xion(3, natom))
 call assert(abs(L(2)-L(1)) < 1e-15_dp)
 call assert(abs(L(3)-L(1)) < 1e-15_dp)
 !call positions_fcc(Xion, L(1))
-Xion(:,1) = [-0.7_dp+L(1)/2, 0._dp, 0._dp]
-Xion(:,2) = [+0.7_dp+L(1)/2, 0._dp, 0._dp]
-!Xion = Xion + 1e-6_dp ! Shift the atoms, so that 1/R is defined
+!Xion(:,1) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
+!Xion(:,2) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
+Xion(:,1) = L/2
+!Xion = 0
+!Xion(1,1) = L(1)/2
+!Xion = Xion + 1e-4_dp ! Shift the atoms, so that 1/R is defined
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 
@@ -157,6 +160,11 @@ rloc = 0.2_dp
 C1 = -4.180237_dp
 C2 =  0.725075_dp
 Zion = 1
+! HDH local pseudopotential for Pb
+rloc = 0.617500_dp
+C1 =   0.753143_dp
+C2 =   0
+Zion = 4
 
 do k = 1, Ng_local(3)
 do j = 1, Ng_local(2)
@@ -180,12 +188,6 @@ do i = 1, natom
         (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
 end do
 
-!Vloc = R**2 / 2
-!Vloc = -D(5)/R * (D(3)*erf(sqrt(D(1)) * R) + D(4)*erf(sqrt(D(2)) * R))
-! He
-!C1 = -9.112023_dp
-!C2 = 1.698368_dp
-!Zion = 2
 !Vloc = 0
 !do na = 1, natom
 !    do k = 1, Ng_local(3)
@@ -199,31 +201,51 @@ end do
 !    end do
 !end do
 
+Vmin = minval(Vloc)
+
+!if (myid == 0) then
+!    open(newunit=u, file="a.txt", status="replace")
+!    write(u,*) Vloc(:,16,16)
+!end if
+
+!call pfourier2real(G2*VenG/(4*pi), Vloc, commy, commz, Ng, nsub)
 call pfourier2real(VenG, Vloc, commy, commz, Ng, nsub)
+norm = pintegral(comm_all, L, Vloc, Ng)
+if (myid == 0) then
+    print *, "INT:", norm
+end if
+
+!Vloc = Vloc + Vmin - minval(Vloc)
+
+!if (myid == 0) then
+!    open(newunit=u, file="a.txt", status="replace")
+!    !write(u,*) Vloc(:,16,16)
+!    !write(u,*) Ven0G(:,1,1)
+!    !write(u,*) Vloc(:,Ng/2,Ng/2)
+!    write(u,*) Vloc(:,1,1)
+!    close(u)
+!end if
+!stop "OK"
 
 Hn = Vloc
 
 if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 
-nev = 2
+nev = 5
 ncv = 100
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
         L, G2, nev, ncv, eigs, orbitals)
-allocate(eigs_ref(10))
+allocate(eigs_ref(5))
 ! Reference energies as calculated using dftatom:
-eigs_ref = [ &     ! n l
-    -4.78711125, & ! 1 0
-    -2.66284441, & ! 2 1
-    -2.66284441, & ! 2 1
-    -2.66284441, & ! 2 1
-    -1.91361446, & ! 2 0
-    -1.38967349, & ! 3 2
-    -1.38967349, & ! 3 2
-    -1.38967349, & ! 3 2
-    -1.38967349, & ! 3 2
-    -1.38967349  & ! 3 2
+eigs_ref = [ &      ! n l
+    -2.449769_dp, & ! 1 0
+    -1.490218_dp, & ! 2 1
+    -1.490218_dp, & ! 2 1
+    -1.490218_dp, & ! 2 1
+    -1.082635_dp  & ! 2 0
 ]
+eigs = eigs + eigs_ref(1) - eigs(1)
 if (myid == 0) then
     print *, "n E error"
     do i = 1, nev
@@ -231,8 +253,8 @@ if (myid == 0) then
     end do
 end if
 
-allocate(occ(1))
-occ = [2]
+allocate(occ(4))
+occ = [1, 1, 1, 1]
 do j = 1, 100
 
     ! Poisson
