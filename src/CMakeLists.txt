@@ -59,6 +59,8 @@ set(SRC
     ewald.f90
 
     ffte.f90
+
+    pulay.f90
 )
 
 # LIBINT
