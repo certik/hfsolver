@@ -61,6 +61,7 @@ set(SRC
     ffte.f90
 
     pulay.f90
+    mixings.f90
 )
 
 # LIBINT
