@@ -20,7 +20,7 @@ use md, only: positions_bcc, positions_fcc
 use arpack, only: peig, eig
 use pksdft_fft, only: solve_schroedinger
 use xc, only: xc_pz
-use mixings, only: mixing_linear
+use mixings, only: mixing_linear, mixing_linear_adapt
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
@@ -70,7 +70,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 64
+        Ng = 32
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -235,7 +235,7 @@ allocate(occ(4))
 
 occ = [1, 1, 1, 1]
 Vee_xc = 0
-call mixing_linear(product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
+call mixing_linear(myid, product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
 
 
 if (myid == 0) print *, "Done"
@@ -244,10 +244,10 @@ call mpi_finalize(ierr)
 
 contains
 
-    subroutine Rfunc(x, y)
+    subroutine Rfunc(x, y, E)
     ! Converge Vee+Vxc only (the other components are constant
     real(dp), intent(in) :: x(:)
-    real(dp), intent(out) :: y(:)
+    real(dp), intent(out) :: y(:), E
 
     ! Schroedinger:
     call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, &
@@ -264,6 +264,8 @@ contains
     ne = 0
     do i = 1, size(occ)
         ne = ne + occ(i)*orbitals(:,:,:,i)**2
+        call preal2fourier(orbitals(:,:,:,i), psiG, commy, commz, Ng, nsub)
+        Ekin = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2)
     end do
     norm = pintegral(comm_all, L, ne, Ng)
     if (myid == 0) then
@@ -274,7 +276,12 @@ contains
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
     call xc_pz(ne, exc, Vxc)
 
+    Epot = pintegral(comm_all, L, Hn*ne, Ng)
+    Etot = Ekin + Epot
+    E = 1
+
     y = reshape(Vee + Vxc, [product(Ng_local)]) - x
+
     end subroutine
 
 end program

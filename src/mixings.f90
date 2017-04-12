@@ -8,29 +8,32 @@ private
 public mixing_linear, mixing_linear_adapt
 
 interface
-    subroutine R_function(x, y)
+    subroutine R_function(x, y, E)
     ! Computes y = R(x)
     import :: dp
     implicit none
     real(dp), intent(in) :: x(:)
-    real(dp), intent(out) :: y(:)
+    real(dp), intent(out) :: y(:), E
     end subroutine
 end interface
 
 contains
 
-subroutine mixing_linear(n, R, max_iter, alpha, x)
+subroutine mixing_linear(myid, n, R, max_iter, alpha, x)
 ! Finds "x" so that R(x) = 0
-integer, intent(in) :: n, max_iter
+integer, intent(in) :: myid, n, max_iter
 real(dp), intent(in) :: alpha
 procedure(R_function) :: R
 ! On input: initial estimate x0; On output: "x" satisfies R(x) = 0
 real(dp), intent(inout) :: x(n)
-real(dp) :: y(n)
+real(dp) :: y(n), E
 integer :: i
 do i = 1, max_iter
-    call R(x, y)
+    call R(x, y, E)
     x = x + alpha * y
+    if (myid == 0) then
+        print *, "ITER:", i, E
+    end if
 end do
 end subroutine
 
@@ -44,10 +47,12 @@ real(dp), intent(inout) :: x(n)
 
 real(dp), parameter :: alpha_max = 1
 real(dp), dimension(n) :: R_m, R_mm1, beta
+real(dp) :: E
 integer :: i, j
 beta = alpha
 do i = 1, max_iter
-    call R(x, R_m)
+    print *, "ITER:", i
+    call R(x, R_m, E)
     x = x + beta * R_m
     if (i > 1) then
         do j = 1, n
