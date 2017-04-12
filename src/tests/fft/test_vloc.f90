@@ -20,13 +20,14 @@ use md, only: positions_bcc, positions_fcc
 use arpack, only: peig, eig
 use pksdft_fft, only: solve_schroedinger
 use xc, only: xc_pz
+use mixings, only: mixing_linear
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Vloc
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
-    Vee(:,:,:), V_old(:,:,:), V_new(:,:,:), exc(:,:,:), Vxc(:,:,:)
+    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:), VenG(:,:,:)
 real(dp) :: L(3), r
 integer :: i, j, k, u
@@ -128,8 +129,7 @@ call allocate_mold(Vxc, ne)
 call allocate_mold(exc, ne)
 call allocate_mold(Ven0G, ne)
 call allocate_mold(Vee, ne)
-call allocate_mold(V_new, ne)
-call allocate_mold(V_old, ne)
+call allocate_mold(Vee_xc, ne)
 call allocate_mold(psiG, neG)
 call allocate_mold(psi, neG)
 call allocate_mold(tmp, neG)
@@ -253,9 +253,35 @@ if (myid == 0) then
     end do
 end if
 
+Vee_xc = 0
+
 allocate(occ(4))
 occ = [1, 1, 1, 1]
-do j = 1, 100
+
+call mixing_linear(product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
+
+
+if (myid == 0) print *, "Done"
+
+call mpi_finalize(ierr)
+
+contains
+
+    subroutine Rfunc(x, y)
+    ! Converge Vee+Vxc only (the other components are constant
+    real(dp), intent(in) :: x(:)
+    real(dp), intent(out) :: y(:)
+
+    ! Schroedinger:
+    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, &
+            Vloc + reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)]), &
+            L, G2, nev, ncv, eigs, orbitals)
+    if (myid == 0) then
+        print *, "n E"
+        do i = 1, nev
+            print *, i, eigs(i)
+        end do
+    end if
 
     ! Poisson
     ne = 0
@@ -271,29 +297,7 @@ do j = 1, 100
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
     call xc_pz(ne, exc, Vxc)
 
-    alpha = 0.6_dp
-    alpha = 1
-    if (j == 1) then
-        V_new = Vee + Vxc
-    else
-        V_new = V_old + alpha*(Vee + Vxc - V_old)
-    end if
-    V_old = V_new
-
-    ! Schroedinger:
-    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc+V_new,&
-            L, G2, nev, ncv, eigs, orbitals)
-    if (myid == 0) then
-        print *, "n E"
-        do i = 1, nev
-            print *, i, eigs(i)
-        end do
-    end if
-end do
-
-
-if (myid == 0) print *, "Done"
-
-call mpi_finalize(ierr)
+    y = reshape(Vee + Vxc, [product(Ng_local)]) - x
+    end subroutine
 
 end program
