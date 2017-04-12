@@ -24,7 +24,7 @@ use mixings, only: mixing_linear
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
-real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Vloc
+real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Vloc
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
     Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:)
@@ -121,7 +121,6 @@ call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 call allocate_mold(G2, ne)
-call allocate_mold(Hn, ne)
 call allocate_mold(Htot, ne)
 call allocate_mold(HtotG, ne)
 call allocate_mold(Vloc, ne)
@@ -227,37 +226,15 @@ end if
 !end if
 !stop "OK"
 
-Hn = Vloc
-
 if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 
 nev = 5
 ncv = 100
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
-call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
-        L, G2, nev, ncv, eigs, orbitals)
-allocate(eigs_ref(5))
-! Reference energies as calculated using dftatom:
-eigs_ref = [ &      ! n l
-    -2.449769_dp, & ! 1 0
-    -1.490218_dp, & ! 2 1
-    -1.490218_dp, & ! 2 1
-    -1.490218_dp, & ! 2 1
-    -1.082635_dp  & ! 2 0
-]
-eigs = eigs + eigs_ref(1) - eigs(1)
-if (myid == 0) then
-    print *, "n E error"
-    do i = 1, nev
-        print *, i, eigs(i), abs(eigs(i) - eigs_ref(i))
-    end do
-end if
-
-Vee_xc = 0
-
 allocate(occ(4))
-occ = [1, 1, 1, 1]
 
+occ = [1, 1, 1, 1]
+Vee_xc = 0
 call mixing_linear(product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
 
 
