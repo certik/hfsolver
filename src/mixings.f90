@@ -37,9 +37,9 @@ do i = 1, max_iter
 end do
 end subroutine
 
-subroutine mixing_linear_adapt(n, R, max_iter, alpha, x)
+subroutine mixing_linear_adapt(myid, n, R, max_iter, alpha, x)
 ! Finds "x" so that R(x) = 0, uses x0 as the initial estimate
-integer, intent(in) :: n, max_iter
+integer, intent(in) :: myid, n, max_iter
 real(dp), intent(in) :: alpha
 procedure(R_function) :: R
 ! On input: initial estimate x0; On output: "x" satisfies R(x) = 0
@@ -51,8 +51,10 @@ real(dp) :: E
 integer :: i, j
 beta = alpha
 do i = 1, max_iter
-    print *, "ITER:", i
     call R(x, R_m, E)
+    if (myid == 0) then
+        print *, "ITER:", i, E
+    end if
     x = x + beta * R_m
     if (i > 1) then
         do j = 1, n

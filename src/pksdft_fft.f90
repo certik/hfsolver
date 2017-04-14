@@ -21,6 +21,8 @@ real(dp), intent(out) :: orbitals(:,:,:,:)
 real(dp), allocatable :: d(:), v(:,:)
 integer :: Ng_local(3), n, i
 real(dp) :: t1, t2
+logical :: verbose
+verbose = .false.
 Ng_local = Ng / nsub
 n = product(Ng_local)
 allocate(v(n,ncv), d(ncv))
@@ -30,7 +32,7 @@ call cpu_time(t2)
 eigs = d(:nev)
 orbitals = reshape(v(:,:nev), [Ng_local(1),Ng_local(2),Ng_local(3),nev]) &
     * sqrt(product(Ng/L))
-if (myid == 0) then
+if (myid == 0 .and. verbose) then
     print *, "Arpack Time:", t2-t1
 end if
 

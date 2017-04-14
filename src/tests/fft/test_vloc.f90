@@ -24,7 +24,8 @@ use mixings, only: mixing_linear, mixing_linear_adapt
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
-real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Vloc
+real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Vloc, &
+    Veff
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
     Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:)
@@ -35,7 +36,8 @@ integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
-real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2, Vmin
+real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Epot, Etot, &
+    Eee, Een_loc, E_xc
 real(dp) :: rloc, C1, C2, Zion
 real(dp), allocatable :: m(:)
 integer :: nev, ncv, na
@@ -57,7 +59,7 @@ m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
-L = 40
+L = 10
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
@@ -124,6 +126,7 @@ call allocate_mold(G2, ne)
 call allocate_mold(Htot, ne)
 call allocate_mold(HtotG, ne)
 call allocate_mold(Vloc, ne)
+call allocate_mold(Veff, ne)
 call allocate_mold(Vxc, ne)
 call allocate_mold(exc, ne)
 call allocate_mold(Ven0G, ne)
@@ -250,15 +253,15 @@ contains
     real(dp), intent(out) :: y(:), E
 
     ! Schroedinger:
-    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, &
-            Vloc + reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)]), &
+    Veff = Vloc + reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)])
+    call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Veff, &
             L, G2, nev, ncv, eigs, orbitals)
-    if (myid == 0) then
-        print *, "n E"
-        do i = 1, nev
-            print *, i, eigs(i)
-        end do
-    end if
+    !if (myid == 0) then
+    !    print *, "n E"
+    !    do i = 1, nev
+    !        print *, i, eigs(i)
+    !    end do
+    !end if
 
     ! Poisson
     ne = 0
@@ -267,19 +270,39 @@ contains
         call preal2fourier(orbitals(:,:,:,i), psiG, commy, commz, Ng, nsub)
         Ekin = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2)
     end do
-    norm = pintegral(comm_all, L, ne, Ng)
+
+    Een_loc = pintegral(comm_all, L, Vloc*ne, Ng)
+    E_xc = pintegral(comm_all, L, exc*ne, Ng)
+    Eee = pintegral(comm_all, L, Vee*ne, Ng) / 2
+
+    Epot = pintegral(comm_all, L, Veff*ne, Ng)
+    Etot = Ekin + Epot
+
     if (myid == 0) then
-        print *, "Density norm:", norm
+        do i = 1, nev
+            print *, i, eigs(i)
+        end do
+        print "(a, es22.14)", "Ekin:     ", Ekin
+        print "(a, es22.14)", "Eee:      ", Eee
+        print "(a, es22.14)", "Exc:      ", E_xc
+        print "(a, es22.14)", "Enn:      ", 0._dp
+        print "(a, es22.14)", "Een_core: ", 0._dp
+        print "(a, es22.14)", "Een_loc:  ", Een_loc
+        print "(a, es22.14)", "Een_NL:   ", 0._dp
+        print "(a, es22.14)", "Epot:     ", Epot
+        print "(a, es22.14)", "Etot:     ", Etot
     end if
+
+    !norm = pintegral(comm_all, L, ne, Ng)
+    !if (myid == 0) then
+    !    print *, "Density norm:", norm
+    !end if
     call preal2fourier(ne, neG, commy, commz, Ng, nsub)
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
     call xc_pz(ne, exc, Vxc)
 
-    Epot = pintegral(comm_all, L, Hn*ne, Ng)
-    Etot = Ekin + Epot
-    E = 1
-
+    E = Etot
     y = reshape(Vee + Vxc, [product(Ng_local)]) - x
 
     end subroutine

@@ -180,6 +180,8 @@ real(dp) :: workl(ncv*(ncv+8)), workd(3*n), resid(n), tol, sigma
 integer :: iparam(11), ipntr(11), ido, info, ierr, ishfts, maxitr, mode1, nconv
 logical :: select(ncv), rvec
 character(1) :: bmat
+logical :: verbose
+verbose = .false.
 bmat  = 'I'
 tol = 0
 info = 0
@@ -235,7 +237,7 @@ if ( info .eq. 3) then
     print *, ' '
     call stop_error("")
 end if
-if (myid == 0) then
+if (myid == 0 .and. verbose) then
     print *, ' '
     print *, ' _SSIMP '
     print *, ' ====== '
