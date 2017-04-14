@@ -21,23 +21,24 @@ use arpack, only: peig, eig
 use pksdft_fft, only: solve_schroedinger
 use xc, only: xc_pz
 use mixings, only: mixing_linear, mixing_linear_adapt
+use ewald_sums, only: ewald_box
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Vloc, &
     Veff
-real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), &
+real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), q(:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
-    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:)
+    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:), forces(:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:), VenG(:,:,:)
-real(dp) :: L(3), r
+real(dp) :: L(3), r, stress(6)
 integer :: i, j, k, u
 integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
-real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Epot, Etot, &
-    Eee, Een_loc, E_xc
+real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
+    Eee, Een_loc, E_xc, Enn, Een_core
 real(dp) :: rloc, C1, C2, Zion
 real(dp), allocatable :: m(:)
 integer :: nev, ncv, na
@@ -72,7 +73,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 32
+        Ng = 64
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -143,6 +144,8 @@ call allocate_mold(G, X)
 call allocate_mold(current, X)
 if (myid == 0) print *, "Load initial position"
 allocate(Xion(3, natom))
+allocate(forces(3, natom))
+allocate(q(natom))
 ! For now assume a box, until positions_bcc can accept a vector L(:)
 ! And radial_potential_fourier
 call assert(abs(L(2)-L(1)) < 1e-15_dp)
@@ -151,11 +154,14 @@ call assert(abs(L(3)-L(1)) < 1e-15_dp)
 !Xion(:,1) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
 !Xion(:,2) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
 Xion(:,1) = L/2
+q = 4
 !Xion = 0
 !Xion(1,1) = L(1)/2
 !Xion = Xion + 1e-4_dp ! Shift the atoms, so that 1/R is defined
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
+
+call ewald_box(L(1), Xion, q, Enn, forces, stress)
 
 ! HDH pseudopotential for Hydrogen
 rloc = 0.2_dp
@@ -265,18 +271,25 @@ contains
 
     ! Poisson
     ne = 0
+    Ekin = 0
     do i = 1, size(occ)
         ne = ne + occ(i)*orbitals(:,:,:,i)**2
         call preal2fourier(orbitals(:,:,:,i), psiG, commy, commz, Ng, nsub)
-        Ekin = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2)
+        Ekin = Ekin &
+            + occ(i) * 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2)
     end do
+
+    call preal2fourier(ne, neG, commy, commz, Ng, nsub)
+    call poisson_kernel(myid, size(neG), neG, G2, VeeG)
+    call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
+    call xc_pz(ne, exc, Vxc)
 
     Een_loc = pintegral(comm_all, L, Vloc*ne, Ng)
     E_xc = pintegral(comm_all, L, exc*ne, Ng)
     Eee = pintegral(comm_all, L, Vee*ne, Ng) / 2
+    Een_core = 4.95047558841102E-02_dp
 
-    Epot = pintegral(comm_all, L, Veff*ne, Ng)
-    Etot = Ekin + Epot
+    Etot = Ekin + Eee + E_xc + Enn + Een_core + Een_loc
 
     if (myid == 0) then
         do i = 1, nev
@@ -285,11 +298,10 @@ contains
         print "(a, es22.14)", "Ekin:     ", Ekin
         print "(a, es22.14)", "Eee:      ", Eee
         print "(a, es22.14)", "Exc:      ", E_xc
-        print "(a, es22.14)", "Enn:      ", 0._dp
-        print "(a, es22.14)", "Een_core: ", 0._dp
+        print "(a, es22.14)", "Enn:      ", Enn
+        print "(a, es22.14)", "Een_core: ", Een_core
         print "(a, es22.14)", "Een_loc:  ", Een_loc
         print "(a, es22.14)", "Een_NL:   ", 0._dp
-        print "(a, es22.14)", "Epot:     ", Epot
         print "(a, es22.14)", "Etot:     ", Etot
     end if
 
@@ -297,10 +309,6 @@ contains
     !if (myid == 0) then
     !    print *, "Density norm:", norm
     !end if
-    call preal2fourier(ne, neG, commy, commz, Ng, nsub)
-    call poisson_kernel(myid, size(neG), neG, G2, VeeG)
-    call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
-    call xc_pz(ne, exc, Vxc)
 
     E = Etot
     y = reshape(Vee + Vxc, [product(Ng_local)]) - x
