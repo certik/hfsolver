@@ -26,9 +26,9 @@ real(dp) :: dt, psi_norm, E_tot, omega
 integer :: u, u2
 real(dp) :: t
 
-Ng = 16
+Ng = 1024
 
-L = 10._dp
+L = 8
 
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng), psi(Ng))
@@ -37,19 +37,26 @@ allocate(Xn(Ng), Vn(Ng))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-omega = 1._dp
-Vn = omega**2 * (Xn-L/2)**2 / 2
-!Vn = reg_coulomb_x(Xn, 20._dp, L/2)
-!psi = gauss_x(Xn, 0.1_dp, L/2, 400._dp)
+
+open(newunit=u, file="sch1d_grid.txt", status="replace")
+write(u, *) Xn
+Vn = gaussian_potential(Xn, 2._dp, L/2)
+write(u, *) Vn
+psi = gaussian_density(Xn, 2._dp, L/2)
+write(u, *) real(psi, dp)
+
+! Solve Poisson
+call real2fourier(psi, psiG)
+psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
+call fourier2real(psiG, Vn)
+
+write(u, *) Vn
+close(u)
+
 psi = 1 / L
 
 dt = 1e-2_dp
 print *, "dt =", dt
-
-open(newunit=u, file="sch1d_grid.txt", status="replace")
-write(u, *) Xn
-write(u, *) Vn
-close(u)
 
 open(newunit=u, file="sch1d.txt", status="replace")
 
@@ -106,22 +113,39 @@ call assert(abs(E_tot - omega/2) < 1e-9_dp)
 
 contains
 
-    pure function gauss_x(x, a, x0, k0) result(r)
-    real(dp), intent(in) :: x(:), a, x0, k0
-    complex(dp) :: r(size(x))
-    r = (a * sqrt(pi))**(-0.5_dp) &
-            * exp(-0.5_dp * ((x - x0) / a)**2 + i_ * x * k0)
+    pure function gaussian_density(x, alpha, x0) result(n)
+    ! Returns a Gaussian charge.
+    !
+    ! This function returns the particle density `n` corresponding to the
+    ! following radial potential `V`:
+    !     V = -erf(alpha*r)/r
+    ! by solving the radial Poisson equation (r*V(r))'' = -4*pi*r*n(r), e.g. in
+    ! SymPy:
+    !
+    !     >>> var("alpha r", positive=True)
+    !     >>> V = -erf(alpha*r)/r
+    !     >>> n = (r*V).diff(r, 2) / (-4*pi*r)
+    !     >>> n
+    !     -alpha**3*exp(-alpha**2*r**2)/pi**(3/2)
+    !
+    ! Note that in 1D the potential `V` as calculated from the 1D Poisson
+    ! equation V''(x) = -4*pi*n(x) is equal to:
+    !
+    !     >>> simplify(integrate(integrate(-4*pi*n, r), r))
+    !     2*alpha**2*r*erf(alpha*r) + 2*alpha*exp(-alpha**2*r**2)/sqrt(pi)
+    !
+    ! The last potential is returned by gaussian_potential().
+    real(dp), intent(in) :: x(:), alpha, x0
+    real(dp) :: n(size(x))
+    n = -alpha**3 * exp(-alpha**2*(x-x0)**2)/pi**(3._dp/2)
     end function
 
-    pure function reg_coulomb_x(x, alpha, x0) result(V)
+    pure function gaussian_potential(x, alpha, x0) result(V)
+    ! Returns a Gaussian potential. See gaussian_density() for details.
     real(dp), intent(in) :: x(:), alpha, x0
     real(dp) :: V(size(x)), r(size(x))
     r = abs(x-x0)
-    where (r < 1e-6_dp)
-        V = -2*alpha/sqrt(pi)
-    else where
-        V = -erf(alpha*r)/r
-    end where
+    V = 2*alpha**2*r*erf(alpha*r) + 2*alpha*exp(-alpha**2*r**2)/sqrt(pi)
     end function
 
 end program
