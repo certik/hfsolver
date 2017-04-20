@@ -134,60 +134,60 @@ use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
 use schroed1d_assembly, only: assemble_2d, Z, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
+use mesh, only: meshexp
+use feutils, only: define_connect
 implicit none
 
 integer :: Nn, Ne
-! nodes(:, i) are the (x,y) coordinates of the i-th mesh node
-real(dp), allocatable :: nodes(:, :)
-integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
+! nodes(i) is the 'x' coordinate of the i-th mesh node
+real(dp), allocatable :: nodes(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), wtq2(:, :), phihq(:, :), dphihq(:, :), E_exact(:)
-integer, allocatable :: ib(:, :, :), in(:, :, :)
-real(dp) :: rmax
-integer :: i, j, Nex, Ney
+    lam(:), phihq(:, :), dphihq(:, :), E_exact(:)
+integer, allocatable :: ib(:, :), in(:, :)
+real(dp) :: L
+integer :: i, j
 
-Nex = 2
-Ney = 2
+Ne = 2
 p = 20
 Nq = p+1
-rmax = 15  ! The size of the box in atomic units
+L = 15  ! The size of the box in atomic units
 
-call cartesian_mesh_2d(Nex, Ney, [-rmax, -rmax], [rmax, rmax], nodes, elems)
-Nn = size(nodes, 2)
-Ne = size(elems, 2)
+Nn = Ne + 1
+allocate(nodes(Nn))
+nodes = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
-allocate(xiq(Nq), wtq(Nq), wtq2(Nq, Nq))
+allocate(xiq(Nq), wtq(Nq))
 call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
-forall(i=1:Nq, j=1:Nq) wtq2(i, j) = wtq(i)*wtq(j)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
 forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 
-call define_connect_tensor_2d(Nex, Ney, p, 1, in)
-call define_connect_tensor_2d(Nex, Ney, p, 2, ib)
+allocate(in(p+1,Ne),ib(p+1,Ne))
+call define_connect(3,3,Ne,p,in,ib)
+
 Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
-
-print *, "Assembling..."
-call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, dphihq, A, B)
-print *, "Solving..."
-call eigh(A, B, lam, c)
-print *, "Eigenvalues:"
-allocate(E_exact(20))
-call exact_energies(Z, E_exact)
-do i = 1, min(Nb, 20)
-    print "(i4, f12.6, f12.6, es12.2)", i, lam(i), E_exact(i), rel(lam(i), E_exact(i))
-end do
+!
+!print *, "Assembling..."
+!call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, dphihq, A, B)
+!print *, "Solving..."
+!call eigh(A, B, lam, c)
+!print *, "Eigenvalues:"
+!allocate(E_exact(20))
+!call exact_energies(Z, E_exact)
+!do i = 1, min(Nb, 20)
+!    print "(i4, f12.6, f12.6, es12.2)", i, lam(i), E_exact(i), rel(lam(i), E_exact(i))
+!end do
 
 contains
 
