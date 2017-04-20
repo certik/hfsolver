@@ -155,7 +155,7 @@ print *, "Number of elements:", Ne
 allocate(xin(Nq), x(Nq), Vq(Nq,Ne))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq))
-call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
+call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
