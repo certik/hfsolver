@@ -3,7 +3,7 @@ use types, only: dp
 use sorting, only: sort
 implicit none
 private
-public assemble_2d, Z, exact_energies
+public assemble_1d, Z, exact_energies
 
 real(dp), parameter :: Z = 1._dp
 
@@ -16,11 +16,11 @@ h = 0.0
 f = -Z/sqrt(x**2 + y**2 + h**2)
 end function
 
-subroutine assemble_2d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, Bm)
+subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Am, Bm)
 ! Assemble on a 2D rectangular uniform mesh
-real(dp), intent(in):: xin(:), nodes(:, :), xiq(:), wtq(:, :), &
+real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
     phihq(:, :), dphihq(:, :)
-integer, intent(in):: elems(:, :), ib(:, :, :)
+integer, intent(in):: ib(:, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), size(xiq), &
     size(xin), size(xin)) :: phi_v, phi_dx, phi_dy
@@ -31,7 +31,7 @@ real(dp) :: lx, ly
 integer :: ax, ay, bx, by
 real(dp) :: jacx, jacy, jac_det
 
-Ne = size(elems, 2)
+Ne = size(nodes)-1
 p = size(xin) - 1
 ! 2D shape functions
 do ay = 1, p+1
@@ -131,7 +131,7 @@ program schroed1d
 
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
-use schroed1d_assembly, only: assemble_2d, Z, exact_energies
+use schroed1d_assembly, only: assemble_1d, Z, exact_energies
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use mesh, only: meshexp
@@ -177,9 +177,9 @@ Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
-!
-!print *, "Assembling..."
-!call assemble_2d(xin, nodes, elems, ib, xiq, wtq2, phihq, dphihq, A, B)
+
+print *, "Assembling..."
+call assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, A, B)
 !print *, "Solving..."
 !call eigh(A, B, lam, c)
 !print *, "Eigenvalues:"
