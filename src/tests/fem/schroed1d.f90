@@ -139,7 +139,7 @@ integer, allocatable :: ib(:, :), in(:, :)
 real(dp) :: L
 integer :: i, j
 
-Ne = 2
+Ne = 4
 p = 20
 Nq = p+1
 L = 8  ! The size of the box in atomic units
@@ -176,6 +176,7 @@ call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
 allocate(E_exact(20))
 call exact_energies(Z, E_exact)
+lam = lam -6.7675040631880812_dp - lam(1)
 do i = 1, min(Nb, 20)
     print "(i4, f12.6, f12.6, es12.2)", i, lam(i), E_exact(i), rel(lam(i), E_exact(i))
 end do
