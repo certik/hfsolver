@@ -169,14 +169,7 @@ print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
-call load_potential()
-do e = 1, Ne
-    jacx=(xe(e+1)-xe(e))/2;
-    x = xe(e) + (xiq + 1) * jacx
-    do iqx = 1, size(xiq)
-        Vq(iqx, e) = f(x(iqx))
-    end do
-end do
+call load_potential(xe, xiq, Vq)
 
 print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
@@ -197,9 +190,12 @@ real(dp), intent(in) :: a, b
 rel = abs(a-b) / max(abs(a), abs(b))
 end function
 
-subroutine load_potential()
+subroutine load_potential(xe, xiq, Vq)
+real(dp), intent(in) :: xe(:), xiq(:)
+real(dp), intent(out) :: Vq(:,:)
 real(dp), allocatable :: Xn(:), Vn(:)
-integer :: u, n
+real(dp) :: jacx, x(size(xiq))
+integer :: u, n, e
 n = 1024
 allocate(Xn(n), Vn(n))
 open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
@@ -208,6 +204,13 @@ read(u, *) Vn ! skip: atomic potential
 read(u, *) Vn ! skip: density
 read(u, *) Vn
 close(u)
+do e = 1, size(xe)-1
+    jacx=(xe(e+1)-xe(e))/2;
+    x = xe(e) + (xiq + 1) * jacx
+    do iqx = 1, size(xiq)
+        Vq(iqx, e) = f(x(iqx))
+    end do
+end do
 end subroutine
 
 end program
