@@ -127,6 +127,7 @@ use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use mesh, only: meshexp
 use feutils, only: define_connect
+use splines, only: iixmin, spline3pars, poly3
 implicit none
 
 integer :: Nn, Ne
@@ -193,9 +194,10 @@ end function
 subroutine load_potential(xe, xiq, Vq)
 real(dp), intent(in) :: xe(:), xiq(:)
 real(dp), intent(out) :: Vq(:,:)
-real(dp), allocatable :: Xn(:), Vn(:)
+real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
-integer :: u, n, e
+integer :: u, n, e, ip
+! Load the numerical potential
 n = 1024
 allocate(Xn(n), Vn(n))
 open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
@@ -204,11 +206,16 @@ read(u, *) Vn ! skip: atomic potential
 read(u, *) Vn ! skip: density
 read(u, *) Vn
 close(u)
+! Interpolate using cubic splines
+allocate(c(0:4, n-1))
+call spline3pars(Xn, Vn, [2, 2], [0._dp, 0._dp], c)
+ip = 0
 do e = 1, size(xe)-1
     jacx=(xe(e+1)-xe(e))/2;
     x = xe(e) + (xiq + 1) * jacx
     do iqx = 1, size(xiq)
-        Vq(iqx, e) = f(x(iqx))
+        ip = iixmin(x(iqx), Xn, ip)
+        Vq(iqx, e) = poly3(x(iqx), c(:, ip))
     end do
 end do
 end subroutine
