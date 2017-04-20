@@ -28,7 +28,7 @@ real(dp) :: dt, psi_norm, E_tot
 integer :: u, u2
 real(dp) :: t
 
-Ng = 32
+Ng = 1024
 
 L = 8
 
@@ -62,8 +62,6 @@ print *, "dt =", dt
 
 open(newunit=u, file="sch1d.txt", status="replace")
 
-open(newunit=u2, file="sch1d_psi.txt", status="replace")
-write(u2, *) real(psi, dp), aimag(psi)
 
 
 ! Do first step by hand:
@@ -101,21 +99,20 @@ do i = 1, 600
     print *, "E_tot       =", E_tot
 
     write(u, *) i, t, psi_norm, E_tot
-    write(u2, *) real(psi, dp), aimag(psi)
 
 end do
 print *, "Done"
 
 close(u)
-close(u2)
 
 print *, E_tot
 
 nev = 6
-ncv = 16
+ncv = 160
 allocate(v(Ng,ncv), d(ncv))
 call eig(Ng, nev, ncv, "SA", av, d, v)
 print *, "n  eig  eig_integral"
+open(newunit=u2, file="sch1d_psi.txt", status="replace")
 do i = 1, nev
     psi = v(:,i)
     ne = real(psi*conjg(psi), dp)
@@ -126,7 +123,9 @@ do i = 1, nev
     call real2fourier(psi, psiG)
     E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
     print *, i, d(i), E_tot
+    write(u2, *) real(psi, dp)
 end do
+close(u2)
 
 contains
 
