@@ -4,7 +4,7 @@ use sorting, only: sort
 use constants, only: pi
 implicit none
 private
-public assemble_1d, Z, exact_energies
+public assemble_1d, Z, exact_energies, f
 
 real(dp), parameter :: Z = 1._dp
 
@@ -25,10 +25,10 @@ tmp = gaussian_potential([x], 2._dp, 4._dp)
 f = tmp(1)
 end function
 
-subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Am, Bm)
+subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Vq, Am, Bm)
 ! Assemble on a 2D rectangular uniform mesh
 real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
-    phihq(:, :), dphihq(:, :)
+    phihq(:, :), dphihq(:, :), Vq(:,:)
 integer, intent(in):: ib(:, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), &
@@ -70,7 +70,7 @@ do e = 1, Ne
             if (j > i) cycle
             Am(i,j) = Am(i,j) + sum(phi_dx(:, ax)*phi_dx(:, bx) &
                 * jac_det * wtq) / 2
-            Am(i,j) = Am(i,j) + sum(fq * &
+            Am(i,j) = Am(i,j) + sum(Vq(:,e) * &
                 phi_v(:, ax)*phi_v(:, bx) &
                 * jac_det * wtq)
             Bm(i,j) = Bm(i,j) + sum(( &
@@ -122,7 +122,7 @@ program schroed1d
 
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
-use schroed1d_assembly, only: assemble_1d, Z, exact_energies
+use schroed1d_assembly, only: assemble_1d, Z, exact_energies, f
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use mesh, only: meshexp
@@ -130,14 +130,14 @@ use feutils, only: define_connect
 implicit none
 
 integer :: Nn, Ne
-! nodes(i) is the 'x' coordinate of the i-th mesh node
-real(dp), allocatable :: nodes(:)
+! xe(i) is the 'x' coordinate of the i-th mesh node
+real(dp), allocatable :: xe(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), E_exact(:)
+    lam(:), phihq(:, :), dphihq(:, :), E_exact(:), x(:), Vq(:,:)
 integer, allocatable :: ib(:, :), in(:, :)
-real(dp) :: L
-integer :: i, j
+real(dp) :: L, jacx
+integer :: i, j, e, iqx
 
 Ne = 4
 p = 20
@@ -145,13 +145,13 @@ Nq = p+1
 L = 8  ! The size of the box in atomic units
 
 Nn = Ne + 1
-allocate(nodes(Nn))
-nodes = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
+allocate(xe(Nn))
+xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 
-allocate(xin(p+1))
+allocate(xin(Nq), x(Nq), Vq(Nq,Ne))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq))
 call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
@@ -169,8 +169,17 @@ print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
+call load_potential()
+do e = 1, Ne
+    jacx=(xe(e+1)-xe(e))/2;
+    x = xe(e) + (xiq + 1) * jacx
+    do iqx = 1, size(xiq)
+        Vq(iqx, e) = f(x(iqx))
+    end do
+end do
+
 print *, "Assembling..."
-call assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, A, B)
+call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
@@ -187,5 +196,18 @@ real(dp) pure function rel(a, b)
 real(dp), intent(in) :: a, b
 rel = abs(a-b) / max(abs(a), abs(b))
 end function
+
+subroutine load_potential()
+real(dp), allocatable :: Xn(:), Vn(:)
+integer :: u, n
+n = 1024
+allocate(Xn(n), Vn(n))
+open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
+read(u, *) Xn
+read(u, *) Vn ! skip: atomic potential
+read(u, *) Vn ! skip: density
+read(u, *) Vn
+close(u)
+end subroutine
 
 end program
