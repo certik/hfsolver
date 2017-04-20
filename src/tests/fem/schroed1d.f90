@@ -1,6 +1,7 @@
 module schroed1d_assembly
 use types, only: dp
 use sorting, only: sort
+use constants, only: pi
 implicit none
 private
 public assemble_1d, Z, exact_energies
@@ -9,11 +10,19 @@ real(dp), parameter :: Z = 1._dp
 
 contains
 
+    pure function gaussian_potential(x, alpha, x0) result(V)
+    ! Returns a Gaussian potential. See gaussian_density() for details.
+    real(dp), intent(in) :: x(:), alpha, x0
+    real(dp) :: V(size(x)), r(size(x))
+    r = abs(x-x0)
+    V = 2*alpha**2*r*erf(alpha*r) + 2*alpha*exp(-alpha**2*r**2)/sqrt(pi)
+    end function
+
 real(dp) elemental function f(x)
 real(dp), intent(in) :: x
-real(dp) :: h
-h = 0.0
-f = -Z/sqrt(x**2 + h**2)
+real(dp) :: tmp(1)
+tmp = gaussian_potential([x], 2._dp, 4._dp)
+f = tmp(1)
 end function
 
 subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Am, Bm)
@@ -133,7 +142,7 @@ integer :: i, j
 Ne = 2
 p = 20
 Nq = p+1
-L = 15  ! The size of the box in atomic units
+L = 8  ! The size of the box in atomic units
 
 Nn = Ne + 1
 allocate(nodes(Nn))
@@ -162,14 +171,14 @@ allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
 print *, "Assembling..."
 call assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, A, B)
-!print *, "Solving..."
-!call eigh(A, B, lam, c)
-!print *, "Eigenvalues:"
-!allocate(E_exact(20))
-!call exact_energies(Z, E_exact)
-!do i = 1, min(Nb, 20)
-!    print "(i4, f12.6, f12.6, es12.2)", i, lam(i), E_exact(i), rel(lam(i), E_exact(i))
-!end do
+print *, "Solving..."
+call eigh(A, B, lam, c)
+print *, "Eigenvalues:"
+allocate(E_exact(20))
+call exact_energies(Z, E_exact)
+do i = 1, min(Nb, 20)
+    print "(i4, f12.6, f12.6, es12.2)", i, lam(i), E_exact(i), rel(lam(i), E_exact(i))
+end do
 
 contains
 
