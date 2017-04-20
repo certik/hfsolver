@@ -140,8 +140,8 @@ integer, allocatable :: ib(:, :), in(:, :)
 real(dp) :: L, jacx
 integer :: i, j, e, iqx
 
-Ne = 4
-p = 20
+Ne = 20
+p = 63
 Nq = p+1
 L = 8  ! The size of the box in atomic units
 
