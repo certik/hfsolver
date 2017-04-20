@@ -9,11 +9,11 @@ real(dp), parameter :: Z = 1._dp
 
 contains
 
-real(dp) elemental function f(x, y)
-real(dp), intent(in) :: x, y
+real(dp) elemental function f(x)
+real(dp), intent(in) :: x
 real(dp) :: h
 h = 0.0
-f = -Z/sqrt(x**2 + y**2 + h**2)
+f = -Z/sqrt(x**2 + h**2)
 end function
 
 subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Am, Bm)
@@ -22,9 +22,9 @@ real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
     phihq(:, :), dphihq(:, :)
 integer, intent(in):: ib(:, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
-real(dp), dimension(size(xiq), size(xiq), &
-    size(xin), size(xin)) :: phi_v, phi_dx, phi_dy
-real(dp), dimension(size(xiq), size(xiq)) :: fq
+real(dp), dimension(size(xiq), &
+    size(xin)) :: phi_v, phi_dx, phi_dy
+real(dp), dimension(size(xiq)) :: fq
 real(dp), dimension(size(xiq)) :: x, y, xp, yp
 integer :: Ne, p, e, i, j, iqx, iqy
 real(dp) :: lx, ly
@@ -34,58 +34,40 @@ real(dp) :: jacx, jacy, jac_det
 Ne = size(nodes)-1
 p = size(xin) - 1
 ! 2D shape functions
-do ay = 1, p+1
 do ax = 1, p+1
-    do iqy = 1, size(xiq)
     do iqx = 1, size(xiq)
-        phi_v (iqx, iqy, ax, ay) =  phihq(iqx, ax) *  phihq(iqy, ay)
-        phi_dx(iqx, iqy, ax, ay) = dphihq(iqx, ax) *  phihq(iqy, ay)
-        phi_dy(iqx, iqy, ax, ay) =  phihq(iqx, ax) * dphihq(iqy, ay)
+        phi_v (iqx, ax) =  phihq(iqx, ax)
+        phi_dx(iqx, ax) = dphihq(iqx, ax)
     end do
-    end do
-end do
 end do
 Am=0; Bm=0
 ! Precalculate as much as possible:
-lx = nodes(1, elems(3, 1)) - nodes(1, elems(1, 1)) ! Element sizes
-ly = nodes(2, elems(3, 1)) - nodes(2, elems(1, 1))
+lx = nodes(2) - nodes(1) ! Element size
 jacx = lx/2
-jacy = ly/2
-jac_det = abs(jacx*jacy)
+jac_det = abs(jacx)
 xp = (xiq + 1) * jacx
-yp = (xiq + 1) * jacy
 phi_dx = phi_dx / jacx
-phi_dy = phi_dy / jacy
 do e = 1, Ne
-    x = xp + nodes(1, elems(1, e))
-    y = yp + nodes(2, elems(1, e))
-    do iqy = 1, size(xiq)
+    x = xp + nodes(e)
     do iqx = 1, size(xiq)
-        fq(iqx, iqy) = f(x(iqx), y(iqy))
+        fq(iqx) = f(x(iqx))
     end do
-    end do
-    do by = 1, p+1
     do bx = 1, p+1
-        j = ib(bx, by, e)
+        j = ib(bx, e)
         if (j==0) cycle
-        do ay = 1, p+1
         do ax = 1, p+1
-            i = ib(ax, ay, e)
+            i = ib(ax, e)
             if (i == 0) cycle
             if (j > i) cycle
-            Am(i,j) = Am(i,j) + sum(( &
-                phi_dx(:, :, ax, ay)*phi_dx(:, :, bx, by) + &
-                phi_dy(:, :, ax, ay)*phi_dy(:, :, bx, by)) &
+            Am(i,j) = Am(i,j) + sum(phi_dx(:, ax)*phi_dx(:, bx) &
                 * jac_det * wtq) / 2
             Am(i,j) = Am(i,j) + sum(fq * &
-                phi_v(:, :, ax, ay)*phi_v(:, :, bx, by) &
+                phi_v(:, ax)*phi_v(:, bx) &
                 * jac_det * wtq)
             Bm(i,j) = Bm(i,j) + sum(( &
-                phi_v(:, :, ax, ay) * phi_v(:, :, bx, by) &
+                phi_v(:, ax) * phi_v(:, bx) &
                 * jac_det * wtq))
         end do
-        end do
-    end do
     end do
 end do
 do j = 1, size(Am, 2)
