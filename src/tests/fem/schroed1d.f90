@@ -179,17 +179,11 @@ call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
 allocate(E_exact(20))
 call exact_energies(Z, E_exact)
-lam = lam -6.7675040631880812_dp - lam(1)
 do i = 1, min(Nb, 20)
-    print "(i4, f12.6, f12.6, es12.2)", i, lam(i), E_exact(i), rel(lam(i), E_exact(i))
+    print "(i4, f20.12)", i, lam(i)
 end do
 
 contains
-
-real(dp) pure function rel(a, b)
-real(dp), intent(in) :: a, b
-rel = abs(a-b) / max(abs(a), abs(b))
-end function
 
 subroutine load_potential(xe, xiq, Vq)
 real(dp), intent(in) :: xe(:), xiq(:)
