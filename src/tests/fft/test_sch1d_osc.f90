@@ -13,20 +13,22 @@ use utils, only: loadtxt, stop_error, assert, linspace, strfmt
 use splines, only: spline3pars, iixmin, poly3, spline3ders
 use interp3d, only: trilinear
 use md, only: positions_fcc, positions_bcc
+use arpack, only: eig
 implicit none
 integer :: Ng
 real(dp), allocatable :: G(:), G2(:)
 real(dp), allocatable :: ne(:)
 real(dp), allocatable :: Xn(:), Vn(:)
+real(dp), allocatable :: d(:), v(:,:)
 complex(dp), allocatable, dimension(:) :: psi, psiG
 real(dp) :: L
-integer :: i
+integer :: i, nev, ncv
 integer, parameter :: nelec = 1
-real(dp) :: dt, psi_norm, E_tot, omega
+real(dp) :: dt, psi_norm, E_tot
 integer :: u, u2
 real(dp) :: t
 
-Ng = 1024
+Ng = 32
 
 L = 8
 
@@ -97,7 +99,6 @@ do i = 1, 600
     call real2fourier(psi, psiG)
     E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
     print *, "E_tot       =", E_tot
-    print *, "E_tot_exact =", omega/2
 
     write(u, *) i, t, psi_norm, E_tot
     write(u2, *) real(psi, dp), aimag(psi)
@@ -108,8 +109,24 @@ print *, "Done"
 close(u)
 close(u2)
 
-print *, E_tot - omega/2
-call assert(abs(E_tot - omega/2) < 1e-9_dp)
+print *, E_tot
+
+nev = 6
+ncv = 16
+allocate(v(Ng,ncv), d(ncv))
+call eig(Ng, nev, ncv, "SA", av, d, v)
+print *, "n  eig  eig_integral"
+do i = 1, nev
+    psi = v(:,i)
+    ne = real(psi*conjg(psi), dp)
+    psi_norm = integral(L, ne)
+    psi = sqrt(nelec / psi_norm) * psi
+
+    ne = real(psi*conjg(psi), dp)
+    call real2fourier(psi, psiG)
+    E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
+    print *, i, d(i), E_tot
+end do
 
 contains
 
@@ -147,5 +164,15 @@ contains
     r = abs(x-x0)
     V = 2*alpha**2*r*erf(alpha*r) + 2*alpha*exp(-alpha**2*r**2)/sqrt(pi)
     end function
+
+    subroutine av(x, y)
+    ! Compute y = A*x
+    real(dp), intent(in) :: x(:)
+    real(dp), intent(out) :: y(:)
+    complex(dp), dimension(Ng) :: psi, psiG
+    call real2fourier(x, psiG)
+    call fourier2real(G2/2*psiG, psi)
+    y = real(psi,dp) + Vn*x
+    end
 
 end program
