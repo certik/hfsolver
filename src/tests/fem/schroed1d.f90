@@ -123,10 +123,10 @@ program schroed1d
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
 use schroed1d_assembly, only: assemble_1d, Z, exact_energies, f
-use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
+use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
+    get_nodes, define_connect, c2fullc => c2fullc2
 use linalg, only: eigh
 use mesh, only: meshexp
-use feutils, only: define_connect
 use splines, only: iixmin, spline3pars, poly3
 implicit none
 
@@ -135,18 +135,19 @@ integer :: Nn, Ne
 real(dp), allocatable :: xe(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), E_exact(:), x(:), Vq(:,:)
+    lam(:), phihq(:, :), dphihq(:, :), E_exact(:), x(:), Vq(:,:), xn(:), &
+    fullc(:)
 integer, allocatable :: ib(:, :), in(:, :)
 real(dp) :: L, jacx
-integer :: i, j, e, iqx
+integer :: i, j, e, iqx, u
 
 Ne = 20
-p = 63
+p = 5
 Nq = p+1
 L = 8  ! The size of the box in atomic units
 
-Nn = Ne + 1
-allocate(xe(Nn))
+Nn = Ne*p+1
+allocate(xe(Ne+1))
 xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 
 print *, "Number of nodes:", Nn
@@ -156,6 +157,8 @@ allocate(xin(Nq), x(Nq), Vq(Nq,Ne))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq))
 call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
+allocate(xn(Nn))
+call get_nodes(xe, xin, xn)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
@@ -169,6 +172,7 @@ Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+allocate(fullc(Nn))
 
 call load_potential(xe, xiq, Vq)
 
@@ -179,9 +183,14 @@ call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
 allocate(E_exact(20))
 call exact_energies(Z, E_exact)
+open(newunit=u, file="sch1d_grid.txt", status="replace")
+write(u, *) xn
 do i = 1, min(Nb, 20)
     print "(i4, f20.12)", i, lam(i)
+    call c2fullc(in, ib, c(:,i), fullc)
+    write(u, *) fullc
 end do
+close(u)
 
 contains
 
