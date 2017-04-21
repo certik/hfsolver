@@ -4,26 +4,9 @@ use sorting, only: sort
 use constants, only: pi
 implicit none
 private
-public assemble_1d, Z, exact_energies, f
-
-real(dp), parameter :: Z = 1._dp
+public assemble_1d
 
 contains
-
-    pure function gaussian_potential(x, alpha, x0) result(V)
-    ! Returns a Gaussian potential. See gaussian_density() for details.
-    real(dp), intent(in) :: x(:), alpha, x0
-    real(dp) :: V(size(x)), r(size(x))
-    r = abs(x-x0)
-    V = 2*alpha**2*r*erf(alpha*r) + 2*alpha*exp(-alpha**2*r**2)/sqrt(pi)
-    end function
-
-real(dp) elemental function f(x)
-real(dp), intent(in) :: x
-real(dp) :: tmp(1)
-tmp = gaussian_potential([x], 2._dp, 4._dp)
-f = tmp(1)
-end function
 
 subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Vq, Am, Bm)
 ! Assemble on a 2D rectangular uniform mesh
@@ -33,7 +16,6 @@ integer, intent(in):: ib(:, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), &
     size(xin)) :: phi_v, phi_dx, phi_dy
-real(dp), dimension(size(xiq)) :: fq
 real(dp), dimension(size(xiq)) :: x, y, xp, yp
 integer :: Ne, p, e, i, j, iqx, iqy
 real(dp) :: lx, ly
@@ -58,9 +40,6 @@ xp = (xiq + 1) * jacx
 phi_dx = phi_dx / jacx
 do e = 1, Ne
     x = xp + nodes(e)
-    do iqx = 1, size(xiq)
-        fq(iqx) = f(x(iqx))
-    end do
     do bx = 1, p+1
         j = ib(bx, e)
         if (j==0) cycle
@@ -87,31 +66,6 @@ do j = 1, size(Am, 2)
 end do
 end subroutine
 
-integer pure function calc_size(nmax) result(s)
-integer, intent(in) :: nmax
-integer :: n, m
-s = 0
-do n = 1, nmax
-    do m = -n+1, n-1
-        s = s + 1
-    end do
-end do
-end function
-
-subroutine exact_energies(Z, E)
-real(dp), intent(in) :: Z
-real(dp), intent(out) :: E(:)
-real(dp) :: tmp(calc_size(size(E)))
-integer :: n, m, idx
-idx = 0
-do n = 1, size(E)
-    do m = -n+1, n-1
-        idx = idx + 1
-        tmp(idx) = -Z**2 / (2*(n-1._dp/2)**2)
-    end do
-end do
-E = tmp(:size(E))
-end subroutine
 
 end module
 
@@ -122,7 +76,7 @@ program schroed1d
 
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
-use schroed1d_assembly, only: assemble_1d, Z, exact_energies, f
+use schroed1d_assembly, only: assemble_1d
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
     get_nodes, define_connect, c2fullc => c2fullc2
 use linalg, only: eigh
@@ -135,11 +89,11 @@ integer :: Nn, Ne
 real(dp), allocatable :: xe(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), E_exact(:), x(:), Vq(:,:), xn(:), &
-    fullc(:)
+    lam(:), phihq(:, :), dphihq(:, :), x(:), Vq(:,:), xn(:), &
+    fullc(:), enrq(:,:,:)
 integer, allocatable :: ib(:, :), in(:, :)
 real(dp) :: L, jacx
-integer :: i, j, e, iqx, u
+integer :: i, j, e, iqx, u, Nenr
 
 Ne = 20
 p = 5
@@ -174,16 +128,35 @@ print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 allocate(fullc(Nn))
 
-call load_potential(xe, xiq, Vq)
+call load_potential(xe, xiq, .false., Vq)
 
 print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
-allocate(E_exact(20))
-call exact_energies(Z, E_exact)
-open(newunit=u, file="sch1d_grid.txt", status="replace")
+open(newunit=u, file="enrichment.txt", status="replace")
+write(u, *) size(xn)
+write(u, *) xn
+do i = 1, min(Nb, 20)
+    print "(i4, f20.12)", i, lam(i)
+    call c2fullc(in, ib, c(:,i), fullc)
+    if (fullc(2) < 0) fullc = -fullc
+    write(u, *) fullc
+end do
+close(u)
+
+call load_potential(xe, xiq, .true., Vq)
+Nenr = 3
+allocate(enrq(Nq,Ne,Nenr))
+call load_enrichment(xe, xiq, Nenr, enrq)
+
+print *, "Assembling..."
+call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
+print *, "Solving..."
+call eigh(A, B, lam, c)
+print *, "Eigenvalues:"
+open(newunit=u, file="wfn.txt", status="replace")
 write(u, *) xn
 do i = 1, min(Nb, 20)
     print "(i4, f20.12)", i, lam(i)
@@ -194,8 +167,19 @@ close(u)
 
 contains
 
-subroutine load_potential(xe, xiq, Vq)
+elemental function h(r, rc)
+real(dp), intent(in) :: r, rc
+real(dp) :: h
+if (r < rc) then
+    h = 1 + 20*(r/rc)**7-70*(r/rc)**6+84*(r/rc)**5-35*(r/rc)**4
+else
+    h = 0
+end if
+end function
+
+subroutine load_potential(xe, xiq, periodic, Vq)
 real(dp), intent(in) :: xe(:), xiq(:)
+logical, intent(in) :: periodic
 real(dp), intent(out) :: Vq(:,:)
 real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
@@ -205,9 +189,11 @@ n = 1024
 allocate(Xn(n), Vn(n))
 open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
 read(u, *) Xn
-read(u, *) Vn ! skip: atomic potential
-read(u, *) Vn ! skip: density
-read(u, *) Vn
+read(u, *) Vn ! atomic potential
+if (periodic) then
+    read(u, *) Vn ! skip: density
+    read(u, *) Vn ! periodic potential
+end if
 close(u)
 ! Interpolate using cubic splines
 allocate(c(0:4, n-1))
@@ -221,6 +207,36 @@ do e = 1, size(xe)-1
         Vq(iqx, e) = poly3(x(iqx), c(:, ip))
     end do
 end do
+end subroutine
+
+subroutine load_enrichment(xe, xiq, Nenr, enrq)
+real(dp), intent(in) :: xe(:), xiq(:)
+integer, intent(in) :: Nenr
+!enrq(i,j,k) i-th quad point, j-th element, k-th enrichment
+real(dp), intent(out) :: enrq(:,:,:)
+real(dp), allocatable :: Xn(:), fn(:), c(:,:)
+real(dp) :: jacx, x(size(xiq))
+integer :: u, n, e, ip, i
+open(newunit=u, file="enrichment.txt", status="old")
+read(u, *) n
+allocate(Xn(n), fn(n))
+allocate(c(0:4, n-1))
+read(u, *) Xn
+do i = 1, Nenr
+    read(u, *) fn ! Load the enrichment function
+    ! Interpolate using cubic splines
+    call spline3pars(Xn, fn, [2, 2], [0._dp, 0._dp], c)
+    ip = 0
+    do e = 1, size(xe)-1
+        jacx=(xe(e+1)-xe(e))/2;
+        x = xe(e) + (xiq + 1) * jacx
+        do iqx = 1, size(xiq)
+            ip = iixmin(x(iqx), Xn, ip)
+            enrq(iqx, e, i) = poly3(x(iqx), c(:, ip))
+        end do
+    end do
+end do
+close(u)
 end subroutine
 
 end program
