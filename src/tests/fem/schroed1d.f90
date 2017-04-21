@@ -161,7 +161,8 @@ write(u, *) xn
 do i = 1, min(Nb, 20)
     print "(i4, f20.12)", i, lam(i)
     call c2fullc(in, ib, c(:,i), fullc)
-    write(u, *) fullc
+    if (fullc(2) < 0) fullc = -fullc
+    write(u, *) fullc*h(abs(xn-L/2), 1._dp)
 end do
 close(u)
 
