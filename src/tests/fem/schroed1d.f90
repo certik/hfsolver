@@ -142,14 +142,15 @@ do i = 1, min(Nb, 20)
     print "(i4, f20.12)", i, lam(i)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
-    write(u, *) fullc
+    ! Multiply by the cutoff function
+    write(u, *) fullc*h(abs(xn-L/2), 1._dp)
 end do
 close(u)
 
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 3
 allocate(enrq(Nq,Ne,Nenr))
-call load_enrichment(xe, xiq, Nenr, enrq)
+call load_enrichment(xe, xiq, enrq)
 
 print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
@@ -162,14 +163,16 @@ do i = 1, min(Nb, 20)
     print "(i4, f20.12)", i, lam(i)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
-    write(u, *) fullc*h(abs(xn-L/2), 1._dp)
+    write(u, *) fullc
 end do
 close(u)
 
 contains
 
 elemental function h(r, rc)
-real(dp), intent(in) :: r, rc
+! C^3 cutoff function h(r)
+real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
+real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
 real(dp) :: h
 if (r < rc) then
     h = 1 + 20*(r/rc)**7-70*(r/rc)**6+84*(r/rc)**5-35*(r/rc)**4
@@ -210,14 +213,14 @@ do e = 1, size(xe)-1
 end do
 end subroutine
 
-subroutine load_enrichment(xe, xiq, Nenr, enrq)
+subroutine load_enrichment(xe, xiq, enrq)
 real(dp), intent(in) :: xe(:), xiq(:)
-integer, intent(in) :: Nenr
 !enrq(i,j,k) i-th quad point, j-th element, k-th enrichment
 real(dp), intent(out) :: enrq(:,:,:)
 real(dp), allocatable :: Xn(:), fn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
-integer :: u, n, e, ip, i
+integer :: u, n, e, ip, i, Nenr
+Nenr = size(enrq,3)
 open(newunit=u, file="enrichment.txt", status="old")
 read(u, *) n
 allocate(Xn(n), fn(n))
