@@ -2,6 +2,8 @@ module schroed1d_assembly
 use types, only: dp
 use sorting, only: sort
 use constants, only: pi
+use feutils, only: phih
+use utils, only: assert
 implicit none
 private
 public assemble_1d, assemble_1d_enr
@@ -15,12 +17,12 @@ real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
 integer, intent(in):: ib(:, :)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), &
-    size(xin)) :: phi_v, phi_dx, phi_dy
-real(dp), dimension(size(xiq)) :: x, y, xp, yp
-integer :: Ne, p, e, i, j, iqx, iqy
-real(dp) :: lx, ly
-integer :: ax, ay, bx, by
-real(dp) :: jacx, jacy, jac_det
+    size(xin)) :: phi_v, phi_dx
+real(dp), dimension(size(xiq)) :: x, xp
+integer :: Ne, p, e, i, j, iqx
+real(dp) :: lx
+integer :: ax, bx
+real(dp) :: jacx, jac_det
 
 Ne = size(nodes)-1
 p = size(xin) - 1
@@ -67,21 +69,22 @@ end do
 end subroutine
 
 
-subroutine assemble_1d_enr(xin, nodes, ib, xiq, wtq, phihq, dphihq, Vq, enrq, &
-        Am, Bm)
+subroutine assemble_1d_enr(xin, nodes, ib, ibenr, xiq, wtq, phihq, dphihq, &
+        phipuq, Vq, enrq, Am, Bm)
 ! Assemble on a 2D rectangular uniform mesh
 real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
-    phihq(:, :), dphihq(:, :), Vq(:,:), enrq(:,:,:)
-integer, intent(in):: ib(:, :)
+    phihq(:, :), dphihq(:, :), Vq(:,:), enrq(:,:,:), phipuq(:,:)
+integer, intent(in):: ib(:, :), ibenr(:,:,:)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), &
-    size(xin)) :: phi_v, phi_dx, phi_dy
-real(dp), dimension(size(xiq)) :: x, y, xp, yp
-integer :: Ne, p, e, i, j, iqx, iqy
-real(dp) :: lx, ly
-integer :: ax, ay, bx, by
-real(dp) :: jacx, jacy, jac_det
+    size(xin)) :: phi_v, phi_dx
+real(dp), dimension(size(xiq)) :: x, xp
+integer :: Ne, p, e, i, j, iqx
+real(dp) :: lx
+integer :: ax, bx, aalpha, balpha, Nenr
+real(dp) :: jacx, jac_det
 
+Nenr = size(enrq,3)
 Ne = size(nodes)-1
 p = size(xin) - 1
 ! 1D shape functions
@@ -103,6 +106,7 @@ do e = 1, Ne
     do bx = 1, p+1
         j = ib(bx, e)
         if (j==0) cycle
+        ! FEM x FEM
         do ax = 1, p+1
             i = ib(ax, e)
             if (i == 0) cycle
@@ -116,6 +120,32 @@ do e = 1, Ne
                 phi_v(:, ax) * phi_v(:, bx) &
                 * jac_det * wtq))
         end do
+        ! Enrichment x FEM
+        do ax = 1, size(phipuq,2)
+        do aalpha = 1, Nenr
+            i = ibenr(ax, aalpha, e)
+            call assert(j < i)
+            Bm(i,j) = Bm(i,j) + sum(( &
+                phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
+                * jac_det * wtq))
+        end do
+        end do
+    end do
+    ! Enrichment x Enrichment
+    do ax = 1, size(phipuq,2)
+    do aalpha = 1, Nenr
+        i = ibenr(ax, aalpha, e)
+        do bx = 1, size(phipuq,2)
+        do balpha = 1, Nenr
+            j = ibenr(bx, balpha, e)
+            if (j > i) cycle
+            Bm(i,j) = Bm(i,j) + sum(( &
+                phipuq(:, ax)*enrq(:,e,aalpha) &
+                * phipuq(:, bx)*enrq(:,e,balpha)&
+                * jac_det * wtq))
+        end do
+        end do
+    end do
     end do
 end do
 do j = 1, size(Am, 2)
@@ -150,10 +180,10 @@ real(dp), allocatable :: xe(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), phihq(:, :), dphihq(:, :), x(:), Vq(:,:), xn(:), &
-    fullc(:), enrq(:,:,:)
-integer, allocatable :: ib(:, :), in(:, :)
-real(dp) :: L, jacx, rc
-integer :: i, j, e, iqx, u, Nenr
+    fullc(:), enrq(:,:,:), phipuq(:,:), xinpu(:)
+integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
+real(dp) :: L, rc
+integer :: i, j, iqx, u, Nenr
 
 Ne = 20
 p = 5
@@ -167,22 +197,28 @@ xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 
-allocate(xin(Nq), x(Nq), Vq(Nq,Ne))
+allocate(xin(Nq), xinpu(2), x(Nq), Vq(Nq,Ne))
 call get_parent_nodes(2, p, xin)
+call get_parent_nodes(2, 1, xinpu) ! linear functions for PU
 allocate(xiq(Nq), wtq(Nq))
 call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
 allocate(xn(Nn))
 call get_nodes(xe, xin, xn)
 allocate(phihq(size(xiq), size(xin)))
+allocate(phipuq(size(xiq), size(xinpu)))
 allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
 forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
 
-allocate(in(p+1,Ne),ib(p+1,Ne))
+allocate(in(p+1,Ne),ib(p+1,Ne),ibenr(2,Nenr,Ne))
 call define_connect(3,3,Ne,p,in,ib)
 
 Nb = maxval(ib)
+
+! TODO: implement this:
+!call define_connect_enr(Ne, Nenr, Nb, ibenr)
 print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
@@ -214,7 +250,8 @@ allocate(enrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq)
 
 print *, "Assembling..."
-call assemble_1d_enr(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, enrq, A, B)
+call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, Vq, &
+    enrq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
