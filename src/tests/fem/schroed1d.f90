@@ -121,8 +121,8 @@ do e = 1, Ne
                 * jac_det * wtq))
         end do
         ! Enrichment x FEM
-        do ax = 1, size(phipuq,2)
         do aalpha = 1, Nenr
+        do ax = 1, size(phipuq,2)
             i = ibenr(ax, aalpha, e)
             call assert(j < i)
             Bm(i,j) = Bm(i,j) + sum(( &
@@ -132,11 +132,11 @@ do e = 1, Ne
         end do
     end do
     ! Enrichment x Enrichment
-    do ax = 1, size(phipuq,2)
     do aalpha = 1, Nenr
+    do ax = 1, size(phipuq,2)
         i = ibenr(ax, aalpha, e)
-        do bx = 1, size(phipuq,2)
         do balpha = 1, Nenr
+        do bx = 1, size(phipuq,2)
             j = ibenr(bx, balpha, e)
             if (j > i) cycle
             Bm(i,j) = Bm(i,j) + sum(( &
@@ -185,7 +185,7 @@ integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr
 
-Ne = 20
+Ne = 4
 p = 5
 Nq = p+1
 L = 8  ! The size of the box in atomic units
@@ -197,9 +197,10 @@ xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 
-allocate(xin(Nq), xinpu(2), x(Nq), Vq(Nq,Ne))
+allocate(xin(Nq), x(Nq), Vq(Nq,Ne))
+allocate(xinpu(2)) ! linear functions for PU
 call get_parent_nodes(2, p, xin)
-call get_parent_nodes(2, 1, xinpu) ! linear functions for PU
+call get_parent_nodes(2, size(xinpu)-1, xinpu)
 allocate(xiq(Nq), wtq(Nq))
 call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
 allocate(xn(Nn))
@@ -212,13 +213,11 @@ forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
 
-allocate(in(p+1,Ne),ib(p+1,Ne),ibenr(2,Nenr,Ne))
+allocate(in(p+1,Ne),ib(p+1,Ne))
 call define_connect(3,3,Ne,p,in,ib)
 
 Nb = maxval(ib)
 
-! TODO: implement this:
-!call define_connect_enr(Ne, Nenr, Nb, ibenr)
 print *, "p =", p
 print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
@@ -245,7 +244,9 @@ end do
 close(u)
 
 call load_potential(xe, xiq, .true., Vq)
-Nenr = 1
+Nenr = 2
+allocate(ibenr(2,Nenr,Ne))
+call define_connect_enr(2,4, size(xinpu)-1, Nenr, Nb, ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq)
 
@@ -339,6 +340,25 @@ do i = 1, Nenr
     end do
 end do
 close(u)
+end subroutine
+
+subroutine define_connect_enr(emin, emax, p, Nenr, Nb, ibenr)
+integer, intent(in) :: emin, emax, p, Nenr, Nb
+integer, intent(out) :: ibenr(:,:,:)
+integer :: e, i, alpha, idx
+! construct nodal connectivity matrix
+ibenr = 0
+idx = Nb
+do alpha=1,Nenr
+do e=emin,emax
+do i=1,p+1
+    if (i == 1 .and. e == emin) cycle
+    if (i == p+1 .and. e == emax) cycle
+    if (i > 1) idx = idx + 1
+    ibenr(i,alpha,e) = idx
+end do
+end do
+end do
 end subroutine
 
 end program
