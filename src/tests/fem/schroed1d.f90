@@ -70,10 +70,11 @@ end subroutine
 
 
 subroutine assemble_1d_enr(xin, nodes, ib, ibenr, xiq, wtq, phihq, dphihq, &
-        phipuq, Vq, enrq, Am, Bm)
+        phipuq, dphipuq, Vq, enrq, denrq, Am, Bm)
 ! Assemble on a 2D rectangular uniform mesh
 real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
-    phihq(:, :), dphihq(:, :), Vq(:,:), enrq(:,:,:), phipuq(:,:)
+    phihq(:, :), dphihq(:, :), Vq(:,:), enrq(:,:,:), denrq(:,:,:), &
+    phipuq(:,:), dphipuq(:,:)
 integer, intent(in):: ib(:, :), ibenr(:,:,:)
 real(dp), intent(out):: Am(:,:), Bm(:, :)
 real(dp), dimension(size(xiq), &
@@ -126,9 +127,9 @@ do e = 1, Ne
             i = ibenr(ax, aalpha, e)
             if (i == 0) cycle
             call assert(j < i)
-            ! FIXME: must use a derivative of phi*enr below (don't forget a jac)
-            Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
-                phipuq(:, ax)*enrq(:,e,aalpha) * phi_dx(:, bx) &
+            Am(i,j) = Am(i,j) + sum(( &
+                (dphipuq(:, ax)* enrq(:,e,aalpha) &
+                 +phipuq(:, ax)*denrq(:,e,aalpha))/jacx * phi_dx(:, bx) &
                 * jac_det * wtq))
             Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
                 phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
@@ -149,10 +150,19 @@ do e = 1, Ne
             j = ibenr(bx, balpha, e)
             if (j == 0) cycle
             if (j > i) cycle
-            ! FIXME: add a contribution to Am
+            Am(i,j) = Am(i,j) + sum(( &
+                (dphipuq(:, ax)* enrq(:,e,aalpha) &
+                 +phipuq(:, ax)*denrq(:,e,aalpha))/jacx &
+                *(dphipuq(:, bx)* enrq(:,e,balpha) &
+                 +phipuq(:, bx)*denrq(:,e,balpha))/jacx &
+                * jac_det * wtq))
+            Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
+                phipuq(:, ax)*enrq(:,e,aalpha) &
+                * phipuq(:, bx)*enrq(:,e,balpha) &
+                * jac_det * wtq))
             Bm(i,j) = Bm(i,j) + sum(( &
                 phipuq(:, ax)*enrq(:,e,aalpha) &
-                * phipuq(:, bx)*enrq(:,e,balpha)&
+                * phipuq(:, bx)*enrq(:,e,balpha) &
                 * jac_det * wtq))
         end do
         end do
