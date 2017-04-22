@@ -126,10 +126,16 @@ do e = 1, Ne
             i = ibenr(ax, aalpha, e)
             if (i == 0) cycle
             call assert(j < i)
+            ! FIXME: must use a derivative of phi*enr below (don't forget a jac)
+            Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
+                phipuq(:, ax)*enrq(:,e,aalpha) * phi_dx(:, bx) &
+                * jac_det * wtq))
+            Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
+                phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
+                * jac_det * wtq))
             Bm(i,j) = Bm(i,j) + sum(( &
                 phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
                 * jac_det * wtq))
-            if (Bm(i,j) > epsilon(1._dp)) print *, i, j, ax, e
         end do
         end do
     end do
@@ -143,11 +149,11 @@ do e = 1, Ne
             j = ibenr(bx, balpha, e)
             if (j == 0) cycle
             if (j > i) cycle
+            ! FIXME: add a contribution to Am
             Bm(i,j) = Bm(i,j) + sum(( &
                 phipuq(:, ax)*enrq(:,e,aalpha) &
                 * phipuq(:, bx)*enrq(:,e,balpha)&
                 * jac_det * wtq))
-            if (Bm(i,j) > epsilon(1._dp)) print *, i, j, Bm(i,j)
         end do
         end do
     end do
@@ -160,19 +166,16 @@ do j = 1, size(Am, 2)
     end do
 end do
 
-do i = 25, size(Am,1)
-    Am(i,i) = 1
-end do
-do i = 25, size(Am,1)
-    !print "(40es10.2)", Bm(i, 25:)
-    print "(40f10.4)", Bm(i, 25:)
-end do
 open(newunit=u, file="B.txt", status="replace")
 do i = 1, size(Am,1)
     write(u,*) Bm(i, :)
 end do
 close(u)
-stop "OK"
+open(newunit=u, file="A.txt", status="replace")
+do i = 1, size(Am,1)
+    write(u,*) Am(i, :)
+end do
+close(u)
 end subroutine
 
 
@@ -198,15 +201,16 @@ integer :: Nn, Ne
 real(dp), allocatable :: xe(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), x(:), Vq(:,:), xn(:), &
+    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), phipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr, emin, emax
 
 Ne = 8
-p = 5
+p = 1
 Nq = p+1
+Nq = 10
 L = 8  ! The size of the box in atomic units
 
 Nn = Ne*p+1
@@ -216,7 +220,7 @@ xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 print *, "Number of nodes:", Nn
 print *, "Number of elements:", Ne
 
-allocate(xin(Nq), x(Nq), Vq(Nq,Ne))
+allocate(xin(p+1), Vq(Nq,Ne))
 allocate(xinpu(2)) ! linear functions for PU
 call get_parent_nodes(2, p, xin)
 call get_parent_nodes(2, size(xinpu)-1, xinpu)
@@ -249,7 +253,7 @@ call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
-open(newunit=u, file="enrichment.txt", status="replace")
+open(newunit=u, file="enrichment2.txt", status="replace")
 write(u, *) size(xn)
 write(u, *) xn
 do i = 1, min(Nb, 20)
@@ -265,8 +269,8 @@ close(u)
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
-emin = 3
-emax = 6
+emin = 4
+emax = 5
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
