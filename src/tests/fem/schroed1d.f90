@@ -155,7 +155,7 @@ do e = 1, Ne
                  +phipuq(:, ax)*denrq(:,e,aalpha))/jacx &
                 *(dphipuq(:, bx)* enrq(:,e,balpha) &
                  +phipuq(:, bx)*denrq(:,e,balpha))/jacx &
-                * jac_det * wtq))
+                * jac_det * wtq))/2
             Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
                 phipuq(:, ax)*enrq(:,e,aalpha) &
                 * phipuq(:, bx)*enrq(:,e,balpha) &
@@ -218,9 +218,9 @@ real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr, emin, emax
 
 Ne = 8
-p = 1
+p = 8
 Nq = p+1
-Nq = 10
+Nq = 50
 L = 8  ! The size of the box in atomic units
 
 Nn = Ne*p+1
@@ -303,6 +303,7 @@ print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
 print *, "Solving..."
+!call eigh(A(:Nb-1,:Nb-1), B(:Nb-1,:Nb-1), lam(:Nb-1), c(:Nb-1,:Nb-1))
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
 open(newunit=u, file="wfn.txt", status="replace")
