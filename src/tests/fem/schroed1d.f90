@@ -303,8 +303,14 @@ print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
 print *, "Solving..."
-!call eigh(A(:Nb-1,:Nb-1), B(:Nb-1,:Nb-1), lam(:Nb-1), c(:Nb-1,:Nb-1))
+call eigh(A(:Nb-1,:Nb-1), B(:Nb-1,:Nb-1), lam(:Nb-1), c(:Nb-1,:Nb-1))
+print *, "SFEM"
+print *, "Eigenvalues:"
+do i = 1, min(Nb, 6)
+    print "(i4, f20.12)", i, lam(i)
+end do
 call eigh(A, B, lam, c)
+print *, "SFEM + Enrichment"
 print *, "Eigenvalues:"
 open(newunit=u, file="wfn.txt", status="replace")
 write(u, *) xn
