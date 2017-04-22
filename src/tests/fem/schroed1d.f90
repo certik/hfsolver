@@ -130,7 +130,7 @@ do e = 1, Ne
             Am(i,j) = Am(i,j) + sum(( &
                 (dphipuq(:, ax)* enrq(:,e,aalpha) &
                  +phipuq(:, ax)*denrq(:,e,aalpha))/jacx * phi_dx(:, bx) &
-                * jac_det * wtq))
+                * jac_det * wtq)) / 2
             Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
                 phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
                 * jac_det * wtq))
