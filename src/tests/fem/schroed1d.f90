@@ -203,7 +203,7 @@ use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
     get_nodes, define_connect, c2fullc => c2fullc2
 use linalg, only: eigh
 use mesh, only: meshexp
-use splines, only: iixmin, spline3pars, poly3
+use splines, only: iixmin, spline3pars, poly3, dpoly3
 implicit none
 
 integer :: Nn, Ne
@@ -212,7 +212,7 @@ real(dp), allocatable :: xe(:)
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
-    fullc(:), enrq(:,:,:), phipuq(:,:), xinpu(:)
+    fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr, emin, emax
@@ -240,11 +240,13 @@ allocate(xn(Nn))
 call get_nodes(xe, xin, xn)
 allocate(phihq(size(xiq), size(xin)))
 allocate(phipuq(size(xiq), size(xinpu)))
+allocate(dphipuq(size(xiq), size(xinpu)))
 allocate(dphihq(size(xiq), size(xin)))
 ! Tabulate parent basis at quadrature points
 forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
 
 allocate(in(p+1,Ne),ib(p+1,Ne))
 call define_connect(3,3,Ne,p,in,ib)
@@ -284,7 +286,8 @@ emax = 5
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
-call load_enrichment(xe, xiq, enrq)
+allocate(denrq(Nq,Ne,Nenr))
+call load_enrichment(xe, xiq, enrq, denrq)
 !open(newunit=u, file="wfn.txt", status="replace")
 !write(u, *) xn
 !write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
@@ -297,8 +300,8 @@ allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 print *, "DOFs =", Nb
 print *, "Nenr =", Nenr
 print *, "Assembling..."
-call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, Vq, &
-    enrq, A, B)
+call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
+    dphipuq, Vq, enrq, denrq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
@@ -358,10 +361,10 @@ do e = 1, size(xe)-1
 end do
 end subroutine
 
-subroutine load_enrichment(xe, xiq, enrq)
+subroutine load_enrichment(xe, xiq, enrq, denrq)
 real(dp), intent(in) :: xe(:), xiq(:)
-!enrq(i,j,k) i-th quad point, j-th element, k-th enrichment
-real(dp), intent(out) :: enrq(:,:,:)
+! enrq(i,j,k) i-th quad point, j-th element, k-th enrichment
+real(dp), intent(out) :: enrq(:,:,:), denrq(:,:,:)
 real(dp), allocatable :: Xn(:), fn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
 integer :: u, n, e, ip, i, Nenr
@@ -381,7 +384,8 @@ do i = 1, Nenr
         x = xe(e) + (xiq + 1) * jacx
         do iqx = 1, size(xiq)
             ip = iixmin(x(iqx), Xn, ip)
-            enrq(iqx, e, i) = poly3(x(iqx), c(:, ip))
+            enrq (iqx, e, i) =  poly3(x(iqx), c(:, ip))
+            denrq(iqx, e, i) = dpoly3(x(iqx), c(:, ip))
         end do
     end do
 end do
