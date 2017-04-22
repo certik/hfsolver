@@ -4,7 +4,7 @@ use sorting, only: sort
 use constants, only: pi
 implicit none
 private
-public assemble_1d
+public assemble_1d, assemble_1d_enr
 
 contains
 
@@ -24,7 +24,67 @@ real(dp) :: jacx, jacy, jac_det
 
 Ne = size(nodes)-1
 p = size(xin) - 1
-! 2D shape functions
+! 1D shape functions
+do ax = 1, p+1
+    do iqx = 1, size(xiq)
+        phi_v (iqx, ax) =  phihq(iqx, ax)
+        phi_dx(iqx, ax) = dphihq(iqx, ax)
+    end do
+end do
+Am=0; Bm=0
+! Precalculate as much as possible:
+lx = nodes(2) - nodes(1) ! Element size
+jacx = lx/2
+jac_det = abs(jacx)
+xp = (xiq + 1) * jacx
+phi_dx = phi_dx / jacx
+do e = 1, Ne
+    x = xp + nodes(e)
+    do bx = 1, p+1
+        j = ib(bx, e)
+        if (j==0) cycle
+        do ax = 1, p+1
+            i = ib(ax, e)
+            if (i == 0) cycle
+            if (j > i) cycle
+            Am(i,j) = Am(i,j) + sum(phi_dx(:, ax)*phi_dx(:, bx) &
+                * jac_det * wtq) / 2
+            Am(i,j) = Am(i,j) + sum(Vq(:,e) * &
+                phi_v(:, ax)*phi_v(:, bx) &
+                * jac_det * wtq)
+            Bm(i,j) = Bm(i,j) + sum(( &
+                phi_v(:, ax) * phi_v(:, bx) &
+                * jac_det * wtq))
+        end do
+    end do
+end do
+do j = 1, size(Am, 2)
+    do i = 1, j-1
+        Am(i, j) = Am(j, i)
+        Bm(i, j) = Bm(j, i)
+    end do
+end do
+end subroutine
+
+
+subroutine assemble_1d_enr(xin, nodes, ib, xiq, wtq, phihq, dphihq, Vq, enrq, &
+        Am, Bm)
+! Assemble on a 2D rectangular uniform mesh
+real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
+    phihq(:, :), dphihq(:, :), Vq(:,:), enrq(:,:,:)
+integer, intent(in):: ib(:, :)
+real(dp), intent(out):: Am(:,:), Bm(:, :)
+real(dp), dimension(size(xiq), &
+    size(xin)) :: phi_v, phi_dx, phi_dy
+real(dp), dimension(size(xiq)) :: x, y, xp, yp
+integer :: Ne, p, e, i, j, iqx, iqy
+real(dp) :: lx, ly
+integer :: ax, ay, bx, by
+real(dp) :: jacx, jacy, jac_det
+
+Ne = size(nodes)-1
+p = size(xin) - 1
+! 1D shape functions
 do ax = 1, p+1
     do iqx = 1, size(xiq)
         phi_v (iqx, ax) =  phihq(iqx, ax)
@@ -76,7 +136,7 @@ program schroed1d
 
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
-use schroed1d_assembly, only: assemble_1d
+use schroed1d_assembly, only: assemble_1d, assemble_1d_enr
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
     get_nodes, define_connect, c2fullc => c2fullc2
 use linalg, only: eigh
@@ -92,7 +152,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), phihq(:, :), dphihq(:, :), x(:), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:)
 integer, allocatable :: ib(:, :), in(:, :)
-real(dp) :: L, jacx
+real(dp) :: L, jacx, rc
 integer :: i, j, e, iqx, u, Nenr
 
 Ne = 20
@@ -143,17 +203,18 @@ do i = 1, min(Nb, 20)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
-    write(u, *) fullc*h(abs(xn-L/2), 1._dp)
+    rc = 1._dp
+    write(u, *) fullc*h(abs(xn-L/2), rc)
 end do
 close(u)
 
 call load_potential(xe, xiq, .true., Vq)
-Nenr = 3
+Nenr = 1
 allocate(enrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq)
 
 print *, "Assembling..."
-call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
+call assemble_1d_enr(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, enrq, A, B)
 print *, "Solving..."
 call eigh(A, B, lam, c)
 print *, "Eigenvalues:"
