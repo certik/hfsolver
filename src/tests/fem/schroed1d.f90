@@ -124,6 +124,7 @@ do e = 1, Ne
         do aalpha = 1, Nenr
         do ax = 1, size(phipuq,2)
             i = ibenr(ax, aalpha, e)
+            if (i == 0) cycle
             call assert(j < i)
             Bm(i,j) = Bm(i,j) + sum(( &
                 phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
@@ -135,9 +136,11 @@ do e = 1, Ne
     do aalpha = 1, Nenr
     do ax = 1, size(phipuq,2)
         i = ibenr(ax, aalpha, e)
+        if (i == 0) cycle
         do balpha = 1, Nenr
         do bx = 1, size(phipuq,2)
             j = ibenr(bx, balpha, e)
+            if (j == 0) cycle
             if (j > i) cycle
             Bm(i,j) = Bm(i,j) + sum(( &
                 phipuq(:, ax)*enrq(:,e,aalpha) &
@@ -183,10 +186,10 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     fullc(:), enrq(:,:,:), phipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: L, rc
-integer :: i, j, iqx, u, Nenr
+integer :: i, j, iqx, u, Nenr, emin, emax
 
-Ne = 4
-p = 5
+Ne = 8
+p = 3
 Nq = p+1
 L = 8  ! The size of the box in atomic units
 
@@ -246,10 +249,18 @@ close(u)
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 2
 allocate(ibenr(2,Nenr,Ne))
-call define_connect_enr(2,4, size(xinpu)-1, Nenr, Nb, ibenr)
+emin = 3
+emax = 6
+call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
+Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq)
 
+deallocate(A, B, c, lam)
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+
+print *, "DOFs =", Nb
+print *, "Nenr =", Nenr
 print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, Vq, &
     enrq, A, B)
