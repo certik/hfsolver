@@ -81,7 +81,7 @@ real(dp), dimension(size(xiq), &
 real(dp), dimension(size(xiq)) :: x, xp
 integer :: Ne, p, e, i, j, iqx
 real(dp) :: lx
-integer :: ax, bx, aalpha, balpha, Nenr
+integer :: ax, bx, aalpha, balpha, Nenr, u
 real(dp) :: jacx, jac_det
 
 Nenr = size(enrq,3)
@@ -129,6 +129,7 @@ do e = 1, Ne
             Bm(i,j) = Bm(i,j) + sum(( &
                 phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
                 * jac_det * wtq))
+            if (Bm(i,j) > epsilon(1._dp)) print *, i, j, ax, e
         end do
         end do
     end do
@@ -146,6 +147,7 @@ do e = 1, Ne
                 phipuq(:, ax)*enrq(:,e,aalpha) &
                 * phipuq(:, bx)*enrq(:,e,balpha)&
                 * jac_det * wtq))
+            if (Bm(i,j) > epsilon(1._dp)) print *, i, j, Bm(i,j)
         end do
         end do
     end do
@@ -157,6 +159,20 @@ do j = 1, size(Am, 2)
         Bm(i, j) = Bm(j, i)
     end do
 end do
+
+do i = 25, size(Am,1)
+    Am(i,i) = 1
+end do
+do i = 25, size(Am,1)
+    !print "(40es10.2)", Bm(i, 25:)
+    print "(40f10.4)", Bm(i, 25:)
+end do
+open(newunit=u, file="B.txt", status="replace")
+do i = 1, size(Am,1)
+    write(u,*) Bm(i, :)
+end do
+close(u)
+stop "OK"
 end subroutine
 
 
@@ -189,7 +205,7 @@ real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr, emin, emax
 
 Ne = 8
-p = 3
+p = 5
 Nq = p+1
 L = 8  ! The size of the box in atomic units
 
@@ -247,7 +263,7 @@ end do
 close(u)
 
 call load_potential(xe, xiq, .true., Vq)
-Nenr = 2
+Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
 emin = 3
 emax = 6
@@ -255,6 +271,11 @@ call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq)
+!open(newunit=u, file="wfn.txt", status="replace")
+!write(u, *) xn
+!write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
+!close(u)
+!stop "ss"
 
 deallocate(A, B, c, lam)
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
