@@ -105,9 +105,6 @@ Nn = Ne*p+1
 allocate(xe(Ne+1))
 xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 
-print *, "Number of nodes:", Nn
-print *, "Number of elements:", Ne
-
 allocate(xin(p+1), Vq(Nq,Ne))
 allocate(xinpu(2)) ! linear functions for PU
 call get_parent_nodes(2, p, xin)
@@ -132,23 +129,17 @@ call define_connect(3,3,Ne,p,in,ib)
 Nb = maxval(ib)
 Nbfem = Nb
 
-print *, "p =", p
-print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
 call load_potential(xe, xiq, .false., Vq)
 
-print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
-print *, "Solving..."
 call eigh(A, B, eigs, c)
-print *, "Eigenvalues:"
 open(newunit=u, file="enrichment2.txt", status="replace")
 write(u, *) size(xn)
 write(u, *) xn
 do i = 1, min(Nb, 20)
-    print "(i4, f20.12)", i, eigs(i)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
@@ -167,8 +158,8 @@ Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 allocate(denrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq, denrq)
-print *, size(xn)
-print *, size(enrq(:Nq-1,:,1))+1
+!print *, size(xn)
+!print *, size(enrq(:Nq-1,:,1))+1
 open(newunit=u, file="wfn.txt", status="replace")
 write(u, *) xn
 write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
@@ -176,8 +167,8 @@ write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
 close(u)
 !stop "ss"
 
-deallocate(A, B, c)
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+deallocate(A, B, c, eigs)
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nbfem))
 
 print *, "DOFs =", Nb
 print *, "Nenr =", Nenr
@@ -185,24 +176,7 @@ print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
 print *, "Solving..."
-call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), lam(:Nbfem), c(:Nbfem,:Nbfem))
-print *, "SFEM"
-print *, "Eigenvalues:"
-do i = 1, min(Nb, 6)
-    print "(i4, f20.12)", i, lam(i)
-end do
-deallocate(eigs)
-allocate(eigs(Nb))
-call eigh(A, B, eigs, c)
-!open(newunit=u, file="wfn.txt", status="replace")
-!write(u, *) xn
-!do i = 1, min(Nb, 20)
-!    print "(i4, f20.12)", i, eigs(i)
-!    call c2fullc(in, ib, c(:,i), fullc)
-!    if (fullc(2) < 0) fullc = -fullc
-!    write(u, *) fullc
-!end do
-!close(u)
+call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), eigs(:Nbfem), c(:Nbfem,:Nbfem))
 end subroutine
 
 subroutine sfem_periodic_enr(Ne, p, Nq, L, Nb, eigs)
@@ -226,9 +200,6 @@ Nn = Ne*p+1
 allocate(xe(Ne+1))
 xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 
-print *, "Number of nodes:", Nn
-print *, "Number of elements:", Ne
-
 allocate(xin(p+1), Vq(Nq,Ne))
 allocate(xinpu(2)) ! linear functions for PU
 call get_parent_nodes(2, p, xin)
@@ -253,23 +224,17 @@ call define_connect(3,3,Ne,p,in,ib)
 Nb = maxval(ib)
 Nbfem = Nb
 
-print *, "p =", p
-print *, "DOFs =", Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
 call load_potential(xe, xiq, .false., Vq)
 
-print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
-print *, "Solving..."
 call eigh(A, B, eigs, c)
-print *, "Eigenvalues:"
 open(newunit=u, file="enrichment2.txt", status="replace")
 write(u, *) size(xn)
 write(u, *) xn
 do i = 1, min(Nb, 20)
-    print "(i4, f20.12)", i, eigs(i)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
@@ -288,8 +253,8 @@ Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 allocate(denrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq, denrq)
-print *, size(xn)
-print *, size(enrq(:Nq-1,:,1))+1
+!print *, size(xn)
+!print *, size(enrq(:Nq-1,:,1))+1
 open(newunit=u, file="wfn.txt", status="replace")
 write(u, *) xn
 write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
@@ -300,18 +265,11 @@ close(u)
 deallocate(A, B, c)
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
-print *, "DOFs =", Nb
-print *, "Nenr =", Nenr
 print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
 print *, "Solving..."
 call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), lam(:Nbfem), c(:Nbfem,:Nbfem))
-print *, "SFEM"
-print *, "Eigenvalues:"
-do i = 1, min(Nb, 6)
-    print "(i4, f20.12)", i, lam(i)
-end do
 deallocate(eigs)
 allocate(eigs(Nb))
 call eigh(A, B, eigs, c)
