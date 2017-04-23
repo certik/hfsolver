@@ -33,7 +33,7 @@ L = 8
 Ng = 2
 
 open(newunit=u2, file="pw.txt", status="replace")
-do j = 1, 10
+do j = 1, 12
     allocate(ne(Ng))
     allocate(G(Ng), G2(Ng), psi(Ng))
     allocate(psiG(Ng))
