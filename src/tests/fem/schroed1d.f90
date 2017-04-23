@@ -172,11 +172,6 @@ forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
 allocate(in(p+1,Ne),ib(p+1,Ne))
 call define_connect(3,3,Ne,p,in,ib)
 
-Nb = maxval(ib)
-
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
-allocate(fullc(Nn))
-
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
@@ -196,13 +191,11 @@ write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
 close(u)
 !stop "ss"
 
-deallocate(A, B, c)
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb))
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
+allocate(fullc(Nn))
 
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
-deallocate(eigs)
-allocate(eigs(Nb))
 call eigh(A, B, eigs, c)
 !open(newunit=u, file="wfn.txt", status="replace")
 !write(u, *) xn
