@@ -493,7 +493,7 @@ use schroed1d_assembly, only: sfem_non_periodic, sfem_periodic_enr, &
     sfem_periodic
 implicit none
 
-integer :: Ne, p, Nq, DOFs, i
+integer :: Ne, p, Nq, DOFs, i, u
 real(dp), allocatable :: eigs(:)
 real(dp) :: L
 
@@ -513,19 +513,24 @@ do i = 1, 6
 end do
 
 
-Ne = 8
-p = 2
-Nq = 64
-L = 8
-call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
-print *, "Periodic"
-print *, "Ne:", Ne
-print *, "p:", p
-print *, "Nq:", Nq
-print *, "DOFs:", DOFs
-do i = 1, 6
-    print *, i, eigs(i)
+open(newunit=u, file="sfem.txt", status="replace")
+do p = 1, 3
+    Ne = 8
+    Nq = 64
+    L = 8
+    call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
+    print *, "Periodic"
+    print *, "Ne:", Ne
+    print *, "p:", p
+    print *, "Nq:", Nq
+    print *, "DOFs:", DOFs
+    do i = 1, 6
+        print *, i, eigs(i)
+    end do
+    write(u,*) Ne, p, Nq, L
+    write(u,*) eigs(:6)
 end do
+close(u)
 
 Ne = 8
 p = 2
