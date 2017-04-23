@@ -514,9 +514,9 @@ do i = 1, 6
 end do
 
 
-open(newunit=u, file="sfem.txt", status="replace")
-do p = 1, 30
-    Ne = 8
+open(newunit=u, file="sfem2.txt", status="replace")
+do p = 1, 63
+    Ne = 2
     Nq = 64
     L = 8
     call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
