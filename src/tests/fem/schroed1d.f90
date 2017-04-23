@@ -14,16 +14,16 @@ public assemble_1d, assemble_1d_enr, sfem
 
 contains
 
-subroutine sfem(Ne, p, Nq, L, DOFs, eigs)
+subroutine sfem(Ne, p, Nq, L, Nb, eigs)
 integer, intent(in) :: Ne, p, Nq
 real(dp), intent(in) :: L
-integer, intent(out) :: DOFs
+integer, intent(out) :: Nb
 real(dp), allocatable, intent(out) :: eigs(:)
 
 integer :: Nn
 ! xe(i) is the 'x' coordinate of the i-th mesh node
 real(dp), allocatable :: xe(:)
-integer :: Nb, Nbfem
+integer :: Nbfem
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
@@ -64,7 +64,7 @@ Nbfem = Nb
 
 print *, "p =", p
 print *, "DOFs =", Nb
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
 call load_potential(xe, xiq, .false., Vq)
@@ -72,13 +72,13 @@ call load_potential(xe, xiq, .false., Vq)
 print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 print *, "Solving..."
-call eigh(A, B, lam, c)
+call eigh(A, B, eigs, c)
 print *, "Eigenvalues:"
 open(newunit=u, file="enrichment2.txt", status="replace")
 write(u, *) size(xn)
 write(u, *) xn
 do i = 1, min(Nb, 20)
-    print "(i4, f20.12)", i, lam(i)
+    print "(i4, f20.12)", i, eigs(i)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
@@ -106,7 +106,7 @@ write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
 close(u)
 !stop "ss"
 
-deallocate(A, B, c, lam)
+deallocate(A, B, c)
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
 print *, "DOFs =", Nb
@@ -419,7 +419,7 @@ use types, only: dp
 use schroed1d_assembly, only: sfem
 implicit none
 
-integer :: Ne, p, Nq, DOFs
+integer :: Ne, p, Nq, DOFs, i
 real(dp), allocatable :: eigs(:)
 real(dp) :: L
 
@@ -429,5 +429,8 @@ p = 1
 Nq = 64
 L = 8  ! The size of the box in atomic units
 call sfem(Ne, p, Nq, L, DOFs, eigs)
+do i = 1, 6
+    print *, i, eigs(i)
+end do
 
 end program
