@@ -289,11 +289,13 @@ Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 allocate(denrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq, denrq)
-!open(newunit=u, file="wfn.txt", status="replace")
-!write(u, *) xn
-!write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
-!close(u)
-!stop "ss"
+print *, size(xn)
+print *, size(enrq(:Nq-1,:,1))+1
+open(newunit=u, file="wfn.txt", status="replace")
+write(u, *) xn
+write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
+write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
+close(u)
 
 deallocate(A, B, c, lam)
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
