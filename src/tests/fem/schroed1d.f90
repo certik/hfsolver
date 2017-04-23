@@ -429,6 +429,7 @@ p = 1
 Nq = 64
 L = 8  ! The size of the box in atomic units
 call sfem(Ne, p, Nq, L, DOFs, eigs)
+print *, "DOFs:", DOFs
 do i = 1, 6
     print *, i, eigs(i)
 end do
