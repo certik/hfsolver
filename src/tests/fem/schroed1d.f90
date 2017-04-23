@@ -11,7 +11,7 @@ public assemble_1d, assemble_1d_enr
 contains
 
 subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Vq, Am, Bm)
-! Assemble on a 2D rectangular uniform mesh
+! Assemble on a 1D uniform mesh
 real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
     phihq(:, :), dphihq(:, :), Vq(:,:)
 integer, intent(in):: ib(:, :)
@@ -71,7 +71,7 @@ end subroutine
 
 subroutine assemble_1d_enr(xin, nodes, ib, ibenr, xiq, wtq, phihq, dphihq, &
         phipuq, dphipuq, Vq, enrq, denrq, Am, Bm)
-! Assemble on a 2D rectangular uniform mesh
+! Assemble on a 1D uniform mesh
 real(dp), intent(in):: xin(:), nodes(:), xiq(:), wtq(:), &
     phihq(:, :), dphihq(:, :), Vq(:,:), enrq(:,:,:), denrq(:,:,:), &
     phipuq(:,:), dphipuq(:,:)
@@ -209,7 +209,7 @@ implicit none
 integer :: Nn, Ne
 ! xe(i) is the 'x' coordinate of the i-th mesh node
 real(dp), allocatable :: xe(:)
-integer :: Nq, p, Nb
+integer :: Nq, p, Nb, Nbfem
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
@@ -217,8 +217,8 @@ integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr, emin, emax
 
-Ne = 8
-p = 8
+Ne = 4
+p = 1
 Nq = p+1
 Nq = 50
 L = 8  ! The size of the box in atomic units
@@ -252,6 +252,7 @@ allocate(in(p+1,Ne),ib(p+1,Ne))
 call define_connect(3,3,Ne,p,in,ib)
 
 Nb = maxval(ib)
+Nbfem = Nb
 
 print *, "p =", p
 print *, "DOFs =", Nb
@@ -273,7 +274,7 @@ do i = 1, min(Nb, 20)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
-    rc = 1._dp
+    rc = 0.5_dp
     write(u, *) fullc*h(abs(xn-L/2), rc)
 end do
 close(u)
@@ -281,8 +282,8 @@ close(u)
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
-emin = 4
-emax = 5
+emin = 2
+emax = 3
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
@@ -303,7 +304,7 @@ print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
 print *, "Solving..."
-call eigh(A(:Nb-1,:Nb-1), B(:Nb-1,:Nb-1), lam(:Nb-1), c(:Nb-1,:Nb-1))
+call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), lam(:Nbfem), c(:Nbfem,:Nbfem))
 print *, "SFEM"
 print *, "Eigenvalues:"
 do i = 1, min(Nb, 6)
