@@ -532,18 +532,21 @@ do p = 1, 30
 end do
 close(u)
 
-Ne = 8
-p = 2
-Nq = 64
-L = 8
-call sfem_periodic_enr(Ne, p, Nq, L, DOFs, eigs)
-print *, "Periodic + enrichment"
-print *, "Ne:", Ne
-print *, "p:", p
-print *, "Nq:", Nq
-print *, "DOFs:", DOFs
-do i = 1, 6
-    print *, i, eigs(i)
+open(newunit=u, file="sfem_enr.txt", status="replace")
+do p = 1, 14
+    Ne = 8
+    Nq = 64
+    L = 8
+    call sfem_periodic_enr(Ne, p, Nq, L, DOFs, eigs)
+    print *, "Periodic + enrichment"
+    print *, "Ne:", Ne
+    print *, "p:", p
+    print *, "Nq:", Nq
+    print *, "DOFs:", DOFs
+    do i = 1, 6
+        print *, i, eigs(i)
+    end do
+    write(u,*) DOFs, p, Ne, Nq, L, eigs(:6)
 end do
 
 end program
