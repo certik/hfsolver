@@ -55,58 +55,6 @@ call fourier2real(psiG, Vn)
 write(u, *) Vn
 close(u)
 
-psi = 1 / L
-
-dt = 1e-2_dp
-print *, "dt =", dt
-
-open(newunit=u, file="sch1d.txt", status="replace")
-
-
-
-! Do first step by hand:
-print *, "First step"
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "Initial norm of psi:", psi_norm
-psi = sqrt(nelec / psi_norm) * psi
-ne = real(psi*conjg(psi), dp)
-psi_norm = integral(L, ne)
-print *, "norm of psi:", psi_norm
-
-
-t = 0
-
-do i = 1, 600
-    t = t + dt
-    print *, "iter =", i, "time =", t
-
-    psi = psi * exp(-Vn*dt/2)
-    call real2fourier(psi, psiG)
-    psiG = psiG * exp(-G2*dt/2)
-    call fourier2real(psiG, psi)
-    psi = psi * exp(-Vn*dt/2)
-
-    ne = real(psi*conjg(psi), dp)
-    psi_norm = integral(L, ne)
-    psi = sqrt(nelec / psi_norm) * psi
-    ne = real(psi*conjg(psi), dp)
-    psi_norm = integral(L, ne)
-    print *, "norm of psi:", psi_norm
-
-    call real2fourier(psi, psiG)
-    E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
-    print *, "E_tot       =", E_tot
-
-    write(u, *) i, t, psi_norm, E_tot
-
-end do
-print *, "Done"
-
-close(u)
-
-print *, E_tot
-
 nev = 6
 ncv = 160
 allocate(v(Ng,ncv), d(ncv))
