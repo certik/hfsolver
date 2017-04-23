@@ -525,6 +525,7 @@ do p = 1, 30
     print *, "p:", p
     print *, "Nq:", Nq
     print *, "DOFs:", DOFs
+    print *, "cond:", eigs(DOFs)/eigs(1)
     do i = 1, 6
         print *, i, eigs(i)
     end do
@@ -543,6 +544,7 @@ do p = 1, 14
     print *, "p:", p
     print *, "Nq:", Nq
     print *, "DOFs:", DOFs
+    print *, "cond:", eigs(DOFs)/eigs(1)
     do i = 1, 6
         print *, i, eigs(i)
     end do
