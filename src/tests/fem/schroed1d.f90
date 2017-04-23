@@ -10,11 +10,80 @@ use mesh, only: meshexp
 use linalg, only: eigh
 implicit none
 private
-public assemble_1d, assemble_1d_enr, sfem
+public assemble_1d, assemble_1d_enr, sfem_periodic_enr, sfem_non_periodic
 
 contains
 
-subroutine sfem(Ne, p, Nq, L, Nb, eigs)
+subroutine sfem_non_periodic(Ne, p, Nq, L, Nb, eigs)
+integer, intent(in) :: Ne, p, Nq
+real(dp), intent(in) :: L
+integer, intent(out) :: Nb
+real(dp), allocatable, intent(out) :: eigs(:)
+
+integer :: Nn
+! xe(i) is the 'x' coordinate of the i-th mesh node
+real(dp), allocatable :: xe(:)
+integer :: Nbfem
+real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
+    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
+    fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
+integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
+real(dp) :: rc
+integer :: i, j, iqx, u, Nenr, emin, emax
+
+Nn = Ne*p+1
+allocate(xe(Ne+1))
+xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
+
+allocate(xin(p+1), Vq(Nq,Ne))
+allocate(xinpu(2)) ! linear functions for PU
+call get_parent_nodes(2, p, xin)
+call get_parent_nodes(2, size(xinpu)-1, xinpu)
+allocate(xiq(Nq), wtq(Nq))
+call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
+allocate(xn(Nn))
+call get_nodes(xe, xin, xn)
+allocate(phihq(size(xiq), size(xin)))
+allocate(phipuq(size(xiq), size(xinpu)))
+allocate(dphipuq(size(xiq), size(xinpu)))
+allocate(dphihq(size(xiq), size(xin)))
+! Tabulate parent basis at quadrature points
+forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
+
+allocate(in(p+1,Ne),ib(p+1,Ne))
+! FIXME: change from 3 to 1:
+call define_connect(3,3,Ne,p,in,ib)
+
+Nb = maxval(ib)
+Nbfem = Nb
+
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
+allocate(fullc(Nn))
+
+call load_potential(xe, xiq, .false., Vq)
+
+print *, "Assembling..."
+call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
+print *, "Solving..."
+call eigh(A, B, eigs, c)
+print *, "Eigenvalues:"
+open(newunit=u, file="enrichment.txt", status="replace")
+write(u, *) size(xn)
+write(u, *) xn
+do i = 1, min(Nb, 20)
+    call c2fullc(in, ib, c(:,i), fullc)
+    if (fullc(2) < 0) fullc = -fullc
+    ! Multiply by the cutoff function
+    rc = 2._dp
+    write(u, *) fullc*h(abs(xn-L/2), rc)
+end do
+close(u)
+end subroutine
+
+subroutine sfem_periodic_enr(Ne, p, Nq, L, Nb, eigs)
 integer, intent(in) :: Ne, p, Nq
 real(dp), intent(in) :: L
 integer, intent(out) :: Nb
@@ -121,18 +190,18 @@ print *, "Eigenvalues:"
 do i = 1, min(Nb, 6)
     print "(i4, f20.12)", i, lam(i)
 end do
-call eigh(A, B, lam, c)
-print *, "SFEM + Enrichment"
-print *, "Eigenvalues:"
-open(newunit=u, file="wfn.txt", status="replace")
-write(u, *) xn
-do i = 1, min(Nb, 20)
-    print "(i4, f20.12)", i, lam(i)
-    call c2fullc(in, ib, c(:,i), fullc)
-    if (fullc(2) < 0) fullc = -fullc
-    write(u, *) fullc
-end do
-close(u)
+deallocate(eigs)
+allocate(eigs(Nb))
+call eigh(A, B, eigs, c)
+!open(newunit=u, file="wfn.txt", status="replace")
+!write(u, *) xn
+!do i = 1, min(Nb, 20)
+!    print "(i4, f20.12)", i, eigs(i)
+!    call c2fullc(in, ib, c(:,i), fullc)
+!    if (fullc(2) < 0) fullc = -fullc
+!    write(u, *) fullc
+!end do
+!close(u)
 end subroutine
 
 elemental function h(r, rc)
@@ -416,7 +485,7 @@ end module
 program schroed1d
 
 use types, only: dp
-use schroed1d_assembly, only: sfem
+use schroed1d_assembly, only: sfem_non_periodic, sfem_periodic_enr
 implicit none
 
 integer :: Ne, p, Nq, DOFs, i
@@ -424,11 +493,28 @@ real(dp), allocatable :: eigs(:)
 real(dp) :: L
 
 Ne = 8
-p = 1
+p = 50
 !Nq = p+1
 Nq = 64
-L = 8  ! The size of the box in atomic units
-call sfem(Ne, p, Nq, L, DOFs, eigs)
+L = 8
+call sfem_non_periodic(Ne, p, Nq, L, DOFs, eigs)
+print *, "Ne:", Ne
+print *, "p:", p
+print *, "Nq:", Nq
+print *, "DOFs:", DOFs
+do i = 1, 6
+    print *, i, eigs(i)
+end do
+
+
+Ne = 8
+p = 3
+Nq = 64
+L = 8
+call sfem_periodic_enr(Ne, p, Nq, L, DOFs, eigs)
+print *, "Ne:", Ne
+print *, "p:", p
+print *, "Nq:", Nq
 print *, "DOFs:", DOFs
 do i = 1, 6
     print *, i, eigs(i)
