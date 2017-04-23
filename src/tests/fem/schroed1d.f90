@@ -132,51 +132,10 @@ Nbfem = Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
-call load_potential(xe, xiq, .false., Vq)
+call load_potential(xe, xiq, .true., Vq)
 
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 call eigh(A, B, eigs, c)
-open(newunit=u, file="enrichment2.txt", status="replace")
-write(u, *) size(xn)
-write(u, *) xn
-do i = 1, min(Nb, 20)
-    call c2fullc(in, ib, c(:,i), fullc)
-    if (fullc(2) < 0) fullc = -fullc
-    ! Multiply by the cutoff function
-    rc = 2._dp
-    write(u, *) fullc*h(abs(xn-L/2), rc)
-end do
-close(u)
-
-call load_potential(xe, xiq, .true., Vq)
-Nenr = 1
-allocate(ibenr(2,Nenr,Ne))
-emin = 3
-emax = 6
-call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
-Nb = maxval(ibenr)
-allocate(enrq(Nq,Ne,Nenr))
-allocate(denrq(Nq,Ne,Nenr))
-call load_enrichment(xe, xiq, enrq, denrq)
-!print *, size(xn)
-!print *, size(enrq(:Nq-1,:,1))+1
-open(newunit=u, file="wfn.txt", status="replace")
-write(u, *) xn
-write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
-write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
-close(u)
-!stop "ss"
-
-deallocate(A, B, c, eigs)
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nbfem))
-
-print *, "DOFs =", Nb
-print *, "Nenr =", Nenr
-print *, "Assembling..."
-call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
-    dphipuq, Vq, enrq, denrq, A, B)
-print *, "Solving..."
-call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), eigs(:Nbfem), c(:Nbfem,:Nbfem))
 end subroutine
 
 subroutine sfem_periodic_enr(Ne, p, Nq, L, Nb, eigs)
