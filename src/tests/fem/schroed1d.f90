@@ -128,8 +128,8 @@ do e = 1, Ne
             if (i == 0) cycle
             call assert(j < i)
             Am(i,j) = Am(i,j) + sum(( &
-                (dphipuq(:, ax)* enrq(:,e,aalpha) &
-                 +phipuq(:, ax)*denrq(:,e,aalpha))/jacx * phi_dx(:, bx) &
+                (dphipuq(:, ax)/jacx* enrq(:,e,aalpha) &
+                 +phipuq(:, ax)*denrq(:,e,aalpha)) * phi_dx(:, bx) &
                 * jac_det * wtq)) / 2
             Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
                 phipuq(:, ax)*enrq(:,e,aalpha) * phi_v(:, bx) &
@@ -151,10 +151,10 @@ do e = 1, Ne
             if (j == 0) cycle
             if (j > i) cycle
             Am(i,j) = Am(i,j) + sum(( &
-                (dphipuq(:, ax)* enrq(:,e,aalpha) &
-                 +phipuq(:, ax)*denrq(:,e,aalpha))/jacx &
-                *(dphipuq(:, bx)* enrq(:,e,balpha) &
-                 +phipuq(:, bx)*denrq(:,e,balpha))/jacx &
+                (dphipuq(:, ax)/jacx* enrq(:,e,aalpha) &
+                 +phipuq(:, ax)*denrq(:,e,aalpha)) &
+                *(dphipuq(:, bx)/jacx* enrq(:,e,balpha) &
+                 +phipuq(:, bx)*denrq(:,e,balpha)) &
                 * jac_det * wtq))/2
             Am(i,j) = Am(i,j) + sum((Vq(:,e) * &
                 phipuq(:, ax)*enrq(:,e,aalpha) &
@@ -217,10 +217,10 @@ integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: L, rc
 integer :: i, j, iqx, u, Nenr, emin, emax
 
-Ne = 4
-p = 1
+Ne = 8
+p = 20
 Nq = p+1
-Nq = 50
+Nq = 52
 L = 8  ! The size of the box in atomic units
 
 Nn = Ne*p+1
@@ -282,8 +282,8 @@ close(u)
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
-emin = 2
-emax = 3
+emin = 4
+emax = 5
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
@@ -296,6 +296,7 @@ write(u, *) xn
 write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
 write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
 close(u)
+!stop "ss"
 
 deallocate(A, B, c, lam)
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
