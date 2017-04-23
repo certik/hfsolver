@@ -22,58 +22,67 @@ real(dp), allocatable :: Xn(:), Vn(:)
 real(dp), allocatable :: d(:), v(:,:)
 complex(dp), allocatable, dimension(:) :: psi, psiG
 real(dp) :: L
-integer :: i, nev, ncv
+integer :: i, j, nev, ncv
 integer, parameter :: nelec = 1
 real(dp) :: dt, psi_norm, E_tot
 integer :: u, u2
 real(dp) :: t
 
-Ng = 1024
-
 L = 8
 
-allocate(ne(Ng))
-allocate(G(Ng), G2(Ng), psi(Ng))
-allocate(psiG(Ng))
-allocate(Xn(Ng), Vn(Ng))
+Ng = 2
 
-call real_space_vectors(L, Xn)
-call reciprocal_space_vectors(L, G, G2)
+open(newunit=u2, file="pw.txt", status="replace")
+do j = 1, 10
+    allocate(ne(Ng))
+    allocate(G(Ng), G2(Ng), psi(Ng))
+    allocate(psiG(Ng))
+    allocate(Xn(Ng), Vn(Ng))
 
-open(newunit=u, file="sch1d_grid.txt", status="replace")
-write(u, *) Xn
-Vn = gaussian_potential(Xn, 2._dp, L/2)
-write(u, *) Vn
-psi = gaussian_density(Xn, 2._dp, L/2)
-write(u, *) real(psi, dp)
+    call real_space_vectors(L, Xn)
+    call reciprocal_space_vectors(L, G, G2)
 
-! Solve Poisson
-call real2fourier(psi, psiG)
-psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
-call fourier2real(psiG, Vn)
+    open(newunit=u, file="sch1d_grid.txt", status="replace")
+    write(u, *) Xn
+    Vn = gaussian_potential(Xn, 2._dp, L/2)
+    write(u, *) Vn
+    psi = gaussian_density(Xn, 2._dp, L/2)
+    write(u, *) real(psi, dp)
 
-write(u, *) Vn
-close(u)
-
-nev = 6
-ncv = 160
-allocate(v(Ng,ncv), d(ncv))
-call eig(Ng, nev, ncv, "SA", av, d, v)
-print *, "n  eig  eig_integral"
-open(newunit=u2, file="sch1d_psi.txt", status="replace")
-do i = 1, nev
-    psi = v(:,i)
-    ne = real(psi*conjg(psi), dp)
-    psi_norm = integral(L, ne)
-    psi = sqrt(nelec / psi_norm) * psi
-
-    ne = real(psi*conjg(psi), dp)
+    ! Solve Poisson
     call real2fourier(psi, psiG)
-    E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
-    print *, i, d(i), E_tot
-    write(u2, *) real(psi, dp)
+    psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
+    call fourier2real(psiG, Vn)
+
+    write(u, *) Vn
+    close(u)
+
+    nev = min(6, Ng-1)
+    ncv = min(160, Ng)
+    allocate(v(Ng,ncv), d(ncv))
+    call eig(Ng, nev, ncv, "SA", av, d, v)
+    print *, "n  eig  eig_integral"
+    open(newunit=u, file="sch1d_psi.txt", status="replace")
+    do i = 1, nev
+        psi = v(:,i)
+        ne = real(psi*conjg(psi), dp)
+        psi_norm = integral(L, ne)
+        psi = sqrt(nelec / psi_norm) * psi
+
+        ne = real(psi*conjg(psi), dp)
+        call real2fourier(psi, psiG)
+        E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
+        print *, i, d(i), E_tot
+        write(u, *) real(psi, dp)
+    end do
+    close(u)
+
+    write(u2,*) Ng, L, d(:nev)
+
+    deallocate(ne, G, G2, psi, psiG, Xn, Vn, v, d)
+    Ng = Ng*2
 end do
-close(u2)
+close(u)
 
 contains
 
