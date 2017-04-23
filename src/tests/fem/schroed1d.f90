@@ -26,7 +26,7 @@ integer :: Nn
 real(dp), allocatable :: xe(:)
 integer :: Nbfem
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
+    phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: rc
@@ -144,7 +144,7 @@ integer :: Nn
 real(dp), allocatable :: xe(:)
 integer :: Nbfem
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
+    phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: rc
@@ -201,7 +201,7 @@ close(u)
 !stop "ss"
 
 deallocate(A, B, c)
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb))
 
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
