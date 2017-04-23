@@ -27,13 +27,14 @@ integer, parameter :: nelec = 1
 real(dp) :: dt, psi_norm, E_tot
 integer :: u, u2
 real(dp) :: t
+real(dp), parameter :: Ng_list(*) = [2, 4, 8, 16, 64, 128, 256, 512]
 
 L = 8
 
-Ng = 2
 
 open(newunit=u2, file="pw.txt", status="replace")
-do j = 1, 12
+do j = 1, size(Ng_list)
+    Ng = Ng_list(j)
     allocate(ne(Ng))
     allocate(G(Ng), G2(Ng), psi(Ng))
     allocate(psiG(Ng))
@@ -80,7 +81,6 @@ do j = 1, 12
     write(u2,*) Ng, L, d(:nev)
 
     deallocate(ne, G, G2, psi, psiG, Xn, Vn, v, d)
-    Ng = Ng*2
 end do
 close(u)
 
