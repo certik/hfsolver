@@ -66,11 +66,8 @@ allocate(fullc(Nn))
 
 call load_potential(xe, xiq, .false., Vq)
 
-print *, "Assembling..."
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
-print *, "Solving..."
 call eigh(A, B, eigs, c)
-print *, "Eigenvalues:"
 open(newunit=u, file="enrichment.txt", status="replace")
 write(u, *) size(xn)
 write(u, *) xn
@@ -186,22 +183,6 @@ Nbfem = Nb
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
-call load_potential(xe, xiq, .false., Vq)
-
-call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
-call eigh(A, B, eigs, c)
-open(newunit=u, file="enrichment2.txt", status="replace")
-write(u, *) size(xn)
-write(u, *) xn
-do i = 1, min(Nb, 20)
-    call c2fullc(in, ib, c(:,i), fullc)
-    if (fullc(2) < 0) fullc = -fullc
-    ! Multiply by the cutoff function
-    rc = 2._dp
-    write(u, *) fullc*h(abs(xn-L/2), rc)
-end do
-close(u)
-
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
@@ -224,11 +205,8 @@ close(u)
 deallocate(A, B, c)
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
 
-print *, "Assembling..."
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
-print *, "Solving..."
-call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), lam(:Nbfem), c(:Nbfem,:Nbfem))
 deallocate(eigs)
 allocate(eigs(Nb))
 call eigh(A, B, eigs, c)
