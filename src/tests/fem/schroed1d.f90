@@ -2,13 +2,232 @@ module schroed1d_assembly
 use types, only: dp
 use sorting, only: sort
 use constants, only: pi
-use feutils, only: phih
+use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
+    get_nodes, define_connect, c2fullc => c2fullc2
 use utils, only: assert
+use splines, only: iixmin, spline3pars, poly3, dpoly3
+use mesh, only: meshexp
+use linalg, only: eigh
 implicit none
 private
-public assemble_1d, assemble_1d_enr
+public assemble_1d, assemble_1d_enr, sfem
 
 contains
+
+subroutine sfem(Ne, p, Nq, L, DOFs, eigs)
+integer, intent(in) :: Ne, p, Nq
+real(dp), intent(in) :: L
+integer, intent(out) :: DOFs
+real(dp), allocatable, intent(out) :: eigs(:)
+
+integer :: Nn
+! xe(i) is the 'x' coordinate of the i-th mesh node
+real(dp), allocatable :: xe(:)
+integer :: Nb, Nbfem
+real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
+    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
+    fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
+integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
+real(dp) :: rc
+integer :: i, j, iqx, u, Nenr, emin, emax
+
+Nn = Ne*p+1
+allocate(xe(Ne+1))
+xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
+
+print *, "Number of nodes:", Nn
+print *, "Number of elements:", Ne
+
+allocate(xin(p+1), Vq(Nq,Ne))
+allocate(xinpu(2)) ! linear functions for PU
+call get_parent_nodes(2, p, xin)
+call get_parent_nodes(2, size(xinpu)-1, xinpu)
+allocate(xiq(Nq), wtq(Nq))
+call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
+allocate(xn(Nn))
+call get_nodes(xe, xin, xn)
+allocate(phihq(size(xiq), size(xin)))
+allocate(phipuq(size(xiq), size(xinpu)))
+allocate(dphipuq(size(xiq), size(xinpu)))
+allocate(dphihq(size(xiq), size(xin)))
+! Tabulate parent basis at quadrature points
+forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
+forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
+
+allocate(in(p+1,Ne),ib(p+1,Ne))
+call define_connect(3,3,Ne,p,in,ib)
+
+Nb = maxval(ib)
+Nbfem = Nb
+
+print *, "p =", p
+print *, "DOFs =", Nb
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+allocate(fullc(Nn))
+
+call load_potential(xe, xiq, .false., Vq)
+
+print *, "Assembling..."
+call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
+print *, "Solving..."
+call eigh(A, B, lam, c)
+print *, "Eigenvalues:"
+open(newunit=u, file="enrichment2.txt", status="replace")
+write(u, *) size(xn)
+write(u, *) xn
+do i = 1, min(Nb, 20)
+    print "(i4, f20.12)", i, lam(i)
+    call c2fullc(in, ib, c(:,i), fullc)
+    if (fullc(2) < 0) fullc = -fullc
+    ! Multiply by the cutoff function
+    rc = 2._dp
+    write(u, *) fullc*h(abs(xn-L/2), rc)
+end do
+close(u)
+
+call load_potential(xe, xiq, .true., Vq)
+Nenr = 1
+allocate(ibenr(2,Nenr,Ne))
+emin = 3
+emax = 6
+call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
+Nb = maxval(ibenr)
+allocate(enrq(Nq,Ne,Nenr))
+allocate(denrq(Nq,Ne,Nenr))
+call load_enrichment(xe, xiq, enrq, denrq)
+print *, size(xn)
+print *, size(enrq(:Nq-1,:,1))+1
+open(newunit=u, file="wfn.txt", status="replace")
+write(u, *) xn
+write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
+write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
+close(u)
+!stop "ss"
+
+deallocate(A, B, c, lam)
+allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
+
+print *, "DOFs =", Nb
+print *, "Nenr =", Nenr
+print *, "Assembling..."
+call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
+    dphipuq, Vq, enrq, denrq, A, B)
+print *, "Solving..."
+call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), lam(:Nbfem), c(:Nbfem,:Nbfem))
+print *, "SFEM"
+print *, "Eigenvalues:"
+do i = 1, min(Nb, 6)
+    print "(i4, f20.12)", i, lam(i)
+end do
+call eigh(A, B, lam, c)
+print *, "SFEM + Enrichment"
+print *, "Eigenvalues:"
+open(newunit=u, file="wfn.txt", status="replace")
+write(u, *) xn
+do i = 1, min(Nb, 20)
+    print "(i4, f20.12)", i, lam(i)
+    call c2fullc(in, ib, c(:,i), fullc)
+    if (fullc(2) < 0) fullc = -fullc
+    write(u, *) fullc
+end do
+close(u)
+end subroutine
+
+elemental function h(r, rc)
+! C^3 cutoff function h(r)
+real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
+real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
+real(dp) :: h
+if (r < rc) then
+    h = 1 + 20*(r/rc)**7-70*(r/rc)**6+84*(r/rc)**5-35*(r/rc)**4
+else
+    h = 0
+end if
+end function
+
+subroutine load_potential(xe, xiq, periodic, Vq)
+real(dp), intent(in) :: xe(:), xiq(:)
+logical, intent(in) :: periodic
+real(dp), intent(out) :: Vq(:,:)
+real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
+real(dp) :: jacx, x(size(xiq))
+integer :: u, n, e, ip, iqx
+! Load the numerical potential
+n = 1024
+allocate(Xn(n), Vn(n))
+open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
+read(u, *) Xn
+read(u, *) Vn ! atomic potential
+if (periodic) then
+    read(u, *) Vn ! skip: density
+    read(u, *) Vn ! periodic potential
+end if
+close(u)
+! Interpolate using cubic splines
+allocate(c(0:4, n-1))
+call spline3pars(Xn, Vn, [2, 2], [0._dp, 0._dp], c)
+ip = 0
+do e = 1, size(xe)-1
+    jacx=(xe(e+1)-xe(e))/2;
+    x = xe(e) + (xiq + 1) * jacx
+    do iqx = 1, size(xiq)
+        ip = iixmin(x(iqx), Xn, ip)
+        Vq(iqx, e) = poly3(x(iqx), c(:, ip))
+    end do
+end do
+end subroutine
+
+subroutine load_enrichment(xe, xiq, enrq, denrq)
+real(dp), intent(in) :: xe(:), xiq(:)
+! enrq(i,j,k) i-th quad point, j-th element, k-th enrichment
+real(dp), intent(out) :: enrq(:,:,:), denrq(:,:,:)
+real(dp), allocatable :: Xn(:), fn(:), c(:,:)
+real(dp) :: jacx, x(size(xiq))
+integer :: u, n, e, ip, i, Nenr, iqx
+Nenr = size(enrq,3)
+open(newunit=u, file="enrichment.txt", status="old")
+read(u, *) n
+allocate(Xn(n), fn(n))
+allocate(c(0:4, n-1))
+read(u, *) Xn
+do i = 1, Nenr
+    read(u, *) fn ! Load the enrichment function
+    ! Interpolate using cubic splines
+    call spline3pars(Xn, fn, [2, 2], [0._dp, 0._dp], c)
+    ip = 0
+    do e = 1, size(xe)-1
+        jacx=(xe(e+1)-xe(e))/2;
+        x = xe(e) + (xiq + 1) * jacx
+        do iqx = 1, size(xiq)
+            ip = iixmin(x(iqx), Xn, ip)
+            enrq (iqx, e, i) =  poly3(x(iqx), c(:, ip))
+            denrq(iqx, e, i) = dpoly3(x(iqx), c(:, ip))
+        end do
+    end do
+end do
+close(u)
+end subroutine
+
+subroutine define_connect_enr(emin, emax, p, Nenr, Nb, ibenr)
+integer, intent(in) :: emin, emax, p, Nenr, Nb
+integer, intent(out) :: ibenr(:,:,:)
+integer :: e, i, alpha, idx
+! construct nodal connectivity matrix
+ibenr = 0
+idx = Nb
+do alpha=1,Nenr
+do e=emin,emax
+do i=1,p+1
+    if (i == 1 .and. e == emin) cycle
+    if (i == p+1 .and. e == emax) cycle
+    if (i > 1) idx = idx + 1
+    ibenr(i,alpha,e) = idx
+end do
+end do
+end do
+end subroutine
 
 subroutine assemble_1d(xin, nodes, ib, xiq, wtq, phihq, dphihq, Vq, Am, Bm)
 ! Assemble on a 1D uniform mesh
@@ -197,229 +416,18 @@ end module
 program schroed1d
 
 use types, only: dp
-use fe_mesh, only: cartesian_mesh_2d, define_connect_tensor_2d
-use schroed1d_assembly, only: assemble_1d, assemble_1d_enr
-use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
-    get_nodes, define_connect, c2fullc => c2fullc2
-use linalg, only: eigh
-use mesh, only: meshexp
-use splines, only: iixmin, spline3pars, poly3, dpoly3
+use schroed1d_assembly, only: sfem
 implicit none
 
-integer :: Nn, Ne
-! xe(i) is the 'x' coordinate of the i-th mesh node
-real(dp), allocatable :: xe(:)
-integer :: Nq, p, Nb, Nbfem
-real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
-    fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
-integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
-real(dp) :: L, rc
-integer :: i, j, iqx, u, Nenr, emin, emax
+integer :: Ne, p, Nq, DOFs
+real(dp), allocatable :: eigs(:)
+real(dp) :: L
 
 Ne = 8
-p = 20
-Nq = p+1
-Nq = 52
+p = 1
+!Nq = p+1
+Nq = 64
 L = 8  ! The size of the box in atomic units
-
-Nn = Ne*p+1
-allocate(xe(Ne+1))
-xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
-
-print *, "Number of nodes:", Nn
-print *, "Number of elements:", Ne
-
-allocate(xin(p+1), Vq(Nq,Ne))
-allocate(xinpu(2)) ! linear functions for PU
-call get_parent_nodes(2, p, xin)
-call get_parent_nodes(2, size(xinpu)-1, xinpu)
-allocate(xiq(Nq), wtq(Nq))
-call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
-allocate(xn(Nn))
-call get_nodes(xe, xin, xn)
-allocate(phihq(size(xiq), size(xin)))
-allocate(phipuq(size(xiq), size(xinpu)))
-allocate(dphipuq(size(xiq), size(xinpu)))
-allocate(dphihq(size(xiq), size(xin)))
-! Tabulate parent basis at quadrature points
-forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
-forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
-forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
-forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
-
-allocate(in(p+1,Ne),ib(p+1,Ne))
-call define_connect(3,3,Ne,p,in,ib)
-
-Nb = maxval(ib)
-Nbfem = Nb
-
-print *, "p =", p
-print *, "DOFs =", Nb
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
-allocate(fullc(Nn))
-
-call load_potential(xe, xiq, .false., Vq)
-
-print *, "Assembling..."
-call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
-print *, "Solving..."
-call eigh(A, B, lam, c)
-print *, "Eigenvalues:"
-open(newunit=u, file="enrichment2.txt", status="replace")
-write(u, *) size(xn)
-write(u, *) xn
-do i = 1, min(Nb, 20)
-    print "(i4, f20.12)", i, lam(i)
-    call c2fullc(in, ib, c(:,i), fullc)
-    if (fullc(2) < 0) fullc = -fullc
-    ! Multiply by the cutoff function
-    rc = 0.5_dp
-    write(u, *) fullc*h(abs(xn-L/2), rc)
-end do
-close(u)
-
-call load_potential(xe, xiq, .true., Vq)
-Nenr = 1
-allocate(ibenr(2,Nenr,Ne))
-emin = 4
-emax = 5
-call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
-Nb = maxval(ibenr)
-allocate(enrq(Nq,Ne,Nenr))
-allocate(denrq(Nq,Ne,Nenr))
-call load_enrichment(xe, xiq, enrq, denrq)
-print *, size(xn)
-print *, size(enrq(:Nq-1,:,1))+1
-open(newunit=u, file="wfn.txt", status="replace")
-write(u, *) xn
-write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
-write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
-close(u)
-!stop "ss"
-
-deallocate(A, B, c, lam)
-allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), lam(Nb))
-
-print *, "DOFs =", Nb
-print *, "Nenr =", Nenr
-print *, "Assembling..."
-call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
-    dphipuq, Vq, enrq, denrq, A, B)
-print *, "Solving..."
-call eigh(A(:Nbfem,:Nbfem), B(:Nbfem,:Nbfem), lam(:Nbfem), c(:Nbfem,:Nbfem))
-print *, "SFEM"
-print *, "Eigenvalues:"
-do i = 1, min(Nb, 6)
-    print "(i4, f20.12)", i, lam(i)
-end do
-call eigh(A, B, lam, c)
-print *, "SFEM + Enrichment"
-print *, "Eigenvalues:"
-open(newunit=u, file="wfn.txt", status="replace")
-write(u, *) xn
-do i = 1, min(Nb, 20)
-    print "(i4, f20.12)", i, lam(i)
-    call c2fullc(in, ib, c(:,i), fullc)
-    if (fullc(2) < 0) fullc = -fullc
-    write(u, *) fullc
-end do
-close(u)
-
-contains
-
-elemental function h(r, rc)
-! C^3 cutoff function h(r)
-real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
-real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
-real(dp) :: h
-if (r < rc) then
-    h = 1 + 20*(r/rc)**7-70*(r/rc)**6+84*(r/rc)**5-35*(r/rc)**4
-else
-    h = 0
-end if
-end function
-
-subroutine load_potential(xe, xiq, periodic, Vq)
-real(dp), intent(in) :: xe(:), xiq(:)
-logical, intent(in) :: periodic
-real(dp), intent(out) :: Vq(:,:)
-real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
-real(dp) :: jacx, x(size(xiq))
-integer :: u, n, e, ip
-! Load the numerical potential
-n = 1024
-allocate(Xn(n), Vn(n))
-open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
-read(u, *) Xn
-read(u, *) Vn ! atomic potential
-if (periodic) then
-    read(u, *) Vn ! skip: density
-    read(u, *) Vn ! periodic potential
-end if
-close(u)
-! Interpolate using cubic splines
-allocate(c(0:4, n-1))
-call spline3pars(Xn, Vn, [2, 2], [0._dp, 0._dp], c)
-ip = 0
-do e = 1, size(xe)-1
-    jacx=(xe(e+1)-xe(e))/2;
-    x = xe(e) + (xiq + 1) * jacx
-    do iqx = 1, size(xiq)
-        ip = iixmin(x(iqx), Xn, ip)
-        Vq(iqx, e) = poly3(x(iqx), c(:, ip))
-    end do
-end do
-end subroutine
-
-subroutine load_enrichment(xe, xiq, enrq, denrq)
-real(dp), intent(in) :: xe(:), xiq(:)
-! enrq(i,j,k) i-th quad point, j-th element, k-th enrichment
-real(dp), intent(out) :: enrq(:,:,:), denrq(:,:,:)
-real(dp), allocatable :: Xn(:), fn(:), c(:,:)
-real(dp) :: jacx, x(size(xiq))
-integer :: u, n, e, ip, i, Nenr
-Nenr = size(enrq,3)
-open(newunit=u, file="enrichment.txt", status="old")
-read(u, *) n
-allocate(Xn(n), fn(n))
-allocate(c(0:4, n-1))
-read(u, *) Xn
-do i = 1, Nenr
-    read(u, *) fn ! Load the enrichment function
-    ! Interpolate using cubic splines
-    call spline3pars(Xn, fn, [2, 2], [0._dp, 0._dp], c)
-    ip = 0
-    do e = 1, size(xe)-1
-        jacx=(xe(e+1)-xe(e))/2;
-        x = xe(e) + (xiq + 1) * jacx
-        do iqx = 1, size(xiq)
-            ip = iixmin(x(iqx), Xn, ip)
-            enrq (iqx, e, i) =  poly3(x(iqx), c(:, ip))
-            denrq(iqx, e, i) = dpoly3(x(iqx), c(:, ip))
-        end do
-    end do
-end do
-close(u)
-end subroutine
-
-subroutine define_connect_enr(emin, emax, p, Nenr, Nb, ibenr)
-integer, intent(in) :: emin, emax, p, Nenr, Nb
-integer, intent(out) :: ibenr(:,:,:)
-integer :: e, i, alpha, idx
-! construct nodal connectivity matrix
-ibenr = 0
-idx = Nb
-do alpha=1,Nenr
-do e=emin,emax
-do i=1,p+1
-    if (i == 1 .and. e == emin) cycle
-    if (i == p+1 .and. e == emax) cycle
-    if (i > 1) idx = idx + 1
-    ibenr(i,alpha,e) = idx
-end do
-end do
-end do
-end subroutine
+call sfem(Ne, p, Nq, L, DOFs, eigs)
 
 end program
