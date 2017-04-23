@@ -31,7 +31,8 @@ real(dp) :: t
 real(dp), parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
     20, 24, 25, 27, 30, 32, 36, 40, 45, 48, 50, 54, 60, 64, 72, 75, 80, 81, &
     90, 96, 100, 108, 120, 125, 128, 135, 144, 150, 160, 162, 180, 192, 200, &
-    216, 225, 240, 243, 250, 256, 270, 288, 300, 320, 324, 360, 375, 384, 512]
+    216, 225, 240, 243, 250, 256, 270, 288, 300, 320, 324, 360, 375, 384, 512, &
+    1024]
 
 L = 8
 
@@ -48,10 +49,11 @@ do j = 1, size(Ng_list)
     call reciprocal_space_vectors(L, G, G2)
 
     open(newunit=u, file="sch1d_grid.txt", status="replace")
+    write(u, *) Ng
     write(u, *) Xn
-    Vn = gaussian_potential(Xn, 2._dp, L/2)
+    Vn = gaussian_potential(Xn, 12._dp, L/2)
     write(u, *) Vn
-    psi = gaussian_density(Xn, 2._dp, L/2)
+    psi = gaussian_density(Xn, 12._dp, L/2)
     write(u, *) real(psi, dp)
 
     ! Solve Poisson

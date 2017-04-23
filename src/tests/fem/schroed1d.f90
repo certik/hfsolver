@@ -229,9 +229,9 @@ real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
 integer :: u, n, e, ip, iqx
 ! Load the numerical potential
-n = 512
-allocate(Xn(n), Vn(n))
 open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
+read(u, *) n
+allocate(Xn(n), Vn(n))
 read(u, *) Xn
 read(u, *) Vn ! atomic potential
 if (periodic) then
@@ -516,7 +516,7 @@ end do
 
 open(newunit=u, file="sfem2.txt", status="replace")
 do p = 1, 63
-    Ne = 2
+    Ne = 4
     Nq = 64
     L = 8
     call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
