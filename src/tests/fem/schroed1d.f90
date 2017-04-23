@@ -90,9 +90,8 @@ real(dp), allocatable, intent(out) :: eigs(:)
 integer :: Nn
 ! xe(i) is the 'x' coordinate of the i-th mesh node
 real(dp), allocatable :: xe(:)
-integer :: Nbfem
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
+    phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: rc
@@ -124,7 +123,6 @@ allocate(in(p+1,Ne),ib(p+1,Ne))
 call define_connect(3,3,Ne,p,in,ib)
 
 Nb = maxval(ib)
-Nbfem = Nb
 
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
