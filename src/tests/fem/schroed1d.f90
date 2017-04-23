@@ -229,7 +229,7 @@ real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
 integer :: u, n, e, ip, iqx
 ! Load the numerical potential
-n = 1024
+n = 512
 allocate(Xn(n), Vn(n))
 open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
 read(u, *) Xn
