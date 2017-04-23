@@ -171,6 +171,7 @@ forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
 
 allocate(in(p+1,Ne),ib(p+1,Ne))
 call define_connect(3,3,Ne,p,in,ib)
+Nb = maxval(ib)
 
 call load_potential(xe, xiq, .true., Vq)
 Nenr = 1
@@ -184,11 +185,11 @@ allocate(denrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq, denrq)
 !print *, size(xn)
 !print *, size(enrq(:Nq-1,:,1))+1
-open(newunit=u, file="wfn.txt", status="replace")
-write(u, *) xn
-write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
-write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
-close(u)
+!open(newunit=u, file="wfn.txt", status="replace")
+!write(u, *) xn
+!write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
+!write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
+!close(u)
 !stop "ss"
 
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
@@ -468,16 +469,16 @@ do j = 1, size(Am, 2)
     end do
 end do
 
-open(newunit=u, file="B.txt", status="replace")
-do i = 1, size(Am,1)
-    write(u,*) Bm(i, :)
-end do
-close(u)
-open(newunit=u, file="A.txt", status="replace")
-do i = 1, size(Am,1)
-    write(u,*) Am(i, :)
-end do
-close(u)
+!open(newunit=u, file="B.txt", status="replace")
+!do i = 1, size(Am,1)
+!    write(u,*) Bm(i, :)
+!end do
+!close(u)
+!open(newunit=u, file="A.txt", status="replace")
+!do i = 1, size(Am,1)
+!    write(u,*) Am(i, :)
+!end do
+!close(u)
 end subroutine
 
 
@@ -514,7 +515,7 @@ end do
 
 
 open(newunit=u, file="sfem.txt", status="replace")
-do p = 1, 3
+do p = 1, 30
     Ne = 8
     Nq = 64
     L = 8
