@@ -7,7 +7,7 @@ use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
 use utils, only: assert
 use splines, only: iixmin, spline3pars, poly3, dpoly3
 use mesh, only: meshexp
-use linalg, only: eigh
+use linalg, only: eigh, eigvals
 implicit none
 private
 public assemble_1d, assemble_1d_enr, sfem_periodic, sfem_periodic_enr, &
@@ -132,6 +132,8 @@ allocate(fullc(Nn))
 call load_potential(xe, xiq, .true., Vq)
 
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
+eigs = eigvals(B)
+print *, "cond B:", maxval(abs(eigs))/minval(abs(eigs))
 call eigh(A, B, eigs, c)
 end subroutine
 
@@ -187,20 +189,14 @@ Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
 allocate(denrq(Nq,Ne,Nenr))
 call load_enrichment(xe, xiq, enrq, denrq)
-!print *, size(xn)
-!print *, size(enrq(:Nq-1,:,1))+1
-!open(newunit=u, file="wfn.txt", status="replace")
-!write(u, *) xn
-!write(u, *) enrq(:Nq-1,:,1), enrq(Nq,Ne,1)
-!write(u, *) denrq(:Nq-1,:,1), denrq(Nq,Ne,1)
-!close(u)
-!stop "ss"
 
 allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
 call assemble_1d_enr(xin, xe, ib, ibenr, xiq, wtq, phihq, dphihq, phipuq, &
     dphipuq, Vq, enrq, denrq, A, B)
+eigs = eigvals(B)
+print *, "cond B:", maxval(abs(eigs))/minval(abs(eigs))
 call eigh(A, B, eigs, c)
 !open(newunit=u, file="wfn.txt", status="replace")
 !write(u, *) xn
