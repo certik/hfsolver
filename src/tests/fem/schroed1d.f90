@@ -521,6 +521,44 @@ do i = 1, 6
     print *, i, eigs(i)
 end do
 
+open(newunit=u, file="fem6.txt", status="replace")
+do Ne = 1, 6
+    p = 6
+    Nq = 64
+    L = 5
+    call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
+    print *, "Periodic"
+    print *, "Ne:", Ne
+    print *, "p:", p
+    print *, "Nq:", Nq
+    print *, "DOFs:", DOFs
+    print *, "cond:", maxval(abs(eigs))/minval(abs(eigs))
+    do i = 1, 2
+        print *, i, eigs(i)
+    end do
+    write(u,*) DOFs, p, Ne, Nq, L, eigs(:2)
+end do
+close(u)
+
+open(newunit=u, file="fem3.txt", status="replace")
+do Ne = 2, 12, 2
+    p = 3
+    Nq = 64
+    L = 5
+    call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
+    print *, "Periodic"
+    print *, "Ne:", Ne
+    print *, "p:", p
+    print *, "Nq:", Nq
+    print *, "DOFs:", DOFs
+    print *, "cond:", maxval(abs(eigs))/minval(abs(eigs))
+    do i = 1, 2
+        print *, i, eigs(i)
+    end do
+    write(u,*) DOFs, p, Ne, Nq, L, eigs(:2)
+end do
+close(u)
+
 
 open(newunit=u, file="sfem2.txt", status="replace")
 do p = 1, 63
