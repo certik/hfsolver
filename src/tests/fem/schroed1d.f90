@@ -76,7 +76,7 @@ do i = 1, min(Nb, 20)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
     if (i == 1) then
-        rc = 1._dp
+        rc = 2.5_dp
     else if (i == 2) then
         rc = 2._dp
     else
@@ -186,12 +186,12 @@ call define_connect(3,3,Ne,p,in,ib)
 Nb = maxval(ib)
 
 call load_potential(xe, xiq, .true., Vq)
-Nenr = 3
+Nenr = 1
 allocate(ibenr(2,Nenr,Ne))
 emin = 1
 emax = Ne
-emin = 2
-emax = 3
+emin = 1
+emax = 2
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
@@ -511,7 +511,7 @@ Ne = 8
 p = 50
 !Nq = p+1
 Nq = 64
-L = 6
+L = 5
 call sfem_non_periodic(Ne, p, Nq, L, DOFs, eigs)
 print *, "Non-periodic"
 print *, "Ne:", Ne
@@ -524,10 +524,10 @@ end do
 
 
 open(newunit=u, file="sfem2.txt", status="replace")
-do p = 8, 63
+do p = 1, 63
     Ne = 2
     Nq = 64
-    L = 6
+    L = 5
     call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
     print *, "Periodic"
     print *, "Ne:", Ne
@@ -535,18 +535,18 @@ do p = 8, 63
     print *, "Nq:", Nq
     print *, "DOFs:", DOFs
     print *, "cond:", maxval(abs(eigs))/minval(abs(eigs))
-    do i = 1, 6
+    do i = 1, 2
         print *, i, eigs(i)
     end do
-    write(u,*) DOFs, p, Ne, Nq, L, eigs(:6)
+    write(u,*) DOFs, p, Ne, Nq, L, eigs(:2)
 end do
 close(u)
 
 open(newunit=u, file="sfem_enr.txt", status="replace")
-do p = 2, 15
-    Ne = 4
+do p = 1, 15
+    Ne = 2
     Nq = 64
-    L = 6
+    L = 5
     call sfem_periodic_enr(Ne, p, Nq, L, DOFs, eigs)
     print *, "Periodic + enrichment"
     print *, "Ne:", Ne
@@ -554,10 +554,10 @@ do p = 2, 15
     print *, "Nq:", Nq
     print *, "DOFs:", DOFs
     print *, "cond:", maxval(abs(eigs))/minval(abs(eigs))
-    do i = 1, 6
+    do i = 1, 2
         print *, i, eigs(i)
     end do
-    write(u,*) DOFs, p, Ne, Nq, L, eigs(:6)
+    write(u,*) DOFs, p, Ne, Nq, L, eigs(:2)
 end do
 
 end program

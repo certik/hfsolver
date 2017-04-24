@@ -35,7 +35,7 @@ integer, parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
     1024]
 real(dp), allocatable :: Xion(:)
 
-L = 6
+L = 5
 !allocate(Xion(2))
 !Xion = L/2 + [-1, 1]
 allocate(Xion(1))
@@ -53,27 +53,27 @@ write(u, *) Ng
 write(u, *) Xn
 !Vn = gaussian_potential(Xn, 12._dp, L/2)
 r0 = 0.5_dp
-r = abs(Xn-2)
+r = abs(Xn-2.5_dp)
 V0 = 16
-!Vn = -V0*exp(-r**2/r0**2)
-alpha = 2
-Vn = 0
-do i = 1, size(Xion)
-    r = abs((Xn-Xion(i)))
-    Vn = Vn -V0*alpha*erfr(alpha*r)
-end do
+Vn = -V0*exp(-r**2/r0**2)
+!alpha = 2
+!Vn = 0
+!do i = 1, size(Xion)
+!    r = abs((Xn-Xion(i)))
+!    Vn = Vn -V0*alpha*erfr(alpha*r)
+!end do
 write(u, *) Vn
 !psi = gaussian_density(Xn, 12._dp, L/2)
-!psi = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
-ne = 0
-do i = 1, size(Xion)
-    do k = -5, 5
-        r = abs((Xn-Xion(i)+k*L))
-        ne = ne + V0*(-alpha**3*exp(-alpha**2*r**2)/pi**(3./2) - &
-            alpha*exp(-alpha**2*r**2)/(pi**(3./2)*r**2) + &
-            alpha*erfr(alpha*r)/(2*pi*r**2))
-    end do
-end do
+ne = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
+!ne = 0
+!do i = 1, size(Xion)
+!    do k = -5, 5
+!        r = abs((Xn-Xion(i)+k*L))
+!        ne = ne + V0*(-alpha**3*exp(-alpha**2*r**2)/pi**(3./2) - &
+!            alpha*exp(-alpha**2*r**2)/(pi**(3./2)*r**2) + &
+!            alpha*erfr(alpha*r)/(2*pi*r**2))
+!    end do
+!end do
 write(u, *) ne
 
 ! Solve Poisson
@@ -83,7 +83,8 @@ call fourier2real(psiG, Vn)
 
 write(u, *) Vn
 r = abs(Xn-L/2)
-write(u, *) -V0*alpha*erfr(alpha*r)
+!write(u, *) -V0*alpha*erfr(alpha*r)
+write(u,*) -V0*exp(-r**2/r0**2)
 close(u)
 
 deallocate(ne, G, G2, Xn, Vn, r, psiG)
