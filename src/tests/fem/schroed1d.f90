@@ -75,7 +75,13 @@ do i = 1, min(Nb, 20)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
-    rc = 1.5_dp
+    if (i == 1) then
+        rc = 1._dp
+    else if (i == 2) then
+        rc = 2._dp
+    else
+        rc = 3._dp
+    end if
     fullc = fullc*h(abs(xn-L/2), rc)
     call fe2quad(xe, xin, xiq, in, fullc, uq)
     write(u, *) uq(:Nq-1,:), uq(Nq,Ne)
@@ -183,7 +189,9 @@ call load_potential(xe, xiq, .true., Vq)
 Nenr = 3
 allocate(ibenr(2,Nenr,Ne))
 emin = 1
-emax = 4
+emax = Ne
+emin = 2
+emax = 3
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
@@ -535,7 +543,7 @@ end do
 close(u)
 
 open(newunit=u, file="sfem_enr.txt", status="replace")
-do p = 1, 14
+do p = 2, 15
     Ne = 4
     Nq = 64
     L = 6
