@@ -36,8 +36,10 @@ integer, parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
 real(dp), allocatable :: Xion(:)
 
 L = 6
-allocate(Xion(2))
-Xion = L/2 + [-1, 1]
+!allocate(Xion(2))
+!Xion = L/2 + [-1, 1]
+allocate(Xion(1))
+Xion = L/2 - 1e-4_dp
 
 Ng = 1024*8
 allocate(ne(Ng))
@@ -58,7 +60,7 @@ alpha = 2
 Vn = 0
 do i = 1, size(Xion)
     r = abs((Xn-Xion(i)))
-    Vn = Vn -V0*erf(alpha*r)/r
+    Vn = Vn -V0*alpha*erfr(alpha*r)
 end do
 write(u, *) Vn
 !psi = gaussian_density(Xn, 12._dp, L/2)
@@ -69,7 +71,7 @@ do i = 1, size(Xion)
         r = abs((Xn-Xion(i)+k*L))
         ne = ne + V0*(-alpha**3*exp(-alpha**2*r**2)/pi**(3./2) - &
             alpha*exp(-alpha**2*r**2)/(pi**(3./2)*r**2) + &
-            erf(alpha*r)/(2*pi*r**3))
+            alpha*erfr(alpha*r)/(2*pi*r**2))
     end do
 end do
 write(u, *) ne
