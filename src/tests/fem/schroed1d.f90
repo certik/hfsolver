@@ -3,7 +3,7 @@ use types, only: dp
 use sorting, only: sort
 use constants, only: pi
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih, &
-    get_nodes, define_connect, c2fullc => c2fullc2
+    get_nodes, define_connect, c2fullc => c2fullc2, get_quad_pts, fe2quad
 use utils, only: assert
 use splines, only: iixmin, spline3pars, poly3, dpoly3
 use mesh, only: meshexp
@@ -26,7 +26,8 @@ integer :: Nn
 real(dp), allocatable :: xe(:)
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
-    fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
+    fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:), &
+    uq(:,:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
 real(dp) :: rc
 integer :: i, j, iqx, u, Nenr, emin, emax
@@ -35,7 +36,7 @@ Nn = Ne*p+1
 allocate(xe(Ne+1))
 xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
 
-allocate(xin(p+1), Vq(Nq,Ne))
+allocate(xin(p+1), Vq(Nq,Ne), uq(Nq,Ne))
 allocate(xinpu(2)) ! linear functions for PU
 call get_parent_nodes(2, p, xin)
 call get_parent_nodes(2, size(xinpu)-1, xinpu)
@@ -54,8 +55,7 @@ forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
 
 allocate(in(p+1,Ne),ib(p+1,Ne))
-! FIXME: change from 3 to 1:
-call define_connect(3,3,Ne,p,in,ib)
+call define_connect(1,1,Ne,p,in,ib)
 
 Nb = maxval(ib)
 
@@ -63,20 +63,22 @@ allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
 call load_potential(xe, xiq, .false., Vq)
-print *, Vq
-stop "OK"
 
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 call eigh(A, B, eigs, c)
 open(newunit=u, file="enrichment.txt", status="replace")
 write(u, *) size(xn)
-write(u, *) xn
+call get_quad_pts(xe,xiq,uq)
+write(u, *) uq(:Nq-1,:), uq(Nq,Ne)
+write(u, *) Vq(:Nq-1,:), Vq(Nq,Ne)
 do i = 1, min(Nb, 20)
     call c2fullc(in, ib, c(:,i), fullc)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
-    rc = 2._dp
-    write(u, *) fullc*h(abs(xn-L/2), rc)
+    rc = 0.5_dp
+    fullc = fullc*h(abs(xn-L/2), rc)
+    call fe2quad(xe, xin, xiq, in, fullc, uq)
+    write(u, *) uq(:Nq-1,:), uq(Nq,Ne)
 end do
 close(u)
 end subroutine
@@ -505,7 +507,7 @@ Ne = 8
 p = 50
 !Nq = p+1
 Nq = 64
-L = 8
+L = 6
 call sfem_non_periodic(Ne, p, Nq, L, DOFs, eigs)
 print *, "Non-periodic"
 print *, "Ne:", Ne
