@@ -76,11 +76,11 @@ do i = 1, min(Nb, 20)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
     if (i == 1) then
-        rc = 2.5_dp
+        rc = 1._dp
     else if (i == 2) then
-        rc = 2._dp
+        rc = 1.5_dp
     else
-        rc = 3._dp
+        rc = 2.5_dp
     end if
     fullc = fullc*h(abs(xn-L/2), rc)
     call fe2quad(xe, xin, xiq, in, fullc, uq)
@@ -156,7 +156,6 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
     phihq(:, :), dphihq(:, :), Vq(:,:), xn(:), &
     fullc(:), enrq(:,:,:), denrq(:,:,:), phipuq(:,:), dphipuq(:,:), xinpu(:)
 integer, allocatable :: ib(:, :), in(:, :), ibenr(:,:,:)
-real(dp) :: rc
 integer :: i, j, iqx, u, Nenr, emin, emax
 
 Nn = Ne*p+1
@@ -186,12 +185,12 @@ call define_connect(3,3,Ne,p,in,ib)
 Nb = maxval(ib)
 
 call load_potential(xe, xiq, .true., Vq)
-Nenr = 1
+Nenr = 2
 allocate(ibenr(2,Nenr,Ne))
 emin = 1
 emax = Ne
-emin = 1
-emax = 2
+!emin = 1
+!emax = 2
 call define_connect_enr(emin, emax, size(xinpu)-1, Nenr, Nb, ibenr)
 Nb = maxval(ibenr)
 allocate(enrq(Nq,Ne,Nenr))
