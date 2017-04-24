@@ -63,6 +63,8 @@ allocate(A(Nb, Nb), B(Nb, Nb), c(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
 call load_potential(xe, xiq, .false., Vq)
+print *, Vq
+stop "OK"
 
 call assemble_1d(xin, xe, ib, xiq, wtq, phihq, dphihq, Vq, A, B)
 call eigh(A, B, eigs, c)
@@ -233,10 +235,11 @@ open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
 read(u, *) n
 allocate(Xn(n), Vn(n))
 read(u, *) Xn
-read(u, *) Vn ! atomic potential
-if (periodic) then
-    read(u, *) Vn ! skip: density
-    read(u, *) Vn ! periodic potential
+read(u, *) Vn ! non-periodic potential
+read(u, *) Vn ! skip: density
+read(u, *) Vn ! periodic potential
+if (.not. periodic) then
+    read(u, *) Vn ! atomic potential
 end if
 close(u)
 ! Interpolate using cubic splines

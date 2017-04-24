@@ -80,6 +80,8 @@ psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
 call fourier2real(psiG, Vn)
 
 write(u, *) Vn
+r = abs(Xn-L/2)
+write(u, *) -V0*alpha*erfr(alpha*r)
 close(u)
 
 deallocate(ne, G, G2, Xn, Vn, r, psiG)
@@ -196,5 +198,14 @@ contains
         V(i) = poly3(x(i), c(:, ip))
     end do
     end subroutine
+
+    real(dp) elemental function erfr(x) result(r)
+    real(dp), intent(in) :: x
+    if (x < 1e-12_dp) then
+        r = 2/sqrt(pi)
+    else
+        r = erf(x) / x
+    end if
+    end function
 
 end program
