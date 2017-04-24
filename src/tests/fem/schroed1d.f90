@@ -76,9 +76,9 @@ do i = 1, min(Nb, 20)
     if (fullc(2) < 0) fullc = -fullc
     ! Multiply by the cutoff function
     if (i == 1) then
-        rc = 1._dp
+        rc = 2.5_dp
     else if (i == 2) then
-        rc = 1.5_dp
+        rc = 2.5_dp
     else
         rc = 2.5_dp
     end if
