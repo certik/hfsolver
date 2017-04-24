@@ -18,23 +18,71 @@ implicit none
 integer :: Ng
 real(dp), allocatable :: G(:), G2(:)
 real(dp), allocatable :: ne(:)
-real(dp), allocatable :: Xn(:), Vn(:)
+real(dp), allocatable :: Xn(:), Vn(:), r(:)
 real(dp), allocatable :: d(:), v(:,:)
 complex(dp), allocatable, dimension(:) :: psi, psiG
 real(dp) :: L
 integer :: i, j, nev, ncv
 integer, parameter :: nelec = 1
-real(dp) :: dt, psi_norm, E_tot
-integer :: u, u2
-real(dp) :: t
+real(dp) :: dt, psi_norm, E_tot, alpha
+integer :: u, u2, k
+real(dp) :: t, r0, V0
 !real(dp), parameter :: Ng_list(*) = [2, 4, 8, 16, 64, 128, 256, 512]
-real(dp), parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
+integer, parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
     20, 24, 25, 27, 30, 32, 36, 40, 45, 48, 50, 54, 60, 64, 72, 75, 80, 81, &
     90, 96, 100, 108, 120, 125, 128, 135, 144, 150, 160, 162, 180, 192, 200, &
     216, 225, 240, 243, 250, 256, 270, 288, 300, 320, 324, 360, 375, 384, 512, &
     1024]
+real(dp), allocatable :: Xion(:)
 
-L = 8
+L = 6
+allocate(Xion(2))
+Xion = L/2 + [-1, 1]
+
+Ng = 1024*8
+allocate(ne(Ng))
+allocate(G(Ng), G2(Ng))
+allocate(Xn(Ng), Vn(Ng), r(Ng), psiG(Ng))
+
+call real_space_vectors(L, Xn)
+call reciprocal_space_vectors(L, G, G2)
+open(newunit=u, file="sch1d_grid.txt", status="replace")
+write(u, *) Ng
+write(u, *) Xn
+!Vn = gaussian_potential(Xn, 12._dp, L/2)
+r0 = 0.5_dp
+r = abs(Xn-2)
+V0 = 16
+!Vn = -V0*exp(-r**2/r0**2)
+alpha = 2
+Vn = 0
+do i = 1, size(Xion)
+    r = abs((Xn-Xion(i)))
+    Vn = Vn -V0*erf(alpha*r)/r
+end do
+write(u, *) Vn
+!psi = gaussian_density(Xn, 12._dp, L/2)
+!psi = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
+ne = 0
+do i = 1, size(Xion)
+    do k = -5, 5
+        r = abs((Xn-Xion(i)+k*L))
+        ne = ne + V0*(-alpha**3*exp(-alpha**2*r**2)/pi**(3./2) - &
+            alpha*exp(-alpha**2*r**2)/(pi**(3./2)*r**2) + &
+            erf(alpha*r)/(2*pi*r**3))
+    end do
+end do
+write(u, *) ne
+
+! Solve Poisson
+call real2fourier(ne, psiG)
+psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
+call fourier2real(psiG, Vn)
+
+write(u, *) Vn
+close(u)
+
+deallocate(ne, G, G2, Xn, Vn, r, psiG)
 
 
 open(newunit=u2, file="pw.txt", status="replace")
@@ -47,22 +95,7 @@ do j = 1, size(Ng_list)
 
     call real_space_vectors(L, Xn)
     call reciprocal_space_vectors(L, G, G2)
-
-    open(newunit=u, file="sch1d_grid.txt", status="replace")
-    write(u, *) Ng
-    write(u, *) Xn
-    Vn = gaussian_potential(Xn, 12._dp, L/2)
-    write(u, *) Vn
-    psi = gaussian_density(Xn, 12._dp, L/2)
-    write(u, *) real(psi, dp)
-
-    ! Solve Poisson
-    call real2fourier(psi, psiG)
-    psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
-    call fourier2real(psiG, Vn)
-
-    write(u, *) Vn
-    close(u)
+    call load_potential(Xn, .true., Vn)
 
     nev = min(6, Ng-1)
     ncv = min(160, Ng)
@@ -136,5 +169,32 @@ contains
     call fourier2real(G2/2*psiG, psi)
     y = real(psi,dp) + Vn*x
     end
+
+    subroutine load_potential(x, periodic, V)
+    real(dp), intent(in) :: x(:)
+    logical, intent(in) :: periodic
+    real(dp), intent(out) :: V(:)
+    real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
+    integer :: u, n, i, ip
+    ! Load the numerical potential
+    open(newunit=u, file="sch1d_grid.txt", status="old")
+    read(u, *) n
+    allocate(Xn(n), Vn(n))
+    read(u, *) Xn
+    read(u, *) Vn ! atomic potential
+    if (periodic) then
+        read(u, *) Vn ! skip: density
+        read(u, *) Vn ! periodic potential
+    end if
+    close(u)
+    ! Interpolate using cubic splines
+    allocate(c(0:4, n-1))
+    call spline3pars(Xn, Vn, [2, 2], [0._dp, 0._dp], c)
+    ip = 0
+    do i = 1, size(x)
+        ip = iixmin(x(i), Xn, ip)
+        V(i) = poly3(x(i), c(:, ip))
+    end do
+    end subroutine
 
 end program
