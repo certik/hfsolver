@@ -515,10 +515,10 @@ end do
 
 
 open(newunit=u, file="sfem2.txt", status="replace")
-do p = 1, 63
-    Ne = 4
+do p = 8, 63
+    Ne = 1
     Nq = 64
-    L = 8
+    L = 6
     call sfem_periodic(Ne, p, Nq, L, DOFs, eigs)
     print *, "Periodic"
     print *, "Ne:", Ne
