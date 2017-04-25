@@ -181,7 +181,7 @@ integer :: iparam(11), ipntr(11), ido, info, ierr, ishfts, maxitr, mode1, nconv
 logical :: select(ncv), rvec
 character(1) :: bmat
 logical :: verbose
-verbose = .false.
+verbose = .true.
 bmat  = 'I'
 tol = 0
 info = 0
