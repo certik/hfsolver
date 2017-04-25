@@ -55,7 +55,7 @@ m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
-L = [5, 5, 6]
+L = [6, 5, 5]
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
