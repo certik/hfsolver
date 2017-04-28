@@ -231,7 +231,7 @@ ncv = 100
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 allocate(occ(4))
 
-occ = [1, 1, 1, 1]
+occ = [2, 2]
 Vee_xc = 0
 call mixing_linear(myid, product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
 
@@ -281,7 +281,11 @@ contains
     Etot = Ekin + Eee + E_xc + Enn + Een_core + Een_loc
 
     if (myid == 0) then
-        do i = 1, nev
+        eigs = eigs * Ha2eV
+        do i = 1, size(occ)
+            print *, i, eigs(i), occ(i)
+        end do
+        do i = size(occ)+1, nev
             print *, i, eigs(i)
         end do
         print "(a, es22.14)", "Ekin:     ", Ekin
