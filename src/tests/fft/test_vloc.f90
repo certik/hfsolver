@@ -1,4 +1,4 @@
-program test_psch3d
+program test_vloc
 use types, only: dp
 use constants, only: Ha2eV, density2gcm3, u2au, s2au, K2au, i_, pi
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
