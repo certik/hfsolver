@@ -1,11 +1,12 @@
 program ks
 use types, only: dp
-use constants, only: Ha2eV, density2gcm3, u2au, s2au, K2au, i_, pi
+use constants, only: Ha2eV, density2gcm3, u2au, s2au, K2au, i_, pi, &
+    ang2bohr, bohr2ang
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
 use utils, only: assert, init_random, stop_error, get_int_arg, get_float_arg, &
-    allocate_mold, clock
+    allocate_mold, clock, whitechar
 use ffte, only: factor
 use ofdft, only: read_pseudo
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
@@ -15,7 +16,7 @@ use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
-    mpi_barrier, mpi_bcast
+    mpi_barrier, mpi_bcast, MPI_DOUBLE_PRECISION
 use md, only: positions_bcc, positions_fcc
 use arpack, only: peig, eig
 use pksdft_fft, only: solve_schroedinger
@@ -37,7 +38,7 @@ integer :: Ng(3)
 integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
-real(dp) :: T_eV, T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
+real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
     Eee, Een_loc, E_xc, Enn, Een_core
 real(dp) :: rloc, C1, C2, Zion
 real(dp), allocatable :: m(:)
@@ -50,55 +51,47 @@ integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
 integer :: myid ! my ID (MPI rank), starts from 0
 integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 
-rho = 0.01_dp / density2gcm3  ! g/cc
-T_eV = 50._dp
-T_au = T_ev / Ha2eV
-natom = 1
-dt = 1e-4_dp
-allocate(m(natom))
-m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
-velocity_gauge = .true. ! velocity or length gauge?
-
-L = (sum(m) / rho)**(1._dp/3)
-L = 10
-rho = sum(m) / product(L)
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
 call mpi_comm_rank(comm_all, myid, ierr)
 call mpi_comm_size(comm_all, nproc, ierr)
 if (myid == 0) then
-    if (command_argument_count() == 0) then
-        call factor(nproc, LNPU)
-        nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
-        nsub(2) = nproc / nsub(3)
-        nsub(1) = 1
-        Ng = 64
-    else
-        if (command_argument_count() /= 6) then
-            print *, "Usage:"
-            print *
-            print *, "test_ffte_par Ng(3) nsub(3)"
-            call stop_error("Incorrect number of arguments.")
-        end if
-        Ng(1) = get_int_arg(1)
-        Ng(2) = get_int_arg(2)
-        Ng(3) = get_int_arg(3)
-        nsub(1) = get_int_arg(4)
-        nsub(2) = get_int_arg(5)
-        nsub(3) = get_int_arg(6)
-    end if
-    Ng_local = Ng / nsub
+    call read_input(nproc, Ng, nsub, T_au, dt)
+end if
+call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
+call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
+Ng_local = Ng / nsub
 
+if (myid == 0) then
+    call load_initial_pos(natom, L, Xion)
+end if
+call mpi_bcast(natom, 1, MPI_INTEGER, 0, comm_all, ierr)
+if (myid /= 0) then
+    allocate(Xion(3,natom))
+end if
+call bcast_float_array(comm_all, size(Xion), Xion)
+call bcast_float_array(comm_all, size(L), L)
+
+allocate(m(natom))
+m = 2._dp * u2au ! Using D mass in atomic mass units [u]
+velocity_gauge = .true. ! velocity or length gauge?
+
+!L = (sum(m) / rho)**(1._dp/3)
+rho = sum(m) / product(L)
+
+if (myid == 0) then
     print *, "Input:"
     print *, "N =", natom
-    print *, "rho = ", rho * density2gcm3, "g/cm^3 = ", rho, "a.u."
+    print *, "L =", L, "a.u. =", L * bohr2ang, "Angst"
     print *, "T =", T_au / K2au, "K =", T_au, "a.u. =", T_au * Ha2eV, "eV"
     print "('dt =', es10.2, ' s = ', es10.2, ' ps = ', es10.2, ' a.u.')", &
         dt/s2au, dt/s2au * 1e12_dp, dt
     print *
     print *, "Calculated quantities:"
-    print *, "L =", L, "a.u."
+    print *, "rho = ", rho * density2gcm3, "g/cc = ", rho, "a.u."
     print *
     print *, "nproc:   ", nproc
     print *, "nsub:    ", nsub
@@ -109,9 +102,7 @@ if (myid == 0) then
         call stop_error("nproc must be equal to the number of subdomains")
     end if
 end if
-call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
-call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
-call mpi_bcast(Ng_local, size(Ng_local), MPI_INTEGER, 0, comm_all, ierr)
+
 call pfft3_init(myid, comm_all, Ng, nsub)
 
 myxyz = calculate_myxyz(myid, nsub)
@@ -142,8 +133,6 @@ allocate(X(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 allocate(dpsi(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 call allocate_mold(G, X)
 call allocate_mold(current, X)
-if (myid == 0) print *, "Load initial position"
-allocate(Xion(3, natom))
 allocate(forces(3, natom))
 allocate(q(natom))
 ! For now assume a box, until positions_bcc can accept a vector L(:)
@@ -153,8 +142,8 @@ call assert(abs(L(3)-L(1)) < 1e-15_dp)
 !call positions_fcc(Xion, L(1))
 !Xion(:,1) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
 !Xion(:,2) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
-Xion(:,1) = L/2
-q = 4
+!Xion(:,1) = L/2
+q = 1
 !Xion = 0
 !Xion(1,1) = L(1)/2
 !Xion = Xion + 1e-4_dp ! Shift the atoms, so that 1/R is defined
@@ -169,10 +158,10 @@ C1 = -4.180237_dp
 C2 =  0.725075_dp
 Zion = 1
 ! HDH local pseudopotential for Pb
-rloc = 0.617500_dp
-C1 =   0.753143_dp
-C2 =   0
-Zion = 4
+!rloc = 0.617500_dp
+!C1 =   0.753143_dp
+!C2 =   0
+!Zion = 4
 
 do k = 1, Ng_local(3)
 do j = 1, Ng_local(2)
@@ -313,6 +302,102 @@ contains
     E = Etot
     y = reshape(Vee + Vxc, [product(Ng_local)]) - x
 
+    end subroutine
+
+    subroutine read_input(nproc, Ng, nsub, T, dt)
+    integer, intent(in) :: nproc
+    integer, intent(out) :: Ng(3), nsub(3)
+    real(dp), intent(out) :: T  ! in a.u.
+    real(dp), intent(out) :: dt ! in a.u.
+    integer :: LNPU(3)
+    namelist /domain/ Ng, nsub, T, dt
+    integer :: u
+    Ng = -1
+    T = -1
+    dt = -1
+    open(newunit=u, file="input", status="old")
+    read(u,nml=domain)
+    close(u)
+    if (nsub(1) == -1) then
+        call factor(nproc, LNPU)
+        nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
+        nsub(2) = nproc / nsub(3)
+        nsub(1) = 1
+    end if
+    if (Ng(2) == -1 .and. Ng(3) == -1) Ng(2:3) = Ng(1)
+    if (any(Ng == -1)) call stop_error("Ng is not specified properly.")
+    if (T < 0) call stop_error("T is not specified")
+    if (dt < 0) call stop_error("dt is not specified")
+
+    T = T / Ha2eV  ! Convert from eV to a.u.
+    endsubroutine
+
+    subroutine load_initial_pos(natom, L, Xion)
+    integer, intent(out) :: natom
+    real(dp), intent(out) :: L(:)
+    real(dp), intent(out), allocatable :: Xion(:,:)
+    real(dp) :: A, t(3,3)
+    integer :: u, ios, natom_types
+    character :: c
+    integer, allocatable :: ncounts(:)
+    open(newunit=u, file="POSCAR", status="old")
+    read(u,*) ! 1 line description
+    read(u,*) A
+    read(u,*) t(:, 1)
+    read(u,*) t(:, 2)
+    read(u,*) t(:, 3)
+
+    t = t*A*ang2bohr
+    L(1) = t(1,1)
+    L(2) = t(2,2)
+    L(3) = t(3,3)
+    call assert(abs(t(2, 1)) < tiny(1._dp))
+    call assert(abs(t(3, 1)) < tiny(1._dp))
+    call assert(abs(t(1, 2)) < tiny(1._dp))
+    call assert(abs(t(3, 2)) < tiny(1._dp))
+    call assert(abs(t(1, 3)) < tiny(1._dp))
+    call assert(abs(t(2, 3)) < tiny(1._dp))
+
+    natom_types = number_of_columns(u)
+    allocate(ncounts(natom_types))
+    read(u,*) ! Atom types
+    read(u,*) ncounts ! Atom numbers per type
+    natom = sum(ncounts)
+    allocate(Xion(3,natom))
+    read(u,*) c ! Selective dynamics
+    call assert(c == "S")
+    read(u,*) c ! Direct
+    call assert(c == "D")
+    do i = 1, natom
+        read(u,*) Xion(:,i)
+        Xion(:,i) = Xion(:,i)*L
+    end do
+    close(u)
+    end subroutine
+
+    integer function number_of_columns(u) result(ncol)
+    ! Determines the number of columns on a line (does not affect file
+    ! position).
+    integer, intent(in) :: u ! file handle
+    integer :: ios
+    character :: c
+    logical :: lastwhite
+    ncol = 0
+    lastwhite = .true.
+    do
+       read(u, '(a)', advance='no', iostat=ios) c
+       if (ios /= 0) exit
+       if (lastwhite .and. .not. whitechar(c)) ncol = ncol + 1
+       lastwhite = whitechar(c)
+    end do
+    backspace(u)
+    end function
+
+    subroutine bcast_float_array(comm, n, a)
+    integer, intent(in) :: comm, n
+    real(dp), intent(inout) :: a(n)
+    integer :: ierr
+    call mpi_bcast(a, n, MPI_DOUBLE_PRECISION, 0, comm, ierr)
     end subroutine
 
 end program
