@@ -36,6 +36,8 @@ if(WITH_MPI)
     ADDMPITEST(test_psch3d psch3d 4)
     ADDMPIEXECUTABLE(test_vloc)
     ADDMPITEST(test_vloc vloc 4)
+
+    ADDMPIEXECUTABLE(ks)
 endif()
 
 addtest(test_functional_derivative_min_fft)
