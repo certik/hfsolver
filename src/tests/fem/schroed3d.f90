@@ -3,15 +3,24 @@ use types, only: dp
 use sorting, only: sort
 implicit none
 private
-public assemble_3d, omega, exact_energies
-
-real(dp), parameter :: omega = 1.138_dp
+public assemble_3d
 
 contains
 
 real(dp) elemental function f(x, y, z)
 real(dp), intent(in) :: x, y, z
-f = omega**2 * (x**2 + y**2 + z**2) / 2  ! Harmonic oscillator
+real(dp) :: V0, r0, r, Xion(3, 2)
+integer :: n
+V0 = 16
+r0 = 0.5_dp
+f = 0
+Xion(:,1) = 5._dp/2
+Xion(:,2) = 5._dp/2
+Xion(1,:) = Xion(1,:) + [-1, 1]
+do n = 1, 2
+    r = sqrt(sum(([x,y,z]-Xion(:,n))**2))
+    f = f - V0 * exp(-r**2/r0**2)
+end do
 end function
 
 subroutine assemble_3d(xin, nodes, elems, ib, xiq, wtq, phihq, dphihq, Am, Bm)
@@ -132,24 +141,6 @@ do j = 1, size(Am, 2)
 end do
 end subroutine
 
-subroutine exact_energies(omega, E)
-real(dp), intent(in) :: omega
-real(dp), intent(out) :: E(:)
-real(dp) :: tmp(size(E)*(size(E)+1)*(2*size(E)+1)/6)
-integer :: n, l, m, idx
-idx = 0
-do n = 1, size(E)
-    do l = 0, n-1
-        do m = -l, l
-            idx = idx + 1
-            tmp(idx) = omega * (2*n - l - 1._dp/2)
-        end do
-    end do
-end do
-call sort(tmp)
-E = tmp(:size(E))
-end subroutine
-
 end module
 
 
@@ -159,10 +150,11 @@ program schroed3d
 
 use types, only: dp
 use fe_mesh, only: cartesian_mesh_3d, define_connect_tensor_3d
-use schroed_assembly, only: assemble_3d, omega, exact_energies
+use schroed_assembly, only: assemble_3d
 use feutils, only: get_parent_nodes, get_parent_quad_pts_wts, phih, dphih
 use linalg, only: eigh
 use linalg_feast, only: eigh_feast => eigh
+use arpack, only: eig
 implicit none
 
 integer :: Nn, Ne
@@ -171,20 +163,18 @@ real(dp), allocatable :: nodes(:, :)
 integer, allocatable :: elems(:, :) ! elems(:, i) are nodes of the i-th element
 integer :: Nq, p, Nb
 real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), c(:, :), &
-    lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), E_exact(:)
+    lam(:), wtq3(:, :, :), phihq(:, :), dphihq(:, :), v(:,:), d(:)
 integer, allocatable :: ib(:, :, :, :), in(:, :, :, :)
-real(dp) :: rmax
-integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type, M0
+integer :: i, j, k, Nex, Ney, Nez, Neig, solver_type, M0, nev, ncv
 
-Nex = 3
-Ney = 3
-Nez = 3
-p = 4
+Nex = 4
+Ney = 4
+Nez = 4
+p = 2
 Nq = p+1
-rmax = 5  ! The size of the box in atomic units
 
 call cartesian_mesh_3d(Nex, Ney, Nez, &
-    [-rmax, -rmax, -rmax], [rmax, rmax, rmax], &
+    [0._dp, 0._dp, 0._dp], [6._dp, 5._dp, 5._dp], &
     nodes, elems)
 Nn = size(nodes, 2)
 Ne = size(elems, 2)
@@ -195,7 +185,7 @@ print *, "Number of elements:", Ne
 allocate(xin(p+1))
 call get_parent_nodes(2, p, xin)
 allocate(xiq(Nq), wtq(Nq), wtq3(Nq, Nq, Nq))
-call get_parent_quad_pts_wts(1, Nq, xiq, wtq)
+call get_parent_quad_pts_wts(2, Nq, xiq, wtq)
 forall(i=1:Nq, j=1:Nq, k=1:Nq) wtq3(i, j, k) = wtq(i)*wtq(j)*wtq(k)
 allocate(phihq(size(xiq), size(xin)))
 allocate(dphihq(size(xiq), size(xin)))
@@ -204,7 +194,7 @@ forall(i=1:size(xiq), j=1:size(xin))  phihq(i, j) =  phih(xin, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xin)) dphihq(i, j) = dphih(xin, j, xiq(i))
 
 call define_connect_tensor_3d(Nex, Ney, Nez, p, 1, in)
-call define_connect_tensor_3d(Nex, Ney, Nez, p, 2, ib)
+call define_connect_tensor_3d(Nex, Ney, Nez, p, 3, ib)
 Nb = maxval(ib)
 print *, "p =", p
 print *, "DOFs =", Nb
@@ -212,23 +202,54 @@ allocate(A(Nb, Nb), B(Nb, Nb))
 
 print *, "Assembling..."
 call assemble_3d(xin, nodes, elems, ib, xiq, wtq3, phihq, dphihq, A, B)
-print *, "Solving..."
-solver_type = 2
-select case(solver_type)
-    case (1)
-        Neig = Nb
-        allocate(c(Nb, Neig), lam(Neig))
-        call eigh(A, B, lam, c)
-    case (2)
-        M0 = 15
-        call eigh_feast(A, B, 0._dp, 5._dp, M0, lam, c)
-        Neig = size(lam)
-end select
-print *, "Eigenvalues:"
+!print *, "Solving..."
+!solver_type = 1
+!select case(solver_type)
+!    case (1)
+Neig = Nb
+allocate(c(Nb, Neig), lam(Neig))
+!        call eigh(A, B, lam, c)
+!    case (2)
+!        M0 = 15
+!        call eigh_feast(A, B, 0._dp, 5._dp, M0, lam, c)
+!        Neig = size(lam)
+!end select
+!print *, "Eigenvalues:"
 Neig = 10
-allocate(E_exact(Neig))
-call exact_energies(omega, E_exact)
-do i = 1, Neig
-    print *, i, lam(i), E_exact(i)
+!do i = 1, Neig
+!    print *, i, lam(i)
+!end do
+nev = 1
+ncv = 20
+allocate(v(Nb,ncv), d(ncv))
+call eig(Nb, nev, ncv, "SA", av, d, v)
+do i = 1, nev
+    print *, i, d(i)
 end do
+
+do i = 1, Nb
+    B(i,i) = 1 / sqrt(B(i,i))
+end do
+print *, "Mul"
+A = matmul(matmul(B, A), B)
+print *, "Solve"
+call eigh(A, lam, c)
+do i = 1, Neig
+    print *, i, lam(i)
+end do
+
+contains
+
+    subroutine av(x, y)
+    ! Compute y = A*x
+    real(dp), intent(in) :: x(:)
+    real(dp), intent(out) :: y(:)
+    do i = 1, Nb
+        y(i) = x(i) / sqrt(B(i,i))
+    end do
+    y = matmul(A, y)
+    do i = 1, Nb
+        y(i) = y(i) / sqrt(B(i,i))
+    end do
+    end
 end program
