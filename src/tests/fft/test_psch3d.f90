@@ -68,7 +68,7 @@ if (myid == 0) then
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 16
+        Ng = 8
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -143,19 +143,21 @@ V0 = 16
 r0 = 0.5_dp
 !Ven_rad = -V0 * exp(-R**2/r0**2)
 ne = 0
+Ven = 0
 do k = 1, Ng_local(3)
 do j = 1, Ng_local(2)
 do i = 1, Ng_local(1)
     do n = 1, natom
         r = sqrt(sum((X(i,j,k,:)-Xion(:,n))**2))
         ne(i,j,k) = ne(i,j,k)+ V0*(2*(r/r0)**2 - 3)*exp(-(r/r0)**2)/(2*pi*r0**2)
+        Ven(i,j,k) = Ven(i,j,k) -V0 * exp(-r**2/r0**2)
     end do
 end do
 end do
 end do
 call preal2fourier(ne, neG, commy, commz, Ng, nsub)
 call poisson_kernel(myid, size(neG), neG, G2, VenG)
-call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+!call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
 
 !do k = 1, Ng_local(3)
 !do j = 1, Ng_local(2)
