@@ -87,8 +87,8 @@ if (myid == 0) then
     print *, "N =", natom
     print *, "L =", L, "a.u. =", L * bohr2ang, "Angst"
     print *, "T =", T_au / K2au, "K =", T_au, "a.u. =", T_au * Ha2eV, "eV"
-    print "('dt =', es10.2, ' s = ', es10.2, ' ps = ', es10.2, ' a.u.')", &
-        dt/s2au, dt/s2au * 1e12_dp, dt
+    print "('dt =', es10.2, ' s = ', es10.2, ' fs = ', es10.2, ' a.u.')", &
+        dt/s2au, dt/s2au * 1e15_dp, dt
     print *
     print *, "Calculated quantities:"
     print *, "rho = ", rho * density2gcm3, "g/cc = ", rho, "a.u."
