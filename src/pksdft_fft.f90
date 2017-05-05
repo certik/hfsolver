@@ -1,4 +1,5 @@
 module pksdft_fft
+use constants, only: pi
 use types, only: dp
 use utils, only: assert, stop_error, clock, allocate_mold
 use pofdft_fft, only: preal2fourier, pfourier2real
@@ -10,10 +11,10 @@ public solve_schroedinger
 contains
 
 subroutine solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Vloc, &
-        L, G2, nev, ncv, eigs, orbitals)
+        L, G2, cutfn, nev, ncv, eigs, orbitals)
 integer, intent(in) :: myid, comm_all, commy, commz, Ng(3), nsub(3), nev, ncv
 real(dp), intent(in) :: Vloc(:,:,:) ! Local effective potential
-real(dp), intent(in) :: G2(:,:,:), L(:)
+real(dp), intent(in) :: G2(:,:,:), L(:), cutfn(:,:,:)
 real(dp), intent(out) :: eigs(:) ! eigs(nev)
 ! orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev)
 real(dp), intent(out) :: orbitals(:,:,:,:)
@@ -45,6 +46,7 @@ contains
     complex(dp), dimension(Ng_local(1),Ng_local(2),Ng_local(3)) :: psi, psiG
     call preal2fourier(reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)]), &
         psiG, commy, commz, Ng, nsub)
+    psiG = psiG * cutfn
     call pfourier2real(G2/2*psiG, psi, commy, commz, Ng, nsub)
     y = reshape(real(psi,dp), [product(Ng_local)]) + &
         reshape(Vloc, [product(Ng_local)])*x

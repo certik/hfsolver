@@ -140,6 +140,12 @@ real(dp), parameter :: C =  0.0020_dp
 real(dp), parameter :: D = -0.0116_dp
 real(dp) :: ex, ec, Vx, Vc, rs, sqrt_rs, log_rs
 
+if (abs(n) < tiny(1._dp)) then
+    exc = 0
+    Vxc = 0
+    return
+end if
+
 ex = -3/(4*pi) * (3*pi**2*n)**(1.0_dp/3)
 Vx = 4*ex/3
 

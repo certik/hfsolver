@@ -30,7 +30,8 @@ real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Vloc, &
     Veff
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), q(:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
-    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:), forces(:,:)
+    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:), forces(:,:), &
+    cutfn(:,:,:), cutfn2(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:), VenG(:,:,:)
 real(dp) :: L(3), r, stress(6)
 integer :: i, j, k, u
@@ -39,8 +40,8 @@ integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
 real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
-    Eee, Een_loc, E_xc, Enn, Een_core
-real(dp) :: rloc, C1, C2, Zion
+    Eee, Een_loc, E_xc, Enn, Een_core, G2cut
+real(dp) :: rloc, C1, C2, Zion, Ecut
 real(dp), allocatable :: m(:)
 integer :: nev, ncv, na
 real(dp), parameter :: D(5) = [0.65435_dp, 2.45106_dp, -1.536643785333E-01_dp, &
@@ -57,12 +58,13 @@ comm_all  = MPI_COMM_WORLD
 call mpi_comm_rank(comm_all, myid, ierr)
 call mpi_comm_size(comm_all, nproc, ierr)
 if (myid == 0) then
-    call read_input(nproc, Ng, nsub, T_au, dt)
+    call read_input(nproc, Ng, nsub, T_au, dt, Ecut)
 end if
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
+call mpi_bcast(Ecut, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 Ng_local = Ng / nsub
 
 if (myid == 0) then
@@ -205,7 +207,25 @@ Vmin = minval(Vloc)
 !    write(u,*) Vloc(:,16,16)
 !end if
 
+G2cut = Ecut / (2*pi**2)
+allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
+allocate(cutfn2(Ng_local(1),Ng_local(2),Ng_local(3)))
+where (G2 > G2cut)
+    cutfn = 0
+elsewhere
+    !cutfn = (1-G2/G2cut)**12
+    cutfn = 1
+end where
+!print *, maxval(G2), G2cut, 2.04204_dp**2 * G2cut
+!stop "OK"
+where (G2 > 2.04204_dp**2 * G2cut)
+    cutfn2 = 0
+elsewhere
+    cutfn2 = 1
+end where
+
 !call pfourier2real(G2*VenG/(4*pi), Vloc, commy, commz, Ng, nsub)
+!VenG = VenG * cutfn2
 call pfourier2real(VenG, Vloc, commy, commz, Ng, nsub)
 norm = pintegral(comm_all, L, Vloc, Ng)
 if (myid == 0) then
@@ -250,7 +270,7 @@ contains
     ! Schroedinger:
     Veff = Vloc + reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)])
     call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Veff, &
-            L, G2, nev, ncv, eigs, orbitals)
+            L, G2, cutfn, nev, ncv, eigs, orbitals)
     !if (myid == 0) then
     !    print *, "n E"
     !    do i = 1, nev
@@ -270,6 +290,7 @@ contains
 
     call preal2fourier(ne, neG, commy, commz, Ng, nsub)
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
+    !VeeG = VeeG * cutfn2
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
     call xc_pz(ne, exc, Vxc)
 
@@ -308,13 +329,14 @@ contains
 
     end subroutine
 
-    subroutine read_input(nproc, Ng, nsub, T, dt)
+    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut)
     integer, intent(in) :: nproc
     integer, intent(out) :: Ng(3), nsub(3)
     real(dp), intent(out) :: T  ! in a.u.
     real(dp), intent(out) :: dt ! in a.u.
+    real(dp), intent(out) :: ecut ! in a.u.
     integer :: LNPU(3)
-    namelist /domain/ Ng, nsub, T, dt
+    namelist /domain/ Ng, nsub, T, dt, ecut
     integer :: u
     Ng = -1
     T = -1
