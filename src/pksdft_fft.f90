@@ -43,15 +43,23 @@ contains
     ! Compute y = A*x
     real(dp), intent(in) :: x(:)
     real(dp), intent(out) :: y(:)
-    complex(dp), dimension(Ng_local(1),Ng_local(2),Ng_local(3)) :: psi, psiG
-    complex(dp), dimension(Ng_local(1),Ng_local(2),Ng_local(3)) :: psi2
+    complex(dp), dimension(Ng_local(1),Ng_local(2),Ng_local(3)) :: &
+        psi, psiG, psiG_vloc
     call preal2fourier(reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)]), &
         psiG, commy, commz, Ng, nsub)
     psiG = psiG * cutfn
-    call pfourier2real(G2/2*psiG, psi, commy, commz, Ng, nsub)
-    call pfourier2real(psiG, psi2, commy, commz, Ng, nsub)
-    y = reshape(real(psi,dp), [product(Ng_local)]) + &
-        reshape(Vloc*psi2, [product(Ng_local)])
+    ! psiG is our starting point
+
+    ! Apply kinetic and potential
+    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
+    call preal2fourier(Vloc*psi, psiG_vloc, commy, commz, Ng, nsub)
+    psiG_vloc = psiG_vloc * cutfn
+
+    psiG = G2/2*psiG + psiG_vloc
+
+    ! Convert to real space at the end
+    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
+    y = reshape(real(psi,dp), [product(Ng_local)])
     end
 
 end subroutine
