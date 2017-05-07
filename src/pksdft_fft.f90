@@ -44,12 +44,14 @@ contains
     real(dp), intent(in) :: x(:)
     real(dp), intent(out) :: y(:)
     complex(dp), dimension(Ng_local(1),Ng_local(2),Ng_local(3)) :: psi, psiG
+    complex(dp), dimension(Ng_local(1),Ng_local(2),Ng_local(3)) :: psi2
     call preal2fourier(reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)]), &
         psiG, commy, commz, Ng, nsub)
     psiG = psiG * cutfn
     call pfourier2real(G2/2*psiG, psi, commy, commz, Ng, nsub)
+    call pfourier2real(psiG, psi2, commy, commz, Ng, nsub)
     y = reshape(real(psi,dp), [product(Ng_local)]) + &
-        reshape(Vloc, [product(Ng_local)])*x
+        reshape(Vloc*psi2, [product(Ng_local)])
     end
 
 end subroutine

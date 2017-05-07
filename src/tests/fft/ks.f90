@@ -40,7 +40,7 @@ integer :: LNPU(3)
 integer :: natom
 logical :: velocity_gauge
 real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
-    Eee, Een_loc, E_xc, Enn, Een_core, G2cut
+    Eee, Een_loc, E_xc, Enn, Een_core, G2cut, G2cut2
 real(dp) :: rloc, C1, C2, Zion, Ecut
 real(dp), allocatable :: m(:)
 integer :: nev, ncv, na
@@ -207,7 +207,14 @@ Vmin = minval(Vloc)
 !    write(u,*) Vloc(:,16,16)
 !end if
 
-G2cut = Ecut / (2*pi**2)
+G2cut = 2*Ecut
+G2cut2 = 4*G2cut
+print *, "Ecut:", Ecut
+print *, "G2cut:", G2cut / (2*pi)**2
+print *, "boxsq:", maxval(G2(:,1,1)) / (2*pi)**2
+print *, "boxcut:", sqrt(maxval(G2(:,1,1)) / G2cut)
+print *, "gsqcut:", G2cut2 / (2*pi)**2
+
 allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
 allocate(cutfn2(Ng_local(1),Ng_local(2),Ng_local(3)))
 where (G2 > G2cut)
@@ -218,14 +225,14 @@ elsewhere
 end where
 !print *, maxval(G2), G2cut, 2.04204_dp**2 * G2cut
 !stop "OK"
-where (G2 > 2.04204_dp**2 * G2cut)
+where (G2 > G2cut2)
     cutfn2 = 0
 elsewhere
     cutfn2 = 1
 end where
 
 !call pfourier2real(G2*VenG/(4*pi), Vloc, commy, commz, Ng, nsub)
-!VenG = VenG * cutfn2
+VenG = VenG * cutfn2
 call pfourier2real(VenG, Vloc, commy, commz, Ng, nsub)
 norm = pintegral(comm_all, L, Vloc, Ng)
 if (myid == 0) then
@@ -290,7 +297,7 @@ contains
 
     call preal2fourier(ne, neG, commy, commz, Ng, nsub)
     call poisson_kernel(myid, size(neG), neG, G2, VeeG)
-    !VeeG = VeeG * cutfn2
+    VeeG = VeeG * cutfn2
     call pfourier2real(VeeG, Vee, commy, commz, Ng, nsub)
     call xc_pz(ne, exc, Vxc)
 
