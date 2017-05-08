@@ -57,15 +57,6 @@ call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
 call mpi_comm_rank(comm_all, myid, ierr)
 call mpi_comm_size(comm_all, nproc, ierr)
-if (myid == 0) then
-    call read_input(nproc, Ng, nsub, T_au, dt, Ecut)
-end if
-call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
-call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
-call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
-call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
-call mpi_bcast(Ecut, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
-Ng_local = Ng / nsub
 
 if (myid == 0) then
     call load_initial_pos(natom, L, Xion)
@@ -76,6 +67,26 @@ if (myid /= 0) then
 end if
 call bcast_float_array(comm_all, size(Xion), Xion)
 call bcast_float_array(comm_all, size(L), L)
+
+if (myid == 0) then
+    call read_input(nproc, Ng, nsub, T_au, dt, Ecut)
+end if
+call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
+call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
+call mpi_bcast(Ecut, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
+
+G2cut = 2*Ecut
+G2cut2 = 4*G2cut
+if (any(Ng == -1)) then
+    Ng(1) = int(2*sqrt(G2cut2) * L(1) / (2*pi) + 1)
+    call adjust_Ng(Ng(1))
+    Ng(2:3) = Ng(1)
+end if
+
+Ng_local = Ng / nsub
+
 
 allocate(m(natom))
 m = 2._dp * u2au ! Using D mass in atomic mass units [u]
@@ -207,13 +218,11 @@ Vmin = minval(Vloc)
 !    write(u,*) Vloc(:,16,16)
 !end if
 
-G2cut = 2*Ecut
-G2cut2 = 4*G2cut
-print *, "Ecut:", Ecut
-print *, "G2cut:", G2cut / (2*pi)**2
-print *, "boxsq:", maxval(G2(:,1,1)) / (2*pi)**2
-print *, "boxcut:", sqrt(maxval(G2(:,1,1)) / G2cut)
-print *, "gsqcut:", G2cut2 / (2*pi)**2
+!print *, "Ecut:", Ecut
+!print *, "G2cut:", G2cut / (2*pi)**2
+!print *, "boxsq:", maxval(G2(:,1,1)) / (2*pi)**2
+!print *, "boxcut:", sqrt(maxval(G2(:,1,1)) / G2cut)
+!print *, "gsqcut:", G2cut2 / (2*pi)**2
 
 allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
 allocate(cutfn2(Ng_local(1),Ng_local(2),Ng_local(3)))
@@ -358,7 +367,6 @@ contains
         nsub(1) = 1
     end if
     if (Ng(2) == -1 .and. Ng(3) == -1) Ng(2:3) = Ng(1)
-    if (any(Ng == -1)) call stop_error("Ng is not specified properly.")
     if (T < 0) call stop_error("T is not specified")
     if (dt < 0) call stop_error("dt is not specified")
 
@@ -431,6 +439,16 @@ contains
     real(dp), intent(inout) :: a(n)
     integer :: ierr
     call mpi_bcast(a, n, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+    end subroutine
+
+    subroutine adjust_Ng(Ng)
+    integer, intent(inout) :: Ng
+    integer :: LNPU(3)
+    do while (.true.)
+        call factor(Ng, LNPU)
+        if ((2**LNPU(1))*(3**LNPU(2))*(5**LNPU(3)) == Ng) return
+        Ng = Ng + 1
+    end do
     end subroutine
 
 end program
