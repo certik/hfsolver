@@ -37,7 +37,7 @@ real(dp) :: L(3), r, stress(6)
 integer :: i, j, k, u
 integer :: Ng(3)
 integer :: LNPU(3)
-integer :: natom
+integer :: natom, nband
 logical :: velocity_gauge
 real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
     Eee, Een_loc, E_xc, Enn, Een_core, G2cut, G2cut2
@@ -69,9 +69,10 @@ call bcast_float_array(comm_all, size(Xion), Xion)
 call bcast_float_array(comm_all, size(L), L)
 
 if (myid == 0) then
-    call read_input(nproc, Ng, nsub, T_au, dt, Ecut)
+    call read_input(nproc, Ng, nsub, T_au, dt, Ecut, nband)
 end if
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(nband, 1, MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
@@ -98,7 +99,7 @@ rho = sum(m) / product(L)
 allocate(q(natom))
 q = 1
 
-allocate(occ(2*natom))
+allocate(occ(nband))
 
 !occ = [2, 2, 2, 2]
 occ = 2
@@ -112,6 +113,8 @@ if (myid == 0) then
     print *, "T =", T_au / K2au, "K =", T_au, "a.u. =", T_au * Ha2eV, "eV"
     print "('dt =', es10.2, ' s = ', es10.2, ' fs = ', es10.2, ' a.u.')", &
         dt/s2au, dt/s2au * 1e15_dp, dt
+    print *, "Ecut =", Ecut, "a.u. =", Ecut * Ha2eV, "eV"
+    print *, "nband =", nband
     print *
     print *, "Calculated quantities:"
     print *, "rho = ", rho * density2gcm3, "g/cc = ", rho, "a.u."
@@ -270,8 +273,8 @@ end if
 
 if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 
-nev = 5
-ncv = 100
+nev = nband
+ncv = max(4*nev, 100)
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 Vee_xc = 0
 call mixing_linear(myid, product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
@@ -302,7 +305,7 @@ contains
     ! Poisson
     ne = 0
     Ekin = 0
-    do i = 1, size(occ)
+    do i = 1, nband
         ne = ne + occ(i)*orbitals(:,:,:,i)**2
         call preal2fourier(orbitals(:,:,:,i), psiG, commy, commz, Ng, nsub)
         Ekin = Ekin &
@@ -324,11 +327,8 @@ contains
 
     if (myid == 0) then
         !eigs = eigs * Ha2eV
-        do i = 1, size(occ)
+        do i = 1, nband
             print *, i, eigs(i), occ(i)
-        end do
-        do i = size(occ)+1, nev
-            print *, i, eigs(i)
         end do
         print "(a, es22.14)", "Ekin:     ", Ekin
         print "(a, es22.14)", "Eee:      ", Eee
@@ -350,18 +350,22 @@ contains
 
     end subroutine
 
-    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut)
+    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut, nband)
     integer, intent(in) :: nproc
-    integer, intent(out) :: Ng(3), nsub(3)
+    integer, intent(out) :: Ng(3), nsub(3), nband
     real(dp), intent(out) :: T  ! in a.u.
     real(dp), intent(out) :: dt ! in a.u.
     real(dp), intent(out) :: ecut ! in a.u.
     integer :: LNPU(3)
-    namelist /domain/ Ng, nsub, T, dt, ecut
+    real(dp) :: T_eV, ecut_eV
+    namelist /domain/ Ng, nsub, T_eV, dt, ecut, ecut_eV, nband
     integer :: u
     Ng = -1
-    T = -1
+    T_eV = -1
     dt = -1
+    ecut = -1
+    ecut_eV = -1
+    nband = -1
     open(newunit=u, file="input", status="old")
     read(u,nml=domain)
     close(u)
@@ -372,10 +376,15 @@ contains
         nsub(1) = 1
     end if
     if (Ng(2) == -1 .and. Ng(3) == -1) Ng(2:3) = Ng(1)
-    if (T < 0) call stop_error("T is not specified")
+    if (T_eV < 0) call stop_error("T is not specified")
     if (dt < 0) call stop_error("dt is not specified")
+    if (ecut < 0) then
+        if (ecut_eV < 0) call stop_error("ecut nor ecut_eV not specified")
+        ecut = ecut_eV / Ha2eV ! Convert from eV to a.u.
+    end if
+    if (nband < 0) call stop_error("Must specify nband")
 
-    T = T / Ha2eV  ! Convert from eV to a.u.
+    T = T_eV / Ha2eV  ! Convert from eV to a.u.
     endsubroutine
 
     subroutine load_initial_pos(natom, L, Xion)
