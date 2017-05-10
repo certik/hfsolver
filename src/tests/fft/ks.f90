@@ -98,9 +98,10 @@ rho = sum(m) / product(L)
 allocate(q(natom))
 q = 1
 
-allocate(occ(4))
+allocate(occ(2*natom))
 
-occ = [2, 2, 2, 2]
+!occ = [2, 2, 2, 2]
+occ = 2
 
 call save_abinit(L, Xion, T_au, dt, Ecut, m, q, occ)
 
