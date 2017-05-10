@@ -466,7 +466,10 @@ contains
     write(u,*) "ntypat", 1
     write(u,*) "znucl", 82
     write(u,*) "natom", natom
-    write(u,*) "typat", typat
+    write(u,*) "typat"
+    do i = 1, natom
+        write(u,*) typat(i)
+    end do
     write(u,*) "xcart"
     do i = 1, natom
         write(u,*) Xion(:,i)
@@ -479,7 +482,10 @@ contains
     write(u,*) "diemac", 2._dp
     write(u,*) "occopt", 0
     write(u,*) "nband", size(occ)
-    write(u,*) "occ", occ
+    write(u,*) "occ"
+    do i = 1, size(occ)
+        write(u,*) occ(i)
+    end do
     write(u,*) "ixc", 2
     write(u,*) "istwfk", 1
     write(u,*) "nsym", 1
