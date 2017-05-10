@@ -98,7 +98,11 @@ rho = sum(m) / product(L)
 allocate(q(natom))
 q = 1
 
-call save_abinit(L, Xion, T_au, dt, Ecut, m, q)
+allocate(occ(4))
+
+occ = [2, 2, 2, 2]
+
+call save_abinit(L, Xion, T_au, dt, Ecut, m, q, occ)
 
 if (myid == 0) then
     print *, "Input:"
@@ -268,9 +272,6 @@ if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 nev = 5
 ncv = 100
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
-allocate(occ(4))
-
-occ = [1, 1, 1, 1]
 Vee_xc = 0
 call mixing_linear(myid, product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
 
@@ -454,16 +455,17 @@ contains
     end do
     end subroutine
 
-    subroutine save_abinit(L, Xion, T_au, dt, Ecut, m, q)
-    real(dp), intent(in) :: L(:), Xion(:,:), T_au, dt, Ecut, m(:), q(:)
-    integer :: u, natom, i
-    natom = size(Xion, 2)
+    subroutine save_abinit(L, Xion, T_au, dt, Ecut, m, q, occ)
+    real(dp), intent(in) :: L(:), Xion(:,:), T_au, dt, Ecut, m(:), q(:), occ(:)
+    integer :: u, natom, i, typat(size(Xion,2))
+    natom = size(Xion,2)
+    typat = 1
     open(newunit=u, file="abinit.in", status="replace")
     write(u,*) "acell", L
     write(u,*) "ntypat", 1
     write(u,*) "znucl", 82
     write(u,*) "natom", natom
-    write(u,*) "typat", 1
+    write(u,*) "typat", typat
     write(u,*) "xcart"
     do i = 1, natom
         write(u,*) Xion(:,i)
@@ -475,8 +477,8 @@ contains
     write(u,*) "toldfe", 1e-12
     write(u,*) "diemac", 2._dp
     write(u,*) "occopt", 0
-    write(u,*) "nband", 4
-    write(u,*) "occ", 1, 1, 1, 1
+    write(u,*) "nband", size(occ)
+    write(u,*) "occ", occ
     write(u,*) "ixc", 2
     write(u,*) "istwfk", 1
     write(u,*) "nsym", 1
