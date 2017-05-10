@@ -473,7 +473,7 @@ contains
     open(newunit=u, file="abinit.in", status="replace")
     write(u,*) "acell", L
     write(u,*) "ntypat", 1
-    write(u,*) "znucl", 82
+    write(u,*) "znucl", 1 ! Hydrogen atom type
     write(u,*) "natom", natom
     write(u,*) "typat"
     do i = 1, natom
