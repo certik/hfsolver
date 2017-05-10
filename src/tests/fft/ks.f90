@@ -23,6 +23,7 @@ use pksdft_fft, only: solve_schroedinger
 use xc, only: xc_pz
 use mixings, only: mixing_linear, mixing_linear_adapt
 use ewald_sums, only: ewald_box
+use efermi, only: fermi_dirac_smearing
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, psiG, psi, tmp
@@ -101,7 +102,6 @@ q = 1
 
 allocate(occ(nband))
 
-!occ = [2, 2, 2, 2]
 occ = 2
 
 call save_abinit(L, Xion, T_au, dt, Ecut, m, q, occ)
@@ -290,6 +290,7 @@ contains
     ! Converge Vee+Vxc only (the other components are constant
     real(dp), intent(in) :: x(:)
     real(dp), intent(out) :: y(:), E
+    real(dp) :: mu, sigma
 
     ! Schroedinger:
     Veff = Vloc + reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)])
@@ -301,6 +302,9 @@ contains
     !        print *, i, eigs(i)
     !    end do
     !end if
+
+    sigma = T_au
+    call fermi_dirac_smearing(eigs, sigma, real(natom, dp), mu, occ)
 
     ! Poisson
     ne = 0
@@ -327,6 +331,7 @@ contains
 
     if (myid == 0) then
         !eigs = eigs * Ha2eV
+        print *, "E_fermi =", mu
         do i = 1, nband
             print *, i, eigs(i), occ(i)
         end do
