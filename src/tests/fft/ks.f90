@@ -95,6 +95,11 @@ velocity_gauge = .true. ! velocity or length gauge?
 !L = (sum(m) / rho)**(1._dp/3)
 rho = sum(m) / product(L)
 
+allocate(q(natom))
+q = 1
+
+call save_abinit(L, Xion, T_au, dt, Ecut, m, q)
+
 if (myid == 0) then
     print *, "Input:"
     print *, "N =", natom
@@ -147,7 +152,6 @@ allocate(dpsi(Ng_local(1), Ng_local(2), Ng_local(3), 3))
 call allocate_mold(G, X)
 call allocate_mold(current, X)
 allocate(forces(3, natom))
-allocate(q(natom))
 ! For now assume a box, until positions_bcc can accept a vector L(:)
 ! And radial_potential_fourier
 call assert(abs(L(2)-L(1)) < 1e-15_dp)
@@ -156,7 +160,6 @@ call assert(abs(L(3)-L(1)) < 1e-15_dp)
 !Xion(:,1) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
 !Xion(:,2) = [-0.7_dp+L(1)/2, L(2)/2, L(3)/2]
 !Xion(:,1) = L/2
-q = 1
 !Xion = 0
 !Xion(1,1) = L(1)/2
 !Xion = Xion + 1e-4_dp ! Shift the atoms, so that 1/R is defined
@@ -449,6 +452,35 @@ contains
         if ((2**LNPU(1))*(3**LNPU(2))*(5**LNPU(3)) == Ng) return
         Ng = Ng + 1
     end do
+    end subroutine
+
+    subroutine save_abinit(L, Xion, T_au, dt, Ecut, m, q)
+    real(dp), intent(in) :: L(:), Xion(:,:), T_au, dt, Ecut, m(:), q(:)
+    integer :: u, natom, i
+    natom = size(Xion, 2)
+    open(newunit=u, file="abinit.in", status="replace")
+    write(u,*) "acell", L
+    write(u,*) "ntypat", 1
+    write(u,*) "znucl", 82
+    write(u,*) "natom", natom
+    write(u,*) "typat", 1
+    write(u,*) "xcart"
+    do i = 1, natom
+        write(u,*) Xion(:,i)
+    end do
+    write(u,*) "ecut", Ecut
+    write(u,*) "kptopt", 0
+    write(u,*) "nkpt", 1
+    write(u,*) "nstep", 50
+    write(u,*) "toldfe", 1e-12
+    write(u,*) "diemac", 2._dp
+    write(u,*) "occopt", 0
+    write(u,*) "nband", 4
+    write(u,*) "occ", 1, 1, 1, 1
+    write(u,*) "ixc", 2
+    write(u,*) "istwfk", 1
+    write(u,*) "nsym", 1
+    close(u)
     end subroutine
 
 end program
