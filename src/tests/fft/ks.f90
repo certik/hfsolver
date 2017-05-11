@@ -91,7 +91,7 @@ Ng_local = Ng / nsub
 
 
 allocate(m(natom))
-nelec = 4*natom
+nelec = natom
 m = 2._dp * u2au ! Using D mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
@@ -176,15 +176,15 @@ call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 call ewald_box(L(1), Xion, q, Enn, forces, stress)
 
 ! HDH pseudopotential for Hydrogen
-!rloc = 0.2_dp
-!C1 = -4.180237_dp
-!C2 =  0.725075_dp
-!Zion = 1
+rloc = 0.2_dp
+C1 = -4.180237_dp
+C2 =  0.725075_dp
+Zion = 1
 ! HDH local pseudopotential for Pb
-rloc = 0.617500_dp
-C1 =   0.753143_dp
-C2 =   0
-Zion = 4
+!rloc = 0.617500_dp
+!C1 =   0.753143_dp
+!C2 =   0
+!Zion = 4
 
 do k = 1, Ng_local(3)
 do j = 1, Ng_local(2)
