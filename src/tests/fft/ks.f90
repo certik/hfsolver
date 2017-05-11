@@ -38,7 +38,7 @@ real(dp) :: L(3), r, stress(6)
 integer :: i, j, k, u
 integer :: Ng(3)
 integer :: LNPU(3)
-integer :: natom, nband
+integer :: natom, nelec, nband
 logical :: velocity_gauge
 real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
     Eee, Een_loc, E_xc, Enn, Een_core, G2cut, G2cut2
@@ -91,6 +91,7 @@ Ng_local = Ng / nsub
 
 
 allocate(m(natom))
+nelec = 4*natom
 m = 2._dp * u2au ! Using D mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
@@ -304,7 +305,7 @@ contains
     !end if
 
     sigma = T_au
-    call fermi_dirac_smearing(eigs, sigma, real(natom, dp), mu, occ)
+    call fermi_dirac_smearing(eigs, sigma, real(nelec, dp), mu, occ)
 
     ! Poisson
     ne = 0
