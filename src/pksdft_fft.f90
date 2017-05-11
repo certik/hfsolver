@@ -30,7 +30,7 @@ allocate(v(n,ncv), d(ncv))
 call cpu_time(t1)
 call peig(comm_all, myid, n, nev, ncv, "SA", av, d, v)
 call cpu_time(t2)
-eigs = d(:nev)
+eigs = d(:nev)+10
 orbitals = reshape(v(:,:nev), [Ng_local(1),Ng_local(2),Ng_local(3),nev]) &
     * sqrt(product(Ng/L))
 if (myid == 0 .and. verbose) then
@@ -52,7 +52,7 @@ contains
 
     ! Apply kinetic and potential
     call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    call preal2fourier(Vloc*psi, psiG_vloc, commy, commz, Ng, nsub)
+    call preal2fourier((Vloc-10)*psi, psiG_vloc, commy, commz, Ng, nsub)
     psiG_vloc = psiG_vloc * cutfn
 
     psiG = G2/2*psiG + psiG_vloc

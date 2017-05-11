@@ -274,9 +274,10 @@ if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 
 nev = nband
 ncv = max(4*nev, 100)
+ncv = 200
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 Vee_xc = 0
-call mixing_linear(myid, product(Ng_local), Rfunc, 100, 0.7_dp, Vee_xc)
+call mixing_linear(myid, product(Ng_local), Rfunc, 200, 0.3_dp, Vee_xc)
 
 
 if (myid == 0) print *, "Done"
