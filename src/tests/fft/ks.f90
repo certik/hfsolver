@@ -103,9 +103,7 @@ q = 1
 
 allocate(occ(nband))
 
-occ = 2
-
-call save_abinit(L, Xion, T_au, dt, Ecut, m, q, occ)
+call save_abinit(L, Xion, T_au, dt, Ecut, m, q)
 
 if (myid == 0) then
     print *, "Input:"
@@ -471,8 +469,8 @@ contains
     end do
     end subroutine
 
-    subroutine save_abinit(L, Xion, T_au, dt, Ecut, m, q, occ)
-    real(dp), intent(in) :: L(:), Xion(:,:), T_au, dt, Ecut, m(:), q(:), occ(:)
+    subroutine save_abinit(L, Xion, T_au, dt, Ecut, m, q)
+    real(dp), intent(in) :: L(:), Xion(:,:), T_au, dt, Ecut, m(:), q(:)
     integer :: u, natom, i, typat(size(Xion,2))
     natom = size(Xion,2)
     typat = 1
@@ -495,12 +493,9 @@ contains
     write(u,*) "nstep", 50
     write(u,*) "toldfe", 1e-12
     write(u,*) "diemac", 2._dp
-    write(u,*) "occopt", 0
+    write(u,*) "occopt", 3 ! Fermi-Dirac smearing
+    write(u,*) "tsmear", T_au
     write(u,*) "nband", size(occ)
-    write(u,*) "occ"
-    do i = 1, size(occ)
-        write(u,*) occ(i)
-    end do
     write(u,*) "ixc", 2
     write(u,*) "istwfk", 1
     write(u,*) "nsym", 1
