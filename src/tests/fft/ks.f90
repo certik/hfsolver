@@ -329,10 +329,11 @@ contains
     Etot = Ekin + Eee + E_xc + Enn + Een_core + Een_loc
 
     if (myid == 0) then
-        !eigs = eigs * Ha2eV
-        print *, "E_fermi =", mu
+        print *, "E_fermi =", mu, "a.u. =", mu*Ha2eV, "eV"
+        print *, "n, E[a.u.] E[eV] occ"
         do i = 1, nband
-            print *, i, eigs(i), occ(i)
+            print "(i6, f16.10, f15.4, f10.5)", i, eigs(i), eigs(i)*Ha2eV, &
+                occ(i)
         end do
         print "(a, es22.14)", "Ekin:     ", Ekin
         print "(a, es22.14)", "Eee:      ", Eee
