@@ -62,6 +62,7 @@ set(SRC
 
     pulay.f90
     mixings.f90
+    efermi.f90
 )
 
 # LIBINT

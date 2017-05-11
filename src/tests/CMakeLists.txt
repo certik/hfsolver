@@ -98,6 +98,8 @@ ADDPROG(ofmd_fft)
 
 ADDTEST(test_poisson_fft)
 
+ADDTEST(test_fermi_dirac)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
