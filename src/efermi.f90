@@ -17,7 +17,6 @@ subroutine fermi_dirac_smearing(eigs, sigma, Z, E_fermi, occ)
 real(dp), intent(in) :: eigs(:), sigma, Z
 real(dp), intent(out) :: E_fermi, occ(:)
 integer :: nband
-!E_fermi = 0.1708_dp
 nband = size(eigs)
 E_fermi = bisect(f, eigs(1), eigs(nband), 1e-12_dp)
 call eval_fermi(eigs, E_fermi, sigma, occ)
