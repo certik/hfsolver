@@ -284,6 +284,8 @@ allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 Vee_xc = 0
 call mixing_linear(myid, product(Ng_local), Rfunc, scf_iter, 0.3_dp, Vee_xc)
 
+if (myid == 0) call save_eigs_json("output.json", eigs, occ)
+
 
 if (myid == 0) print *, "Done"
 
@@ -512,6 +514,40 @@ contains
     write(u,*) "ixc", 2
     write(u,*) "istwfk", 1
     write(u,*) "nsym", 1
+    close(u)
+    end subroutine
+
+    subroutine save_eigs_json(filename, eigs, occ)
+    character(*), intent(in) :: filename
+    real(dp), intent(in) :: eigs(:), occ(:)
+    integer :: u, i, nband
+    nband = size(eigs)
+    open(newunit=u, file=filename, status="replace")
+    write(u,*) '{'
+    write(u,*) '  "nband": ', nband, ','
+    write(u,*) '  "md": ['
+    write(u,*) '    {'
+    write(u,*) '      "energies": ['
+    do i = 1, size(eigs)
+        if (i < size(eigs)) then
+            write(u,"('          ', es23.16, ',')") eigs(i)
+        else
+            write(u,"('          ', es23.16)") eigs(i)
+        end if
+    end do
+    write(u,*) '      ],'
+    write(u,*) '      "occupation": ['
+    do i = 1, size(eigs)
+        if (i < size(eigs)) then
+            write(u,"('          ', es23.16, ',')") occ(i)
+        else
+            write(u,"('          ', es23.16)") occ(i)
+        end if
+    end do
+    write(u,*) '      ]'
+    write(u,*) '    }'
+    write(u,*) '  ]'
+    write(u,*) '}'
     close(u)
     end subroutine
 
