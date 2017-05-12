@@ -32,7 +32,7 @@ do k = 0, 4
     print *, "rel:", maxval(abs(yf-yr) / max(abs(yf), abs(yr)))
     print *, "time f(r):", t2-t1
     print *, "time r(r):", t3-t2
-    print *, "speedup:", (t2-t1) / (t3-t2)
+    !print *, "speedup:", (t2-t1) / (t3-t2)
     print *
 end do
 
