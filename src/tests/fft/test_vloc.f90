@@ -29,7 +29,8 @@ real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Vloc, &
     Veff
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), q(:), &
     current(:,:,:,:), eigs(:), orbitals(:,:,:,:), eigs_ref(:), occ(:), &
-    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:), forces(:,:)
+    Vee(:,:,:), Vee_xc(:,:,:), exc(:,:,:), Vxc(:,:,:), forces(:,:), &
+    cutfn(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:), VeeG(:,:,:), VenG(:,:,:)
 real(dp) :: L(3), r, stress(6)
 integer :: i, j, k, u
@@ -240,6 +241,8 @@ if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
 nev = 5
 ncv = 100
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
+allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
+cutfn = 1
 allocate(occ(4))
 
 occ = [1, 1, 1, 1]
@@ -261,7 +264,7 @@ contains
     ! Schroedinger:
     Veff = Vloc + reshape(x, [Ng_local(1),Ng_local(2),Ng_local(3)])
     call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Veff, &
-            L, G2, nev, ncv, eigs, orbitals)
+            L, G2, cutfn, nev, ncv, eigs, orbitals)
     !if (myid == 0) then
     !    print *, "n E"
     !    do i = 1, nev

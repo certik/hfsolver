@@ -24,7 +24,8 @@ implicit none
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
 real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Ven
 real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
-    current(:,:,:,:), tmp_global(:,:,:), eigs(:), orbitals(:,:,:,:)
+    current(:,:,:,:), tmp_global(:,:,:), eigs(:), orbitals(:,:,:,:), &
+    cutfn(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
 real(dp) :: L(3), Z, omega
 integer :: i
@@ -230,8 +231,10 @@ if (myid == 0) print *, "Arpack"
 nev = 4
 ncv = 64
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
+allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
+cutfn = 1
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Ven, &
-        L, G2, nev, ncv, eigs, orbitals)
+        L, G2, cutfn, nev, ncv, eigs, orbitals)
 if (myid == 0) then
     print *, "Eigenvalues:"
     do i = 1, nev
