@@ -30,7 +30,7 @@ if(WITH_MPI)
     ADDMPIEXECUTABLE(test_rt)
     ADDMPITEST(test_rt rt 4)
     ADDMPIEXECUTABLE(test_sch_rt)
-    ADDMPITEST(test_sch_rt sch_rt 4)
+    #ADDMPITEST(test_sch_rt sch_rt 4)
 
     if(WITH_ARPACK)
         ADDMPIEXECUTABLE(ks)
