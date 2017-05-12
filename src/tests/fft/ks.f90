@@ -44,7 +44,7 @@ real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
     Eee, Een_loc, E_xc, Enn, Een_core, G2cut, G2cut2
 real(dp) :: rloc, C1, C2, Zion, Ecut
 real(dp), allocatable :: m(:)
-integer :: nev, ncv, na
+integer :: nev, ncv, arpack_ncv, na
 real(dp), parameter :: D(5) = [0.65435_dp, 2.45106_dp, -1.536643785333E-01_dp, &
     1.153664378533E+00_dp, 5.0000_dp]
 
@@ -70,10 +70,11 @@ call bcast_float_array(comm_all, size(Xion), Xion)
 call bcast_float_array(comm_all, size(L), L)
 
 if (myid == 0) then
-    call read_input(nproc, Ng, nsub, T_au, dt, Ecut, nband)
+    call read_input(nproc, Ng, nsub, T_au, dt, Ecut, nband, arpack_ncv)
 end if
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(nband, 1, MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(arpack_ncv, 1, MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
@@ -270,11 +271,13 @@ end if
 !end if
 !stop "OK"
 
-if (myid == 0) print *, "Solving eigenproblem: DOFs =", product(Ng)
+if (myid == 0) then
+    print *, "Solving eigenproblem: DOFs =", product(Ng)
+    print *, "Arpack ncv =", arpack_ncv
+end if
 
 nev = nband
-ncv = max(4*nev, 100)
-ncv = 200
+ncv = arpack_ncv
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 Vee_xc = 0
 call mixing_linear(myid, product(Ng_local), Rfunc, 200, 0.3_dp, Vee_xc)
@@ -356,15 +359,15 @@ contains
 
     end subroutine
 
-    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut, nband)
+    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut, nband, arpack_ncv)
     integer, intent(in) :: nproc
-    integer, intent(out) :: Ng(3), nsub(3), nband
+    integer, intent(out) :: Ng(3), nsub(3), nband, arpack_ncv
     real(dp), intent(out) :: T  ! in a.u.
     real(dp), intent(out) :: dt ! in a.u.
     real(dp), intent(out) :: ecut ! in a.u.
     integer :: LNPU(3)
     real(dp) :: T_eV, ecut_eV
-    namelist /domain/ Ng, nsub, T_eV, dt, ecut, ecut_eV, nband
+    namelist /domain/ Ng, nsub, T_eV, dt, ecut, ecut_eV, nband, arpack_ncv
     integer :: u
     Ng = -1
     T_eV = -1
@@ -372,6 +375,7 @@ contains
     ecut = -1
     ecut_eV = -1
     nband = -1
+    arpack_ncv = -1
     open(newunit=u, file="input", status="old")
     read(u,nml=domain)
     close(u)
@@ -389,6 +393,7 @@ contains
         ecut = ecut_eV / Ha2eV ! Convert from eV to a.u.
     end if
     if (nband < 0) call stop_error("Must specify nband")
+    if (arpack_ncv < 0) arpack_ncv = 5*nband
 
     T = T_eV / Ha2eV  ! Convert from eV to a.u.
     endsubroutine
