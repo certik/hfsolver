@@ -38,6 +38,8 @@ if(WITH_MPI)
         #ADDMPITEST(test_vloc vloc 4)
         ADDMPIEXECUTABLE(test_psch3d)
         ADDMPITEST(test_psch3d psch3d 1)
+
+        add_subdirectory(tests_ks)
     endif()
 endif()
 if(WITH_ARPACK)
