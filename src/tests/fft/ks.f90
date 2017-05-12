@@ -44,7 +44,7 @@ real(dp) :: T_au, dt, alpha, rho, norm, w2, Vmin, Ekin, Etot, &
     Eee, Een_loc, E_xc, Enn, Een_core, G2cut, G2cut2
 real(dp) :: rloc, C1, C2, Zion, Ecut
 real(dp), allocatable :: m(:)
-integer :: nev, ncv, arpack_ncv, na
+integer :: nev, ncv, arpack_ncv, na, scf_iter
 real(dp), parameter :: D(5) = [0.65435_dp, 2.45106_dp, -1.536643785333E-01_dp, &
     1.153664378533E+00_dp, 5.0000_dp]
 
@@ -70,11 +70,13 @@ call bcast_float_array(comm_all, size(Xion), Xion)
 call bcast_float_array(comm_all, size(L), L)
 
 if (myid == 0) then
-    call read_input(nproc, Ng, nsub, T_au, dt, Ecut, nband, arpack_ncv)
+    call read_input(nproc, Ng, nsub, T_au, dt, Ecut, nband, arpack_ncv, &
+        scf_iter)
 end if
 call mpi_bcast(Ng, size(Ng), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(nband, 1, MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(arpack_ncv, 1, MPI_INTEGER, 0, comm_all, ierr)
+call mpi_bcast(scf_iter, 1, MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(nsub, size(nsub), MPI_INTEGER, 0, comm_all, ierr)
 call mpi_bcast(T_au, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
 call mpi_bcast(dt, 1, MPI_DOUBLE_PRECISION, 0, comm_all, ierr)
@@ -280,7 +282,7 @@ nev = nband
 ncv = arpack_ncv
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
 Vee_xc = 0
-call mixing_linear(myid, product(Ng_local), Rfunc, 200, 0.3_dp, Vee_xc)
+call mixing_linear(myid, product(Ng_local), Rfunc, scf_iter, 0.3_dp, Vee_xc)
 
 
 if (myid == 0) print *, "Done"
@@ -359,15 +361,17 @@ contains
 
     end subroutine
 
-    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut, nband, arpack_ncv)
+    subroutine read_input(nproc, Ng, nsub, T, dt, Ecut, nband, arpack_ncv, &
+            scf_iter)
     integer, intent(in) :: nproc
-    integer, intent(out) :: Ng(3), nsub(3), nband, arpack_ncv
+    integer, intent(out) :: Ng(3), nsub(3), nband, arpack_ncv, scf_iter
     real(dp), intent(out) :: T  ! in a.u.
     real(dp), intent(out) :: dt ! in a.u.
     real(dp), intent(out) :: ecut ! in a.u.
     integer :: LNPU(3)
     real(dp) :: T_eV, ecut_eV
-    namelist /domain/ Ng, nsub, T_eV, dt, ecut, ecut_eV, nband, arpack_ncv
+    namelist /domain/ Ng, nsub, T_eV, dt, ecut, ecut_eV, nband, arpack_ncv, &
+        scf_iter
     integer :: u
     Ng = -1
     T_eV = -1
@@ -376,6 +380,7 @@ contains
     ecut_eV = -1
     nband = -1
     arpack_ncv = -1
+    scf_iter = -1
     open(newunit=u, file="input", status="old")
     read(u,nml=domain)
     close(u)
@@ -394,6 +399,7 @@ contains
     end if
     if (nband < 0) call stop_error("Must specify nband")
     if (arpack_ncv < 0) arpack_ncv = 5*nband
+    if (scf_iter < 0) scf_iter = 50
 
     T = T_eV / Ha2eV  ! Convert from eV to a.u.
     endsubroutine
