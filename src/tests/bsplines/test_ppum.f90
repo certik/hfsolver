@@ -18,7 +18,8 @@ contains
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac
     real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
-    real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), wi(:,:)
+    real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
+    real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
     real(dp), allocatable :: mesh(:)
     integer :: i, u, bindex
     integer :: n, k
@@ -48,6 +49,8 @@ contains
     allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
     allocate(W(Nq_total,Ne), Wp(Nq_total,Ne), Wpp(Nq_total,Ne))
     allocate(S(Nq_total), wi(Nq_total,Ne))
+    allocate(Sp(Nq_total), wip(Nq_total,Ne))
+    allocate(Spp(Nq_total), wipp(Nq_total,Ne))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -77,11 +80,16 @@ contains
 
     ! Construct PU functions using Shepard constructions
     S = 0
+    Sp = 0
+    Spp = 0
     do i = 1, Ne
-        S = S + W(:, i)
+        S = S + W(:,i)
+        Sp = Sp + Wp(:,i)
+        Spp = Spp + Wpp(:,i)
     end do
     do i = 1, Ne
-        wi(:,i) = W(:, i)/S
+        wi(:,i) = W(:,i)/S
+        wip(:,i) = (Wp(:,i)*S - W(:,i)*Sp)/S**2
     end do
 
 
@@ -92,6 +100,9 @@ contains
     end do
     do i = 1, Ne
         write(u,*) wi(:,i)
+    end do
+    do i = 1, Ne
+        write(u,*) wip(:,i)
     end do
     close(u)
     end subroutine
