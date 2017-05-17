@@ -232,7 +232,7 @@ use ppum, only: do_ppum_basis
 use linalg, only: eigh
 use utils, only: stop_error
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd
 real(dp) :: alpha, xmin, xmax, En
 real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), Am(:,:), Bm(:,:), lam(:), c(:,:)
@@ -240,10 +240,10 @@ real(dp), allocatable :: B(:,:), Bp(:,:), Am(:,:), Bm(:,:), lam(:), c(:,:)
 ppu = 3
 penr = 4
 Nenr = penr+1
-Ne = 10
+Ne = 20
 alpha = 1.5_dp
-xmin = -2
-xmax = 2
+xmin = -10
+xmax = 10
 
 Nq = 64
 Nq_total = Nq*(2*Ne-1)
@@ -255,17 +255,26 @@ allocate(B_(Nq_total,Nenr,Ne))
 allocate(B(Nq_total,Nb))
 allocate(Bp_(Nq_total,Nenr,Ne))
 allocate(Bp(Nq_total,Nb))
-allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
 
 print *, "Evaluating basis functions"
 call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, Nq, xq, wq, B_, Bp_)
-B = reshape(B_, [Nq_total,Nb])
-Bp = reshape(Bp_, [Nq_total,Nb])
+
+! Filter functions that are non-zero at the boundaries
+Nbd = 0
+do i = 2, Ne-1
+    do j = 1, Nenr
+        Nbd = Nbd+1
+        B(:,Nbd) = B_(:,j,i)
+        Bp(:,Nbd) = Bp_(:,j,i)
+    end do
+end do
+
+allocate(Am(Nbd,Nbd), Bm(Nbd,Nbd), c(Nbd,Nbd), lam(Nbd))
 
 print *, "Assembly"
 ! Construct matrices A and B
-do i = 1, Nb
-    do j = 1, Nb
+do i = 1, Nbd
+    do j = 1, Nbd
         ! A
         hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)* 0.5_dp*(xq**2)
         Am(i,j) = sum(wq*hq)
@@ -277,7 +286,7 @@ do i = 1, Nb
 end do
 
 print *, "Checking symmetry"
-do j = 1, Nb
+do j = 1, Nbd
     do i = 1, j-1
         if (max(abs(Am(i,j)), abs(Am(j,i))) > tiny(1._dp)) then
             if (abs(Am(i,j)-Am(j,i)) / max(abs(Am(i,j)), abs(Am(j,i))) &
@@ -293,11 +302,12 @@ end do
 
 print *, "Eigensolver"
 print *, "Nb =", Nb
+print *, "Nbd =", Nbd
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, c)
 
 print *, "n, energy, exact energy, error"
-do i = 1, Nb
+do i = 1, 20
     En = 1._dp/2 + i-1
     print "(i4, f30.8, f18.8, es12.2)", i, lam(i), En, abs(lam(i)-En)
 end do
