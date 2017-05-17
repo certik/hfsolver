@@ -90,6 +90,8 @@ contains
     do i = 1, Ne
         wi(:,i) = W(:,i)/S
         wip(:,i) = (Wp(:,i)*S - W(:,i)*Sp)/S**2
+        wipp(:,i) = (Wpp(:,i)*S - Wp(:,i)*Sp)/S**2 - &
+            ((Wp(:,i)*Sp+W(:,i)*Spp)*S**2 - W(:,i)*Sp*2*S*Sp)/S**4
     end do
 
 
@@ -103,6 +105,9 @@ contains
     end do
     do i = 1, Ne
         write(u,*) wip(:,i)
+    end do
+    do i = 1, Ne
+        write(u,*) wipp(:,i)
     end do
     close(u)
     end subroutine
