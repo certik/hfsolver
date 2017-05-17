@@ -27,7 +27,11 @@ contains
     if (mod(p, 2) == 0) then
         n = k+2
     else
-        n = k+1
+        if (p == 1) then
+            n = k+1
+        else
+            n = k+3
+        end if
     end if
     bindex = n/2+1
     print *, "Constructing B-spline basis n =", n, ", k =", k
@@ -35,7 +39,7 @@ contains
 
     allocate(mesh(2*Ne))
     dx = (xmax-xmin)/Ne*(alpha-1)/2
-    mesh(1) = 0
+    mesh(1) = xmin
     do i = 1, Ne-1
         mesh(2*i)   = (xmax-xmin)/Ne * i + xmin - dx
         mesh(2*i+1) = (xmax-xmin)/Ne * i + xmin + dx
