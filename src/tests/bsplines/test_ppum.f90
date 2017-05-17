@@ -1,13 +1,12 @@
-program test_ppum
+module ppum
 use types, only: dp
 use bsplines, only: bspline, bspline_der, bspline_der2
 use mesh, only: meshexp
 use quadrature, only: gauss_pts, gauss_wts
-use linalg, only: eigh
-use utils, only: stop_error, str
+use utils, only: stop_error
 implicit none
-
-call do_ppum_basis(3, 0._dp, 1._dp, 4, 5, 1.5_dp)
+private
+public do_ppum_basis
 
 contains
 
@@ -227,5 +226,17 @@ contains
             call stop_error("n is too high")
     end select
     end function
+
+end module
+
+program test_ppum
+use types, only: dp
+use ppum, only: do_ppum_basis
+use linalg, only: eigh
+implicit none
+
+call do_ppum_basis(3, 0._dp, 1._dp, 4, 5, 1.5_dp)
+
+contains
 
 end program
