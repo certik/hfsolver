@@ -17,7 +17,7 @@ contains
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac, x0
-    real(dp), allocatable :: hq(:), t(:), xiq(:), wtq(:), x(:)
+    real(dp), allocatable :: t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
     real(dp), allocatable :: enr(:,:,:), enrp(:,:,:)
@@ -232,7 +232,7 @@ use ppum, only: do_ppum_basis
 use linalg, only: eigh
 use utils, only: stop_error
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u
 real(dp) :: alpha, xmin, xmax, En
 real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), Am(:,:), Bm(:,:), lam(:), c(:,:)
@@ -242,8 +242,8 @@ penr = 4
 Nenr = penr+1
 Ne = 20
 alpha = 1.5_dp
-xmin = -10
-xmax = 10
+xmin = -100
+xmax = 100
 
 Nq = 64
 Nq_total = Nq*(2*Ne-1)
@@ -268,6 +268,14 @@ do i = 2, Ne-1
         Bp(:,Nbd) = Bp_(:,j,i)
     end do
 end do
+
+open(newunit=u, file="basis.txt", status="replace")
+write(u,*) xq
+do i = 1, Nbd
+    write(u,*) B(:,i)
+    write(u,*) Bp(:,i)
+end do
+close(u)
 
 allocate(Am(Nbd,Nbd), Bm(Nbd,Nbd), c(Nbd,Nbd), lam(Nbd))
 
