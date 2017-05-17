@@ -10,16 +10,17 @@ public do_ppum_basis
 
 contains
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha)
-    integer, intent(in) :: p, Ne, Nenr
+    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha, Nq, B, Bp)
+    integer, intent(in) :: p, Ne, Nenr, Nq
     real(dp), intent(in) :: xmin, xmax, alpha
-    integer :: Nq, N_intervals, Nq_total
+    real(dp), intent(out) :: B(:,:,:), Bp(:,:,:)
+    integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac, x0
     real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
-    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:), B(:,:,:), Bp(:,:,:)
+    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:)
     real(dp), allocatable :: mesh(:)
     integer :: i, j, u, bindex
     integer :: n, k
@@ -46,7 +47,6 @@ contains
     end do
     mesh(2*Ne) = xmax
 
-    Nq = 64
     Nq_total = Nq*(2*Ne-1)
 
     allocate(t(n+k), xiq(Nq), wtq(Nq), x(Nq))
@@ -57,8 +57,6 @@ contains
     allocate(Spp(Nq_total), wipp(Nq_total,Ne))
     allocate(enr(Nq_total,Nenr,Ne))
     allocate(enrp(Nq_total,Nenr,Ne))
-    allocate(B(Nq_total,Nenr,Ne))
-    allocate(Bp(Nq_total,Nenr,Ne))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -234,9 +232,24 @@ use types, only: dp
 use ppum, only: do_ppum_basis
 use linalg, only: eigh
 implicit none
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total
+real(dp) :: alpha, xmin, xmax
+real(dp), allocatable :: B(:,:,:), Bp(:,:,:)
 
-call do_ppum_basis(3, 0._dp, 1._dp, 4, 5, 1.5_dp)
+ppu = 3
+penr = 4
+Nenr = penr+1
+Ne = 4
+alpha = 1.5_dp
+xmin = 0
+xmax = 1
 
-contains
+Nq = 64
+Nq_total = Nq*(2*Ne-1)
+
+allocate(B(Nq_total,Nenr,Ne))
+allocate(Bp(Nq_total,Nenr,Ne))
+
+call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, Nq, B, Bp)
 
 end program
