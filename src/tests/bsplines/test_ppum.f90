@@ -7,7 +7,7 @@ use linalg, only: eigh
 use utils, only: stop_error, str
 implicit none
 
-call do_ppum_basis(3, 0._dp, 1._dp, 3, 1.5_dp)
+call do_ppum_basis(3, 0._dp, 1._dp, 4, 1.5_dp)
 
 contains
 
@@ -18,7 +18,7 @@ contains
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac
     real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
-    real(dp), allocatable :: B(:), Bp(:), Bpp(:)
+    real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), wi(:,:)
     real(dp), allocatable :: mesh(:)
     integer :: i, u, bindex
     integer :: n, k
@@ -46,7 +46,8 @@ contains
 
     allocate(t(n+k), xiq(Nq), wtq(Nq), x(Nq))
     allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
-    allocate(B(Nq_total), Bp(Nq_total), Bpp(Nq_total))
+    allocate(W(Nq_total,Ne), Wp(Nq_total,Ne), Wpp(Nq_total,Ne))
+    allocate(S(Nq_total), wi(Nq_total,Ne))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -61,9 +62,7 @@ contains
         wq((i-1)*Nq+1:i*Nq) = wtq*jac
     end do
 
-
-    open(newunit=u, file="ppum.txt", status="replace")
-    write(u,*) xq
+    ! Construct weight functions Wi(x)
     do i = 1, Ne
         dx = (xmax-xmin)/Ne*(alpha-1)/2
         rmin = (xmax-xmin)/Ne * (i-1) + xmin - dx
@@ -71,12 +70,29 @@ contains
         t(:k-1) = rmin
         t(k:n+1) = meshexp(rmin, rmax, 1._dp, N_intervals)
         t(n+2:) = rmax
-        B   = bspline     (t, bindex, k, xq)
-        Bp  = bspline_der (t, bindex, k, xq)
-        Bpp = bspline_der2(t, bindex, k, xq)
-        write(u,*) B
+        W(:,i)   = bspline     (t, bindex, k, xq)
+        Wp(:,i)  = bspline_der (t, bindex, k, xq)
+        Wpp(:,i) = bspline_der2(t, bindex, k, xq)
     end do
 
+    ! Construct PU functions using Shepard constructions
+    S = 0
+    do i = 1, Ne
+        S = S + W(:, i)
+    end do
+    do i = 1, Ne
+        wi(:,i) = W(:, i)/S
+    end do
+
+
+    open(newunit=u, file="ppum.txt", status="replace")
+    write(u,*) xq
+    do i = 1, Ne
+        write(u,*) W(:,i)
+    end do
+    do i = 1, Ne
+        write(u,*) wi(:,i)
+    end do
     close(u)
     end subroutine
 
