@@ -105,9 +105,10 @@ contains
         dx = (xmax-xmin)/Ne*(alpha-1)/2
         rmin = (xmax-xmin)/Ne * (i-1) + xmin - dx
         rmax = (xmax-xmin)/Ne * i + xmin + dx
-        x0 = (rmax-rmin)/2
+        x0 = (rmin+rmax)/2
+        jac = (rmax-rmin)/2
         do j = 1, Nenr
-            enr(:,j,i) = ((xq-x0)/(rmax-rmin))**(j-1)
+            enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1)
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
             end where
@@ -139,5 +140,37 @@ contains
     end do
     close(u)
     end subroutine
+
+    function legendre_p(x, n) result(r)
+    real(dp), intent(in) :: x(:)
+    integer, intent(in) :: n
+    real(dp) :: r(size(x))
+    select case (n)
+        case (0)
+            r = 1
+        case (1)
+            r = x
+        case (2)
+            r = (3*x**2-1)/2
+        case (3)
+            r = (5*x**3-3*x)/2
+        case (4)
+            r = (35*x**4-30*x**2+3)/8
+        case (5)
+            r = (63*x**5-70*x**3+15*x)/8
+        case (6)
+            r = (231*x**6-315*x**4+105*x**2-5)/16
+        case (7)
+            r = (429*x**7-693*x**5+315*x**3-35*x)/16
+        case (8)
+            r = (6435*x**8-12012*x**6+6930*x**4-1260*x**2+35)/128
+        case (9)
+            r = (12155*x**9-25740*x**7+18018*x**5-4620*x**3+315*x)/128
+        case (10)
+            r = (46189*x**10-109395*x**8+90090*x**6-30030*x**4+3465*x**2-63)/256
+        case default
+            call stop_error("n is too high")
+    end select
+    end function
 
 end program
