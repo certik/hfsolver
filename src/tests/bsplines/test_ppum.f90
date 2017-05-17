@@ -10,14 +10,14 @@ public do_ppum_basis
 
 contains
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha, Nq, B, Bp)
+    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha, Nq, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne, Nenr, Nq
     real(dp), intent(in) :: xmin, xmax, alpha
-    real(dp), intent(out) :: B(:,:,:), Bp(:,:,:)
+    real(dp), intent(out) :: xq(:), wq(:), B(:,:,:), Bp(:,:,:)
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac, x0
-    real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
+    real(dp), allocatable :: hq(:), t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
     real(dp), allocatable :: enr(:,:,:), enrp(:,:,:)
@@ -50,7 +50,6 @@ contains
     Nq_total = Nq*(2*Ne-1)
 
     allocate(t(n+k), xiq(Nq), wtq(Nq), x(Nq))
-    allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
     allocate(W(Nq_total,Ne), Wp(Nq_total,Ne), Wpp(Nq_total,Ne))
     allocate(S(Nq_total), wi(Nq_total,Ne))
     allocate(Sp(Nq_total), wip(Nq_total,Ne))
@@ -231,25 +230,76 @@ program test_ppum
 use types, only: dp
 use ppum, only: do_ppum_basis
 use linalg, only: eigh
+use utils, only: stop_error
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total
-real(dp) :: alpha, xmin, xmax
-real(dp), allocatable :: B(:,:,:), Bp(:,:,:)
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j
+real(dp) :: alpha, xmin, xmax, En
+real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
+real(dp), allocatable :: B(:,:), Bp(:,:), Am(:,:), Bm(:,:), lam(:), c(:,:)
 
 ppu = 3
 penr = 4
 Nenr = penr+1
-Ne = 4
+Ne = 10
 alpha = 1.5_dp
-xmin = 0
-xmax = 1
+xmin = -2
+xmax = 2
 
 Nq = 64
 Nq_total = Nq*(2*Ne-1)
 
-allocate(B(Nq_total,Nenr,Ne))
-allocate(Bp(Nq_total,Nenr,Ne))
+Nb = Nenr*Ne
 
-call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, Nq, B, Bp)
+allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
+allocate(B_(Nq_total,Nenr,Ne))
+allocate(B(Nq_total,Nb))
+allocate(Bp_(Nq_total,Nenr,Ne))
+allocate(Bp(Nq_total,Nb))
+allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
+
+print *, "Evaluating basis functions"
+call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, Nq, xq, wq, B_, Bp_)
+B = reshape(B_, [Nq_total,Nb])
+Bp = reshape(Bp_, [Nq_total,Nb])
+
+print *, "Assembly"
+! Construct matrices A and B
+do i = 1, Nb
+    do j = 1, Nb
+        ! A
+        hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)* 0.5_dp*(xq**2)
+        Am(i,j) = sum(wq*hq)
+
+        ! B
+        hq = B(:,i)*B(:,j)
+        Bm(i,j) = sum(wq*hq)
+    end do
+end do
+
+print *, "Checking symmetry"
+do j = 1, Nb
+    do i = 1, j-1
+        if (max(abs(Am(i,j)), abs(Am(j,i))) > tiny(1._dp)) then
+            if (abs(Am(i,j)-Am(j,i)) / max(abs(Am(i,j)), abs(Am(j,i))) &
+                    > 1e-8_dp) then
+                print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
+                call stop_error("Am not symmetric")
+            end if
+        end if
+        if (abs(Bm(i,j)-Bm(j,i)) > 1e-12_dp) call stop_error("Bm not symmetric")
+   end do
+end do
+
+
+print *, "Eigensolver"
+print *, "Nb =", Nb
+! Solve an eigenproblem
+call eigh(Am, Bm, lam, c)
+
+print *, "n, energy, exact energy, error"
+do i = 1, Nb
+    En = 1._dp/2 + i-1
+    print "(i4, f30.8, f18.8, es12.2)", i, lam(i), En, abs(lam(i)-En)
+end do
 
 end program
