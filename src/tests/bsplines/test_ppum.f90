@@ -20,7 +20,7 @@ contains
     real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
-    real(dp), allocatable :: enr(:,:,:)
+    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:)
     real(dp), allocatable :: mesh(:)
     integer :: i, j, u, bindex
     integer :: n, k
@@ -57,6 +57,7 @@ contains
     allocate(Sp(Nq_total), wip(Nq_total,Ne))
     allocate(Spp(Nq_total), wipp(Nq_total,Ne))
     allocate(enr(Nq_total,Nenr,Ne))
+    allocate(enrp(Nq_total,Nenr,Ne))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -109,8 +110,10 @@ contains
         jac = (rmax-rmin)/2
         do j = 1, Nenr
             enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1)
+            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
+                enrp(:,j,i) = 0
             end where
         end do
     end do
@@ -136,6 +139,7 @@ contains
     do i = 1, Ne
         do j = 1, Nenr
             write(u,*) enr(:,j,i)
+            write(u,*) enrp(:,j,i)
         end do
     end do
     close(u)
@@ -168,6 +172,38 @@ contains
             r = (12155*x**9-25740*x**7+18018*x**5-4620*x**3+315*x)/128
         case (10)
             r = (46189*x**10-109395*x**8+90090*x**6-30030*x**4+3465*x**2-63)/256
+        case default
+            call stop_error("n is too high")
+    end select
+    end function
+
+    function legendre_p_der(x, n) result(r)
+    real(dp), intent(in) :: x(:)
+    integer, intent(in) :: n
+    real(dp) :: r(size(x))
+    select case (n)
+        case (0)
+            r = 0
+        case (1)
+            r = 1
+        case (2)
+            r = (6*x)/2
+        case (3)
+            r = (15*x**2-3)/2
+        case (4)
+            r = (140*x**3-60*x)/8
+        case (5)
+            r = (315*x**4-210*x**2+15)/8
+        case (6)
+            r = (1386*x**5-1260*x**3+210*x)/16
+        case (7)
+            r = (3003*x**6-3465*x**4+945*x**2-35)/16
+        case (8)
+            r = (51480*x**7-72072*x**5+27720*x**3-2520*x)/128
+        case (9)
+            r = (109395*x**8-180180*x**6+90090*x**4-13860*x**2+315)/128
+        case (10)
+            r = (461890*x**9-875160*x**7+540540*x**5-120120*x**3+6930*x)/256
         case default
             call stop_error("n is too high")
     end select
