@@ -90,8 +90,8 @@ contains
     do i = 1, Ne
         wi(:,i) = W(:,i)/S
         wip(:,i) = (Wp(:,i)*S - W(:,i)*Sp)/S**2
-        wipp(:,i) = (Wpp(:,i)*S - Wp(:,i)*Sp)/S**2 - &
-            ((Wp(:,i)*Sp+W(:,i)*Spp)*S**2 - W(:,i)*Sp*2*S*Sp)/S**4
+        wipp(:,i) = (Wpp(:,i)*S**2 - 2*Wp(:,i)*S*Sp - W(:,i)*S*Spp &
+            + 2*W(:,i)*Sp**2)/S**3
     end do
 
 
