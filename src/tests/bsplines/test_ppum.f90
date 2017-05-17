@@ -7,7 +7,7 @@ use linalg, only: eigh
 use utils, only: stop_error, str
 implicit none
 
-call do_ppum_basis(3, 0._dp, 1._dp, 4, 6, 1.5_dp)
+call do_ppum_basis(3, 0._dp, 1._dp, 4, 5, 1.5_dp)
 
 contains
 
@@ -20,7 +20,7 @@ contains
     real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
-    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:)
+    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:), B(:,:,:), Bp(:,:,:)
     real(dp), allocatable :: mesh(:)
     integer :: i, j, u, bindex
     integer :: n, k
@@ -58,6 +58,8 @@ contains
     allocate(Spp(Nq_total), wipp(Nq_total,Ne))
     allocate(enr(Nq_total,Nenr,Ne))
     allocate(enrp(Nq_total,Nenr,Ne))
+    allocate(B(Nq_total,Nenr,Ne))
+    allocate(Bp(Nq_total,Nenr,Ne))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -118,8 +120,16 @@ contains
         end do
     end do
 
+    ! Construct basis functions B = wi*enr
+    do i = 1, Ne
+        do j = 1, Nenr
+            B(:,j,i)  = wi(:,i)*enr(:,j,i)
+            Bp(:,j,i) = wip(:,i)*enr(:,j,i)+wi(:,i)*enrp(:,j,i)
+        end do
+    end do
 
-    open(newunit=u, file="ppum.txt", status="replace")
+
+    open(newunit=u, file="pu.txt", status="replace")
     write(u,*) xq
     do i = 1, Ne
         write(u,*) W(:,i)
@@ -140,6 +150,15 @@ contains
         do j = 1, Nenr
             write(u,*) enr(:,j,i)
             write(u,*) enrp(:,j,i)
+        end do
+    end do
+    close(u)
+
+    open(newunit=u, file="ppum.txt", status="replace")
+    do i = 1, Ne
+        do j = 1, Nenr
+            write(u,*) B(:,j,i)
+            write(u,*) Bp(:,j,i)
         end do
     end do
     close(u)
