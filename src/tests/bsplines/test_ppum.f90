@@ -18,10 +18,15 @@ contains
     real(dp) :: xa, xb, jac
     real(dp), allocatable :: xq(:), wq(:), hq(:), t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: B(:,:), Bp(:,:), Bpp(:,:)
-    integer :: i, u
+    integer :: i, u, bindex
     integer :: n, k
     k = p+1
-    n = k+1
+    if (mod(p, 2) == 0) then
+        n = k+2
+    else
+        n = k+1
+    end if
+    bindex = n/2+1
     print *, "Constructing B-spline basis n =", n, ", k =", k
     Nq = 64
     N_intervals = n-k+1
@@ -67,7 +72,7 @@ contains
         Bp(:,i)  = bspline_der (t, i, k, xq)
         Bpp(:,i) = bspline_der2(t, i, k, xq)
     end do
-    write(u,*) B(:,Nb/2+1)
+    write(u,*) B(:,bindex)
 
     rmin = 1._dp/4
     rmax = 3._dp/4
@@ -79,7 +84,7 @@ contains
         Bp(:,i)  = bspline_der (t, i, k, xq)
         Bpp(:,i) = bspline_der2(t, i, k, xq)
     end do
-    write(u,*) B(:,Nb/2+1)
+    write(u,*) B(:,bindex)
 
     rmin = 7._dp/12
     rmax = 1
@@ -91,7 +96,7 @@ contains
         Bp(:,i)  = bspline_der (t, i, k, xq)
         Bpp(:,i) = bspline_der2(t, i, k, xq)
     end do
-    write(u,*) B(:,Nb/2+1)
+    write(u,*) B(:,bindex)
 
     close(u)
     end subroutine
