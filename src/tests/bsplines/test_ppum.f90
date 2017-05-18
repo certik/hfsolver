@@ -280,6 +280,8 @@ close(u)
 allocate(Am(Nbd,Nbd), Bm(Nbd,Nbd), c(Nbd,Nbd), lam(Nbd))
 
 print *, "Assembly"
+print *, "Nb =", Nb
+print *, "Nbd =", Nbd
 ! Construct matrices A and B
 do i = 1, Nbd
     do j = 1, Nbd
@@ -309,8 +311,6 @@ end do
 
 
 print *, "Eigensolver"
-print *, "Nb =", Nb
-print *, "Nbd =", Nbd
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, c)
 
