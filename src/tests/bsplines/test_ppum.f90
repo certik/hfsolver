@@ -108,7 +108,7 @@ contains
         jac = (rmax-rmin)/2
         do j = 1, Nenr
             enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1)
-            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)
+            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
                 enrp(:,j,i) = 0
