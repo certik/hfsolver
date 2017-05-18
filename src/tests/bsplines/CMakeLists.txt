@@ -7,6 +7,7 @@ macro(ADDTEST2 name)
 endmacro(ADDTEST2)
 
 add_library(schroed_util schroed_util.f90)
+target_link_libraries(schroed_util hfsolver ${LIBS})
 
 addtest(test_bsplines)
 addtest2(test_ppum schroed_util)
