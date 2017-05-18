@@ -231,11 +231,12 @@ use types, only: dp
 use ppum, only: do_ppum_basis
 use linalg, only: eigh
 use utils, only: stop_error
+use schroed_util, only: lho
 implicit none
 integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u
-real(dp) :: alpha, xmin, xmax, En
+real(dp) :: alpha, xmin, xmax
 real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
-real(dp), allocatable :: B(:,:), Bp(:,:), Am(:,:), Bm(:,:), lam(:), c(:,:)
+real(dp), allocatable :: B(:,:), Bp(:,:)
 
 ppu = 3
 penr = 4
@@ -277,47 +278,9 @@ do i = 1, Nbd
 end do
 close(u)
 
-allocate(Am(Nbd,Nbd), Bm(Nbd,Nbd), c(Nbd,Nbd), lam(Nbd))
-
-print *, "Assembly"
 print *, "Nb =", Nb
 print *, "Nbd =", Nbd
-! Construct matrices A and B
-do i = 1, Nbd
-    do j = 1, Nbd
-        ! A
-        hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)* 0.5_dp*(xq**2)
-        Am(i,j) = sum(wq*hq)
 
-        ! B
-        hq = B(:,i)*B(:,j)
-        Bm(i,j) = sum(wq*hq)
-    end do
-end do
-
-print *, "Checking symmetry"
-do j = 1, Nbd
-    do i = 1, j-1
-        if (max(abs(Am(i,j)), abs(Am(j,i))) > tiny(1._dp)) then
-            if (abs(Am(i,j)-Am(j,i)) / max(abs(Am(i,j)), abs(Am(j,i))) &
-                    > 1e-8_dp) then
-                print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
-                call stop_error("Am not symmetric")
-            end if
-        end if
-        if (abs(Bm(i,j)-Bm(j,i)) > 1e-12_dp) call stop_error("Bm not symmetric")
-   end do
-end do
-
-
-print *, "Eigensolver"
-! Solve an eigenproblem
-call eigh(Am, Bm, lam, c)
-
-print *, "n, energy, exact energy, error"
-do i = 1, 20
-    En = 1._dp/2 + i-1
-    print "(i4, f30.8, f18.8, es12.2)", i, lam(i), En, abs(lam(i)-En)
-end do
+call lho(Nbd, xq, wq, B, Bp)
 
 end program
