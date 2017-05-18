@@ -1,0 +1,9 @@
+&domain
+  nsub = -1
+  T_eV = 3
+  dt = 1.0
+  ecut_eV = 20
+  nband = 10
+  arpack_ncv = 45
+  scf_iter = 38
+/

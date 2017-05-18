@@ -59,6 +59,9 @@ set(SRC
     ewald.f90
 
     ffte.f90
+
+    mixings.f90
+    efermi.f90
 )
 
 # LIBINT
@@ -94,6 +97,18 @@ else()
     set(SRC ${SRC}
         umfpack.dum.f90
     )
+endif()
+
+# ARPACK
+if(WITH_ARPACK)
+    set(SRC ${SRC}
+        arpack.f90
+    )
+    if(WITH_MPI)
+        set(SRC ${SRC}
+            pksdft_fft.f90
+        )
+    endif()
 endif()
 
 # FFTW
@@ -137,6 +152,9 @@ add_subdirectory(ffte)
 add_subdirectory(tests)
 
 target_link_libraries(hfsolver PUBLIC hfsolver::ffte)
+if(WITH_ARPACK)
+    target_link_libraries(hfsolver PUBLIC p::arpack)
+endif()
 
 install(TARGETS hfsolver
         RUNTIME DESTINATION bin

@@ -118,6 +118,13 @@ if(WITH_UMFPACK)
     set(LIBS ${LIBS} ${UMFPACK_LIBRARIES})
 endif()
 
+# ARPACK
+set(WITH_ARPACK no
+    CACHE BOOL "Build with ARPPACK support")
+if(WITH_ARPACK)
+    find_package(ARPACK REQUIRED)
+endif()
+
 # These need to go before Lapack
 set(WITH_BDDC no
     CACHE BOOL "Build with BDDC support")
