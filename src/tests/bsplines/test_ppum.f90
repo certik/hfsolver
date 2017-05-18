@@ -241,12 +241,12 @@ real(dp), allocatable :: B(:,:), Bp(:,:)
 ppu = 3
 penr = 4
 Nenr = penr+1
-Ne = 20
+Ne = 7
 alpha = 1.5_dp
 xmin = -10
 xmax = 10
 
-Nq = 64
+Nq = 10
 Nq_total = Nq*(2*Ne-1)
 
 Nb = Nenr*Ne
