@@ -1,5 +1,6 @@
 module ppum
 use types, only: dp
+use constants, only: pi
 use bsplines, only: bspline, bspline_der, bspline_der2
 use mesh, only: meshexp
 use quadrature, only: gauss_pts, gauss_wts
@@ -107,8 +108,16 @@ contains
         x0 = (rmin+rmax)/2
         jac = (rmax-rmin)/2
         do j = 1, Nenr
-            enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1)
-            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac
+            if (j == Nenr .and. abs(x0) < 3) then
+                enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4)
+                enrp(:,j,i) = -xq*exp(-xq**2/2) / pi**(1._dp/4)
+            else if (j == Nenr-1 .and. abs(x0) < 3) then
+                enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
+                enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
+            else
+                enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1)
+                enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac
+            end if
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
                 enrp(:,j,i) = 0
