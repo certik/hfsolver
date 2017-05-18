@@ -51,7 +51,7 @@ print *, "Eigensolver"
 call eigh(Am, Bm, lam, c)
 
 print *, "n, energy, exact energy, error"
-do i = 1, Nb
+do i = 1, min(Nb, 20)
     En = 0.5_dp + (i-1)
     print "(i4, f30.8, f18.8, es12.2)", i, lam(i), En, abs(lam(i)-En)
 end do
