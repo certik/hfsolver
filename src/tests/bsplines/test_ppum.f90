@@ -242,8 +242,8 @@ penr = 4
 Nenr = penr+1
 Ne = 20
 alpha = 1.5_dp
-xmin = -100
-xmax = 100
+xmin = -10
+xmax = 10
 
 Nq = 64
 Nq_total = Nq*(2*Ne-1)
