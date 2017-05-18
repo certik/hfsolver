@@ -16,7 +16,7 @@ private
 public pfft3_init, preal2fourier, pfourier2real, real_space_vectors, &
     reciprocal_space_vectors, calculate_myxyz, pintegral, pintegralG, &
     free_energy, free_energy_min, radial_potential_fourier, psum, pmaxval, &
-    collate
+    collate, poisson_kernel
 
 interface preal2fourier
     module procedure preal2fourier_real
