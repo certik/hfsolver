@@ -7,7 +7,7 @@ use linalg, only: eigh
 use utils, only: stop_error
 implicit none
 
-integer, parameter :: n = 30, k = 6, Nq=7
+integer, parameter :: n = 40, k = 6, Nq=64
 integer, parameter :: N_intervals = n-k+1
 integer, parameter :: Nq_total = Nq*N_intervals, Nb=n-2
 real(dp) :: t(n+k), rmin, rmax, a
@@ -22,10 +22,9 @@ allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
 allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
 allocate(B(Nq_total, n), Bp(Nq_total, n), Bpp(Nq_total, n))
 
-rmin = 0
-rmax = 30
-a = 6e5
-a = 30
+rmin = -10
+rmax = 10
+a = 1
 Z = 2
 l = 2
 
@@ -64,7 +63,7 @@ do i = 1, Nb
         ! A
         ! Both of these work:
         !hq = -B(:,i)*Bpp(:,j)/2 + B(:,i)*B(:,j)*(-Z/xq+l*(l+1)/(2*xq**2))
-        hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)*(-Z/xq+l*(l+1)/(2*xq**2))
+        hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)*(xq**2)/2
         Am(i,j) = sum(wq*hq)
 
         ! B
@@ -94,7 +93,7 @@ call eigh(Am, Bm, lam, c)
 
 print *, "n, energy, exact energy, error"
 do i = 1, Nb
-    En = -Z**2/(2._dp*(i+l)**2)
+    En = 0.5_dp + (i-1)
     print "(i4, f30.8, f18.8, es12.2)", i, lam(i), En, abs(lam(i)-En)
 end do
 
