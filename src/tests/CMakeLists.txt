@@ -98,6 +98,8 @@ ADDPROG(ofmd_fft)
 
 ADDTEST(test_poisson_fft)
 
+ADDTEST(test_fermi_dirac)
+
 
 if(WITH_PETSC)
     ADDTEST(test_petsc)
@@ -120,6 +122,14 @@ if(WITH_UMFPACK)
     add_executable(test_umfpack_c test_umfpack_c.c)
     target_link_libraries(test_umfpack_c ${LIBS})
     add_test(test_umfpack_c ${PROJECT_BINARY_DIR}/test_umfpack_c)
+endif()
+
+if(WITH_ARPACK)
+    ADDTEST(test_arpack)
+    if(WITH_MPI)
+        ADDMPIEXECUTABLE(test_parpack)
+        ADDMPITEST(test_parpack parpack 4)
+    endif()
 endif()
 
 add_subdirectory(thesis)

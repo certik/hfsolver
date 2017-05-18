@@ -303,12 +303,30 @@ interface
     COMPLEX(dp) ZX(*),ZY(*)
     END SUBROUTINE
 
+    SUBROUTINE DAXPY(N,DA,DX,INCX,DY,INCY)
+    import :: dp
+    integer :: INCX, INCY, N
+    real(dp) :: DA, DX(*), DY(*)
+    END SUBROUTINE
+
     SUBROUTINE DGEMM(TRANSA,TRANSB,M,N,K,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
     import :: dp
     DOUBLE PRECISION ALPHA,BETA
     INTEGER K,LDA,LDB,LDC,M,N
     CHARACTER TRANSA,TRANSB
     REAL(dp) A(LDA,*),B(LDB,*),C(LDC,*)
+    END SUBROUTINE
+
+    real(dp) FUNCTION DNRM2(N,X,INCX)
+    import :: dp
+    integer :: INCX, N
+    real(dp) :: X(*)
+    END FUNCTION
+
+    SUBROUTINE DSCAL(N,DA,DX,INCX)
+    import :: dp
+    real(dp) :: DA, DX(*)
+    integer :: INCX, N
     END SUBROUTINE
 
     SUBROUTINE DSYMM(SIDE,UPLO,M,N,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
