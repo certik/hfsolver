@@ -64,6 +64,14 @@ end subroutine
 
 ! mpi_send
 
+subroutine mpi_send_float(buffer, n, datatype, dest, tag, comm, ierr)
+integer, intent(in) :: n
+real(dp), intent(in) :: buffer
+integer, intent(in) :: datatype, dest, tag, comm
+integer, intent(out) :: ierr
+call mpi_send(buffer, n, datatype, dest, tag, comm, ierr)
+end subroutine
+
 subroutine mpi_send_floats(buffer, n1, n2, n3, datatype, dest, tag, comm, ierr)
 integer, intent(in) :: n1, n2, n3
 real(dp), intent(in) :: buffer(n1,n2,n3)
@@ -73,6 +81,16 @@ call mpi_send(buffer, n1*n2*n3, datatype, dest, tag, comm, ierr)
 end subroutine
 
 ! mpi_recv
+
+subroutine mpi_recv_float(buffer, n, datatype, source, tag, comm, &
+        stat, ierr)
+use mpi, only: MPI_STATUS_SIZE
+integer, intent(in) :: n
+real(dp), intent(out) :: buffer
+integer, intent(in) :: datatype, source, tag, comm
+integer, intent(out) :: stat(MPI_STATUS_SIZE), ierr
+call mpi_recv(buffer, n, datatype, source, tag, comm, stat, ierr)
+end subroutine
 
 subroutine mpi_recv_floats(buffer, n1, n2, n3, datatype, source, tag, comm, &
         stat, ierr)
