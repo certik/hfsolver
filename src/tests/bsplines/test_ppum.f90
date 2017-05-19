@@ -12,11 +12,12 @@ public do_ppum_basis
 
 contains
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha, ortho, Nq, &
-            xq, wq, B, Bp)
-    integer, intent(in) :: p, Ne, Nenr, Nq, ortho
-    real(dp), intent(in) :: xmin, xmax, alpha
+    subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
+            eps, xq, wq, B, Bp, Bactive)
+    integer, intent(in) :: p, Ne, penr, Nenr, Nq, ortho
+    real(dp), intent(in) :: xmin, xmax, alpha, eps
     real(dp), intent(out) :: xq(:), wq(:), B(:,:,:), Bp(:,:,:)
+    logical, intent(out) :: Bactive(:,:)
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac, x0
@@ -109,24 +110,31 @@ contains
     end do
 
     ! Construct enrichment functions enr(x)
+    enr = 0
+    enrp = 0
     do i = 1, Ne
         dx = (xmax-xmin)/Ne*(alpha-1)/2
         rmin = (xmax-xmin)/Ne * (i-1) + xmin - dx
         rmax = (xmax-xmin)/Ne * i + xmin + dx
         x0 = (rmin+rmax)/2
         jac = (rmax-rmin)/2
-        do j = 1, Nenr
+        do j = 1, penr
+            enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1) * &
+                sqrt(j-1 + 1._dp/2)/sqrt(jac)
+            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac * &
+                sqrt(j-1 + 1._dp/2)/sqrt(jac)
+            where (xq < rmin .or. xq > rmax)
+                enr(:,j,i) = 0
+                enrp(:,j,i) = 0
+            end where
+        end do
+        do j = penr+1, Nenr
             if (j == Nenr .and. abs(x0) < 3) then
                 enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4)
                 enrp(:,j,i) = -xq*exp(-xq**2/2) / pi**(1._dp/4)
             else if (j == Nenr-1 .and. abs(x0) < 3) then
                 enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
                 enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
-            else
-                enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1) * &
-                    sqrt(j-1 + 1._dp/2)/sqrt(jac)
-                enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac * &
-                    sqrt(j-1 + 1._dp/2)/sqrt(jac)
             end if
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
@@ -136,6 +144,7 @@ contains
     end do
 
     ! Orthogonalize the enrichment enr(x) -> enrn(x)
+    Bactive = .false.
     do i = 1, Ne
         do j = 1, Nenr
         do k = 1, Nenr
@@ -151,8 +160,11 @@ contains
                 enrn (:,j,i) = enrn (:,j,i) + vecs(k,j)*enr (:,k,i)
                 enrnp(:,j,i) = enrnp(:,j,i) + vecs(k,j)*enrp(:,k,i)
             end do
-            enrn (:,j,i) = enrn (:,j,i) / sqrt(eigs(j))
-            enrnp(:,j,i) = enrnp(:,j,i) / sqrt(eigs(j))
+            if (abs(eigs(j)) > eps) then
+                Bactive(j,i) = .true.
+                enrn (:,j,i) = enrn (:,j,i) / sqrt(eigs(j))
+                enrnp(:,j,i) = enrnp(:,j,i) / sqrt(eigs(j))
+            end if
         end do
     end do
 
@@ -173,6 +185,7 @@ contains
     select case (ortho)
         case (0)
             ! Do not use orthogonalized functions
+            Bactive = .true.
         case (1)
             ! use orthogonalized functions
             enr = enrn
@@ -299,9 +312,10 @@ use utils, only: stop_error
 use schroed_util, only: lho
 implicit none
 integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u, ortho
-real(dp) :: alpha, xmin, xmax
+real(dp) :: alpha, xmin, xmax, eps
 real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:)
+logical, allocatable :: Bactive(:,:)
 
 ppu = 3
 penr = 3
@@ -311,6 +325,7 @@ alpha = 1.5_dp
 xmin = -10
 xmax = 10
 ortho = 1
+eps = 1e-12_dp
 
 Nq = 10
 Nq_total = Nq*(2*Ne-1)
@@ -322,17 +337,22 @@ allocate(B_(Nq_total,Nenr,Ne))
 allocate(B(Nq_total,Nb))
 allocate(Bp_(Nq_total,Nenr,Ne))
 allocate(Bp(Nq_total,Nb))
+allocate(Bactive(Nenr,Ne))
 
 print *, "Evaluating basis functions"
-call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, ortho, Nq, xq, wq, B_, Bp_)
+call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
+    eps, xq, wq, B_, Bp_, Bactive)
 
 ! Filter functions that are non-zero at the boundaries
 Nbd = 0
 do i = 2, Ne-1
     do j = 1, Nenr
-        Nbd = Nbd+1
-        B(:,Nbd) = B_(:,j,i)
-        Bp(:,Nbd) = Bp_(:,j,i)
+        print *, i, j, Bactive(j,i)
+        if (Bactive(j,i)) then
+            Nbd = Nbd+1
+            B(:,Nbd) = B_(:,j,i)
+            Bp(:,Nbd) = Bp_(:,j,i)
+        end if
     end do
 end do
 
