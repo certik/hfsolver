@@ -49,9 +49,9 @@ end do
 print *, "Eigensolver"
 
 lam = eigvals(Am)
-print *, "cond A:", maxval(abs(lam))/minval(abs(lam))
+print "('cond A: ', es10.2)", maxval(abs(lam))/minval(abs(lam))
 lam = eigvals(Bm)
-print *, "cond B:", maxval(abs(lam))/minval(abs(lam))
+print "('cond B: ', es10.2)", maxval(abs(lam))/minval(abs(lam))
 
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, c)
