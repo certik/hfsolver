@@ -1,6 +1,6 @@
 module schroed_util
 use types, only: dp
-use linalg, only: eigh
+use linalg, only: eigh, eigvals
 use utils, only: stop_error
 implicit none
 private
@@ -47,6 +47,12 @@ end do
 
 
 print *, "Eigensolver"
+
+lam = eigvals(Am)
+print *, "cond A:", maxval(abs(lam))/minval(abs(lam))
+lam = eigvals(Bm)
+print *, "cond B:", maxval(abs(lam))/minval(abs(lam))
+
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, c)
 
