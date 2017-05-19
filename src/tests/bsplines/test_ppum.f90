@@ -115,8 +115,10 @@ contains
                 enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
                 enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
             else
-                enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1)
-                enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac
+                enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1) * &
+                    sqrt(j-1 + 1._dp/2)
+                enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac * &
+                    sqrt(j-1 + 1._dp/2)
             end if
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
