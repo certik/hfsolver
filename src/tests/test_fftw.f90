@@ -15,8 +15,8 @@ real(dp) :: t1, t2, t3
 
 ! This works, but is slow due to y,ydft not being aligned to exploit SIMD
 ! The dimensions (4, 8, 16) must be reversed:
-plan = fftw_plan_dft_3d(16, 8, 4, y3, ydft3, FFTW_FORWARD, FFTW_ESTIMATE)
 y3 = 0
+plan = fftw_plan_dft_3d(16, 8, 4, y3, ydft3, FFTW_FORWARD, FFTW_ESTIMATE)
 call fftw_execute_dft(plan, y3, ydft3)
 call fftw_destroy_plan(plan)
 
