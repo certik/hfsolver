@@ -43,6 +43,7 @@ if(WITH_MPI)
     endif()
 endif()
 if(WITH_ARPACK)
+    addtest(test_sch1d_eig)
     addtest(test_sch3d_eig)
 endif()
 
