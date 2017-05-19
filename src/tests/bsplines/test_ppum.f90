@@ -5,14 +5,16 @@ use bsplines, only: bspline, bspline_der, bspline_der2
 use mesh, only: meshexp
 use quadrature, only: gauss_pts, gauss_wts
 use utils, only: stop_error
+use linalg, only: eigh
 implicit none
 private
 public do_ppum_basis
 
 contains
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha, Nq, xq, wq, B, Bp)
-    integer, intent(in) :: p, Ne, Nenr, Nq
+    subroutine do_ppum_basis(p, xmin, xmax, Ne, Nenr, alpha, ortho, Nq, &
+            xq, wq, B, Bp)
+    integer, intent(in) :: p, Ne, Nenr, Nq, ortho
     real(dp), intent(in) :: xmin, xmax, alpha
     real(dp), intent(out) :: xq(:), wq(:), B(:,:,:), Bp(:,:,:)
     integer ::  N_intervals, Nq_total
@@ -21,7 +23,8 @@ contains
     real(dp), allocatable :: t(:), xiq(:), wtq(:), x(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
-    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:)
+    real(dp), allocatable :: Sm(:,:), eigs(:), vecs(:,:)
+    real(dp), allocatable :: enr(:,:,:), enrp(:,:,:), enrn(:,:,:), enrnp(:,:,:)
     real(dp), allocatable :: mesh(:)
     integer :: i, j, u, bindex
     integer :: n, k
@@ -57,6 +60,11 @@ contains
     allocate(Spp(Nq_total), wipp(Nq_total,Ne))
     allocate(enr(Nq_total,Nenr,Ne))
     allocate(enrp(Nq_total,Nenr,Ne))
+    allocate(enrn(Nq_total,Nenr,Ne))
+    allocate(enrnp(Nq_total,Nenr,Ne))
+    allocate(Sm(Nenr,Nenr))
+    allocate(eigs(Nenr))
+    allocate(vecs(Nenr,Nenr))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -116,9 +124,9 @@ contains
                 enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
             else
                 enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1) * &
-                    sqrt(j-1 + 1._dp/2)
+                    sqrt(j-1 + 1._dp/2)/sqrt(jac)
                 enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac * &
-                    sqrt(j-1 + 1._dp/2)
+                    sqrt(j-1 + 1._dp/2)/sqrt(jac)
             end if
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
@@ -126,6 +134,52 @@ contains
             end where
         end do
     end do
+
+    ! Orthogonalize the enrichment enr(x) -> enrn(x)
+    do i = 1, Ne
+        do j = 1, Nenr
+        do k = 1, Nenr
+            Sm(j,k) = sum(enr(:,j,i)*enr(:,k,i)*wq)
+        end do
+        end do
+        call eigh(Sm, eigs, vecs)
+        print *, eigs
+        do j = 1, Nenr
+            enrn(:,j,i) = 0
+            enrnp(:,j,i) = 0
+            do k = 1, Nenr
+                enrn (:,j,i) = enrn (:,j,i) + vecs(k,j)*enr (:,k,i)
+                enrnp(:,j,i) = enrnp(:,j,i) + vecs(k,j)*enrp(:,k,i)
+            end do
+            enrn (:,j,i) = enrn (:,j,i) / sqrt(eigs(j))
+            enrnp(:,j,i) = enrnp(:,j,i) / sqrt(eigs(j))
+        end do
+    end do
+
+    !do i = 1, Ne
+    !    do j = 1, Nenr
+    !    do k = 1, Nenr
+    !        Sm(j,k) = sum(enrn(:,j,i)*enrn(:,k,i)*wq)
+    !    end do
+    !    print *, j, Sm(j,:)
+    !    end do
+    !    call eigh(Sm, eigs, vecs)
+    !    print *, eigs
+    !    print *
+    !end do
+    !stop "OK"
+
+    ! Use the orthogonalized functions
+    select case (ortho)
+        case (0)
+            ! Do not use orthogonalized functions
+        case (1)
+            ! use orthogonalized functions
+            enr = enrn
+            enrp = enrnp
+        case default
+            call stop_error("Invalid 'ortho'.")
+    end select
 
     ! Construct basis functions B = wi*enr
     do i = 1, Ne
@@ -244,18 +298,19 @@ use linalg, only: eigh
 use utils, only: stop_error
 use schroed_util, only: lho
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u, ortho
 real(dp) :: alpha, xmin, xmax
 real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:)
 
 ppu = 3
-penr = 4
-Nenr = penr+1
+penr = 3
+Nenr = penr+2
 Ne = 7
 alpha = 1.5_dp
 xmin = -10
 xmax = 10
+ortho = 1
 
 Nq = 10
 Nq_total = Nq*(2*Ne-1)
@@ -269,7 +324,7 @@ allocate(Bp_(Nq_total,Nenr,Ne))
 allocate(Bp(Nq_total,Nb))
 
 print *, "Evaluating basis functions"
-call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, Nq, xq, wq, B_, Bp_)
+call do_ppum_basis(ppu, xmin, xmax, Ne, Nenr, alpha, ortho, Nq, xq, wq, B_, Bp_)
 
 ! Filter functions that are non-zero at the boundaries
 Nbd = 0
