@@ -129,10 +129,10 @@ contains
             end where
         end do
         do j = penr+1, Nenr
-            if (j == Nenr .and. abs(x0) < 3) then
+            if (j == Nenr) then
                 enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4)
                 enrp(:,j,i) = -xq*exp(-xq**2/2) / pi**(1._dp/4)
-            else if (j == Nenr-1 .and. abs(x0) < 3) then
+            else if (j == Nenr-1) then
                 enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
                 enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
             end if
@@ -325,7 +325,7 @@ alpha = 1.5_dp
 xmin = -10
 xmax = 10
 ortho = 1
-eps = 1e-12_dp
+eps = 1e-10_dp
 
 Nq = 10
 Nq_total = Nq*(2*Ne-1)
