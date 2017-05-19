@@ -328,7 +328,7 @@ xmax = 10
 ortho = 1
 eps = 1e-10_dp
 
-Nq = 10
+Nq = 64
 Nq_total = Nq*(2*Ne-1)
 
 Nb = Nenr*Ne
