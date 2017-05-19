@@ -144,6 +144,7 @@ contains
     end do
 
     ! Orthogonalize the enrichment enr(x) -> enrn(x)
+    print *, "Orthogonalization (eigs per element):"
     Bactive = .false.
     do i = 1, Ne
         do j = 1, Nenr
@@ -152,7 +153,7 @@ contains
         end do
         end do
         call eigh(Sm, eigs, vecs)
-        print *, eigs
+        print "(200es8.1)", eigs
         do j = 1, Nenr
             enrn(:,j,i) = 0
             enrnp(:,j,i) = 0
