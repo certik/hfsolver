@@ -348,7 +348,7 @@ call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
 Nbd = 0
 do i = 2, Ne-1
     do j = 1, Nenr
-        print *, i, j, Bactive(j,i)
+        !print *, i, j, Bactive(j,i)
         if (Bactive(j,i)) then
             Nbd = Nbd+1
             B(:,Nbd) = B_(:,j,i)
