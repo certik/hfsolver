@@ -326,7 +326,7 @@ alpha = 1.5_dp
 xmin = -10
 xmax = 10
 ortho = 1
-eps = 1e-10_dp
+eps = 1e-8_dp
 
 Nq = 64
 Nq_total = Nq*(2*Ne-1)
