@@ -10,6 +10,7 @@ target_link_libraries(converged_energies hfsolver)
 
 addprog(poisson2d)
 addprog(laplace2d_eig)
+addprog(schroed1d)
 addprog(schroed2d)
 addprog(schroed3d)
 addprog(conv_poisson3d)
