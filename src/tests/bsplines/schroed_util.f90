@@ -8,9 +8,11 @@ public lho, radial
 
 contains
 
-subroutine lho(xq, wq, B, Bp)
+subroutine lho(xq, wq, B, Bp, lam, condA, condB)
 real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:)
-real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), lam(:), hq(:)
+real(dp), allocatable, intent(out) :: lam(:)
+real(dp), intent(out) :: condA, condB
+real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), hq(:)
 real(dp) :: En
 integer :: i, j, Nb
 Nb = size(B, 2)
@@ -49,9 +51,11 @@ end do
 print *, "Eigensolver"
 
 lam = eigvals(Am)
-print "('cond A: ', es10.2)", maxval(abs(lam))/minval(abs(lam))
+condA = maxval(abs(lam))/minval(abs(lam))
+print "('cond A: ', es10.2)", condA
 lam = eigvals(Bm)
-print "('cond B: ', es10.2)", maxval(abs(lam))/minval(abs(lam))
+condB = maxval(abs(lam))/minval(abs(lam))
+print "('cond B: ', es10.2)", condB
 
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, c)

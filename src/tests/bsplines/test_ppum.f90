@@ -321,9 +321,9 @@ use utils, only: stop_error
 use schroed_util, only: lho
 implicit none
 integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, i, j, Nbd, u, ortho
-real(dp) :: alpha, xmin, xmax, eps
+real(dp) :: alpha, xmin, xmax, eps, condA, condB
 real(dp), allocatable :: xq(:), wq(:)
-real(dp), allocatable :: B(:,:), Bp(:,:)
+real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
 
 ppu = 3
 penr = 3
@@ -339,6 +339,6 @@ Nq = 64
 print *, "Evaluating basis functions"
 call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
     eps, xq, wq, B, Bp)
-call lho(xq, wq, B, Bp)
+call lho(xq, wq, B, Bp, eigs, condA, condB)
 
 end program
