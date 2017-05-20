@@ -4,7 +4,7 @@ use constants, only: pi
 use bsplines, only: bspline, bspline_der, bspline_der2
 use mesh, only: meshexp
 use quadrature, only: gauss_pts, gauss_wts
-use utils, only: stop_error
+use utils, only: stop_error, assert
 use linalg, only: eigh
 implicit none
 private
@@ -13,11 +13,12 @@ public do_ppum_basis
 contains
 
     subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
-            eps, xq, wq, B, Bp, Bactive)
+            eps, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne, penr, Nenr, Nq, ortho
     real(dp), intent(in) :: xmin, xmax, alpha, eps
-    real(dp), intent(out) :: xq(:), wq(:), B(:,:,:), Bp(:,:,:)
-    logical, intent(out) :: Bactive(:,:)
+    real(dp), intent(out) :: xq(:), wq(:)
+    real(dp), allocatable, intent(out) :: B(:,:), Bp(:,:)
+    logical, allocatable :: Bactive(:,:)
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac, x0
@@ -27,7 +28,7 @@ contains
     real(dp), allocatable :: Sm(:,:), eigs(:), vecs(:,:)
     real(dp), allocatable :: enr(:,:,:), enrp(:,:,:), enrn(:,:,:), enrnp(:,:,:)
     real(dp), allocatable :: mesh(:)
-    integer :: i, j, u, bindex
+    integer :: i, j, u, bindex, Nb
     integer :: n, k
     k = p+1
     if (mod(p, 2) == 0) then
@@ -66,6 +67,7 @@ contains
     allocate(Sm(Nenr,Nenr))
     allocate(eigs(Nenr))
     allocate(vecs(Nenr,Nenr))
+    allocate(Bactive(Nenr,Ne))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -196,47 +198,53 @@ contains
     end select
 
     ! Construct basis functions B = wi*enr
+    allocate(B(Nq_total,count(Bactive)))
+    allocate(Bp(Nq_total,count(Bactive)))
+    Nb = 0
     do i = 1, Ne
         do j = 1, Nenr
-            B(:,j,i)  = wi(:,i)*enr(:,j,i)
-            Bp(:,j,i) = wip(:,i)*enr(:,j,i)+wi(:,i)*enrp(:,j,i)
+            if (Bactive(j,i)) then
+                Nb = Nb+1
+                B(:,Nb)  = wi(:,i)*enr(:,j,i)
+                Bp(:,Nb) = wip(:,i)*enr(:,j,i)+wi(:,i)*enrp(:,j,i)
+            end if
         end do
     end do
+    call assert(Nb == count(Bactive))
 
+    !open(newunit=u, file="pu.txt", status="replace")
+    !write(u,*) xq
+    !do i = 1, Ne
+    !    write(u,*) W(:,i)
+    !end do
+    !do i = 1, Ne
+    !    write(u,*) wi(:,i)
+    !end do
+    !do i = 1, Ne
+    !    write(u,*) wip(:,i)
+    !end do
+    !do i = 1, Ne
+    !    write(u,*) wipp(:,i)
+    !end do
+    !close(u)
 
-    open(newunit=u, file="pu.txt", status="replace")
-    write(u,*) xq
-    do i = 1, Ne
-        write(u,*) W(:,i)
-    end do
-    do i = 1, Ne
-        write(u,*) wi(:,i)
-    end do
-    do i = 1, Ne
-        write(u,*) wip(:,i)
-    end do
-    do i = 1, Ne
-        write(u,*) wipp(:,i)
-    end do
-    close(u)
+    !open(newunit=u, file="enr.txt", status="replace")
+    !do i = 1, Ne
+    !    do j = 1, Nenr
+    !        write(u,*) enr(:,j,i)
+    !        write(u,*) enrp(:,j,i)
+    !    end do
+    !end do
+    !close(u)
 
-    open(newunit=u, file="enr.txt", status="replace")
-    do i = 1, Ne
-        do j = 1, Nenr
-            write(u,*) enr(:,j,i)
-            write(u,*) enrp(:,j,i)
-        end do
-    end do
-    close(u)
-
-    open(newunit=u, file="ppum.txt", status="replace")
-    do i = 1, Ne
-        do j = 1, Nenr
-            write(u,*) B(:,j,i)
-            write(u,*) Bp(:,j,i)
-        end do
-    end do
-    close(u)
+    !open(newunit=u, file="ppum.txt", status="replace")
+    !do i = 1, Ne
+    !    do j = 1, Nenr
+    !        write(u,*) B(:,j,i)
+    !        write(u,*) Bp(:,j,i)
+    !    end do
+    !end do
+    !close(u)
     end subroutine
 
     function legendre_p(x, n) result(r)
@@ -314,9 +322,8 @@ use schroed_util, only: lho
 implicit none
 integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u, ortho
 real(dp) :: alpha, xmin, xmax, eps
-real(dp), allocatable :: B_(:,:,:), Bp_(:,:,:), xq(:), wq(:), hq(:)
+real(dp), allocatable :: xq(:), wq(:), hq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:)
-logical, allocatable :: Bactive(:,:)
 
 ppu = 3
 penr = 3
@@ -334,37 +341,12 @@ Nq_total = Nq*(2*Ne-1)
 Nb = Nenr*Ne
 
 allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
-allocate(B_(Nq_total,Nenr,Ne))
-allocate(B(Nq_total,Nb))
-allocate(Bp_(Nq_total,Nenr,Ne))
-allocate(Bp(Nq_total,Nb))
-allocate(Bactive(Nenr,Ne))
 
 print *, "Evaluating basis functions"
 call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
-    eps, xq, wq, B_, Bp_, Bactive)
+    eps, xq, wq, B, Bp)
 
-! Filter functions that are non-zero at the boundaries
-Nbd = 0
-do i = 2, Ne-1
-    do j = 1, Nenr
-        !print *, i, j, Bactive(j,i)
-        if (Bactive(j,i)) then
-            Nbd = Nbd+1
-            B(:,Nbd) = B_(:,j,i)
-            Bp(:,Nbd) = Bp_(:,j,i)
-        end if
-    end do
-end do
-
-open(newunit=u, file="basis.txt", status="replace")
-write(u,*) xq
-do i = 1, Nbd
-    write(u,*) B(:,i)
-    write(u,*) Bp(:,i)
-end do
-close(u)
-
+Nbd = size(B, 2)
 print *, "Nb =", Nb
 print *, "Nbd =", Nbd
 
