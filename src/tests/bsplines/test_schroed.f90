@@ -27,7 +27,7 @@ rmin = -10
 rmax = 10
 a = 1
 call construct_basis()
-call lho(Nb, xq, wq, B, Bp)
+call lho(xq, wq, B(:,:Nb), Bp(:,:Nb))
 
 
 rmin = 0

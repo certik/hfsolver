@@ -8,12 +8,12 @@ public lho, radial
 
 contains
 
-subroutine lho(Nb, xq, wq, B, Bp)
-integer, intent(in) :: Nb
+subroutine lho(xq, wq, B, Bp)
 real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:)
 real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), lam(:), hq(:)
 real(dp) :: En
-integer :: i, j
+integer :: i, j, Nb
+Nb = size(B, 2)
 allocate(hq(size(xq)))
 allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
 print *, "Assembly"

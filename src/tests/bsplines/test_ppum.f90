@@ -16,8 +16,7 @@ contains
             eps, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne, penr, Nenr, Nq, ortho
     real(dp), intent(in) :: xmin, xmax, alpha, eps
-    real(dp), intent(out) :: xq(:), wq(:)
-    real(dp), allocatable, intent(out) :: B(:,:), Bp(:,:)
+    real(dp), allocatable, intent(out) :: xq(:), wq(:), B(:,:), Bp(:,:)
     logical, allocatable :: Bactive(:,:)
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
@@ -55,6 +54,7 @@ contains
 
     Nq_total = Nq*(2*Ne-1)
 
+    allocate(xq(Nq_total), wq(Nq_total))
     allocate(t(n+k), xiq(Nq), wtq(Nq), x(Nq))
     allocate(W(Nq_total,Ne), Wp(Nq_total,Ne), Wpp(Nq_total,Ne))
     allocate(S(Nq_total), wi(Nq_total,Ne))
@@ -320,9 +320,9 @@ use linalg, only: eigh
 use utils, only: stop_error
 use schroed_util, only: lho
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, Nb, i, j, Nbd, u, ortho
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, i, j, Nbd, u, ortho
 real(dp) :: alpha, xmin, xmax, eps
-real(dp), allocatable :: xq(:), wq(:), hq(:)
+real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:)
 
 ppu = 3
@@ -334,22 +334,11 @@ xmin = -10
 xmax = 10
 ortho = 1
 eps = 1e-8_dp
-
 Nq = 64
-Nq_total = Nq*(2*Ne-1)
-
-Nb = Nenr*Ne
-
-allocate(xq(Nq_total), wq(Nq_total), hq(Nq_total))
 
 print *, "Evaluating basis functions"
 call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
     eps, xq, wq, B, Bp)
-
-Nbd = size(B, 2)
-print *, "Nb =", Nb
-print *, "Nbd =", Nbd
-
-call lho(Nbd, xq, wq, B, Bp)
+call lho(xq, wq, B, Bp)
 
 end program
