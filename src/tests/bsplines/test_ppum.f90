@@ -40,7 +40,8 @@ contains
         end if
     end if
     bindex = n/2+1
-    print *, "Constructing B-spline basis n =", n, ", k =", k
+    print *, "Evaluating basis functions"
+    print *, "Constructing B-spline n =", n, ", k =", k
     N_intervals = n-k+1
 
     allocate(mesh(2*Ne))
@@ -336,7 +337,6 @@ ortho = 1
 eps = 1e-8_dp
 Nq = 64
 
-print *, "Evaluating basis functions"
 call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
     eps, xq, wq, B, Bp)
 call lho(xq, wq, B, Bp, eigs, condA, condB)
