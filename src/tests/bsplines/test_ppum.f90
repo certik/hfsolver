@@ -321,15 +321,15 @@ use linalg, only: eigh
 use utils, only: stop_error
 use schroed_util, only: lho
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, i, j, Nbd, u, ortho
+integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
 real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
 
 ppu = 3
 penr = 3
-Nenr = penr+2
-Ne = 7
+Nenr = penr
+Ne = 2
 alpha = 1.5_dp
 xmin = -10
 xmax = 10
@@ -337,8 +337,18 @@ ortho = 1
 eps = 1e-8_dp
 Nq = 64
 
-call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
-    eps, xq, wq, B, Bp)
-call lho(xq, wq, B, Bp, eigs, condA, condB)
+open(newunit=u, file="ppum_conv.txt", status="replace")
+do i = 1, 10
+    call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
+        eps, xq, wq, B, Bp)
+    Nb = size(B,2)
+    print *, "Nb =", Nb
+    call lho(xq, wq, B, Bp, eigs, condA, condB)
+    write(u,*) Nb, condA, condB, eigs(:6)
+
+    if (Nb > 300) exit
+    Ne = Ne*2
+end do
+close(u)
 
 end program
