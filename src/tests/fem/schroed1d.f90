@@ -34,7 +34,7 @@ integer :: i, j, iqx, u, Nenr, emin, emax
 
 Nn = Ne*p+1
 allocate(xe(Ne+1))
-xe = meshexp(0._dp, L, 1._dp, Ne) ! uniform mesh on [0, L]
+xe = meshexp(-10._dp, 10._dp, 1._dp, Ne) ! uniform mesh on [0, L]
 
 allocate(xin(p+1), Vq(Nq,Ne), uq(Nq,Ne))
 allocate(xinpu(2)) ! linear functions for PU
@@ -235,28 +235,12 @@ real(dp), intent(out) :: Vq(:,:)
 real(dp), allocatable :: Xn(:), Vn(:), c(:,:)
 real(dp) :: jacx, x(size(xiq))
 integer :: u, n, e, ip, iqx
-! Load the numerical potential
-open(newunit=u, file="../fft/sch1d_grid.txt", status="old")
-read(u, *) n
-allocate(Xn(n), Vn(n))
-read(u, *) Xn
-read(u, *) Vn ! non-periodic potential
-read(u, *) Vn ! skip: density
-read(u, *) Vn ! periodic potential
-if (.not. periodic) then
-    read(u, *) Vn ! atomic potential
-end if
-close(u)
-! Interpolate using cubic splines
-allocate(c(0:4, n-1))
-call spline3pars(Xn, Vn, [2, 2], [0._dp, 0._dp], c)
 ip = 0
 do e = 1, size(xe)-1
     jacx=(xe(e+1)-xe(e))/2;
     x = xe(e) + (xiq + 1) * jacx
     do iqx = 1, size(xiq)
-        ip = iixmin(x(iqx), Xn, ip)
-        Vq(iqx, e) = poly3(x(iqx), c(:, ip))
+        Vq(iqx, e) = x(iqx)**2/2
     end do
 end do
 end subroutine
@@ -502,7 +486,7 @@ use schroed1d_assembly, only: sfem_non_periodic, sfem_periodic_enr, &
     sfem_periodic
 implicit none
 
-integer :: Ne, p, Nq, DOFs, i, u
+integer :: Ne, p, Nq, DOFs, i, u, j
 real(dp), allocatable :: eigs(:)
 real(dp) :: L
 
@@ -511,15 +495,26 @@ p = 50
 !Nq = p+1
 Nq = 64
 L = 5
-call sfem_non_periodic(Ne, p, Nq, L, DOFs, eigs)
-print *, "Non-periodic"
-print *, "Ne:", Ne
-print *, "p:", p
-print *, "Nq:", Nq
-print *, "DOFs:", DOFs
-do i = 1, 6
-    print *, i, eigs(i)
+open(newunit=u, file="fem3.txt", status="replace")
+Ne = 3
+do j = 1, 8
+    p = 3
+    Nq = 64
+    L = 20
+    call sfem_non_periodic(Ne, p, Nq, L, DOFs, eigs)
+    print *, "Non-periodic"
+    print *, "Ne:", Ne
+    print *, "p:", p
+    print *, "Nq:", Nq
+    print *, "DOFs:", DOFs
+    do i = 1, 6
+        print *, i, eigs(i)
+    end do
+    write(u,*) DOFs, eigs(:6)
+    Ne = Ne * 2
 end do
+close(u)
+stop "OK"
 
 open(newunit=u, file="fem6.txt", status="replace")
 do Ne = 1, 6
