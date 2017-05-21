@@ -318,7 +318,7 @@ program test_ppum
 use types, only: dp
 use ppum, only: do_ppum_basis
 use linalg, only: eigh
-use utils, only: stop_error
+use utils, only: stop_error, assert
 use schroed_util, only: lho
 implicit none
 integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, i, j, u, ortho, Nb
@@ -327,9 +327,9 @@ real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
 
 ppu = 3
-penr = 3
-Nenr = penr
-Ne = 2
+penr = 4
+Nenr = penr+2
+Ne = 1
 alpha = 1.5_dp
 xmin = -10
 xmax = 10
@@ -344,6 +344,7 @@ do i = 1, 10
     Nb = size(B,2)
     print *, "Nb =", Nb
     call lho(xq, wq, B, Bp, eigs, condA, condB)
+    call assert(size(eigs) >= 6)
     write(u,*) Nb, condA, condB, eigs(:6)
 
     if (Nb > 300) exit
