@@ -36,9 +36,16 @@ contains
     end if
     end function
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
+    subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
             eps, xq, wq, B, Bp)
-    integer, intent(in) :: p, Ne, penr, Nenr, Nq, ortho
+    integer, intent(in) :: p, Ne
+    integer, intent(in) :: penr ! polynomial order of the poly enrichment, e.g.
+        ! penr = 3 means cubic polynomials (i.e. 4 basis functions spanned by:
+        ! 1, x, x^2, x^3)
+    integer, intent(in) :: npenr ! number of non-polynomial enrichments, e.g.
+        ! npenr = 2 means two non-polynomial enrichments will be added to the
+        ! polynomial basis/enrichments of the order penr.
+    integer, intent(in) :: Nq, ortho
     real(dp), intent(in) :: xmin, xmax, alpha, eps
     real(dp), allocatable, intent(out) :: xq(:), wq(:), B(:,:), Bp(:,:)
     logical, allocatable :: Bactive(:,:)
@@ -53,7 +60,8 @@ contains
     real(dp), allocatable :: mesh(:)
     real(dp) :: rc
     integer :: i, j, u, bindex, Nb
-    integer :: n, k
+    integer :: n, k, m, Nenr
+    Nenr = (penr+1) + npenr
     k = p+1
     if (mod(p, 2) == 0) then
         n = k+2
@@ -145,31 +153,40 @@ contains
         rmin = (xmax-xmin)/Ne * (i-1) + xmin - dx
         rmax = (xmax-xmin)/Ne * i + xmin + dx
         x0 = (rmin+rmax)/2
+        x0 = min(abs(rmin),abs(rmax),abs(x0))
         jac = (rmax-rmin)/2
-        do j = 1, penr
-            enr(:,j,i) = legendre_p((xq-rmin)/jac-1, j-1) * &
-                sqrt(j-1 + 1._dp/2)/sqrt(jac)
-            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, j-1)/jac * &
-                sqrt(j-1 + 1._dp/2)/sqrt(jac)
+        do m = 0, penr ! m is the polynomial order, e.g. m=2 is quadratic
+            j = m+1 ! j is the basis function number, starts from 1
+            enr(:,j,i) = legendre_p((xq-rmin)/jac-1, m) * &
+                sqrt(m + 1._dp/2)/sqrt(jac)
+            enrp(:,j,i) = legendre_p_der((xq-rmin)/jac-1, m)/jac * &
+                sqrt(m + 1._dp/2)/sqrt(jac)
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
                 enrp(:,j,i) = 0
             end where
         end do
-        do j = penr+1, Nenr
+        do m = 1, npenr ! loop over non-poly enrichments
+            j = m + penr+1 ! total enrichment basis function index
             rc = 300._dp
-            if (j == Nenr) then
-                if (abs(x0) < 2) then
-                enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4) * h(abs(xq), rc)
-                enrp(:,j,i) = (hp(abs(xq), rc)*sign(1._dp, xq)-xq*h(abs(xq), rc))*exp(-xq**2/2) / pi**(1._dp/4)
-                else
-                    enr(:,j,i) = 0
-                    enrp(:,j,i) = 0
-                end if
-            else if (j == Nenr-1) then
-                enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
-                enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
-            end if
+            select case(m)
+                case (1)
+                    if (abs(x0) <= 5) then
+                        enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4) &
+                            * h(abs(xq), rc)
+                        enrp(:,j,i) = (hp(abs(xq), rc)*sign(1._dp, xq) &
+                            - xq*h(abs(xq), rc)) * exp(-xq**2/2) / pi**(1._dp/4)
+                    else
+                        enr(:,j,i) = 0
+                        enrp(:,j,i) = 0
+                    end if
+                case (2)
+                    enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
+                    enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) &
+                        / pi**(1._dp/4)*sqrt(2._dp)
+                case default
+                    call stop_error("non-poly enrichment index not implemented")
+            end select
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
                 enrp(:,j,i) = 0
@@ -352,25 +369,25 @@ use linalg, only: eigh
 use utils, only: stop_error, assert
 use schroed_util, only: lho
 implicit none
-integer :: ppu, Ne, penr, Nenr, Nq, Nq_total, i, j, u, ortho, Nb
+integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
 real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
 
 ppu = 3
-penr = 4
-Nenr = penr+1
+penr = 3
+npenr = 1
 Ne = 1
 alpha = 1.5_dp
 xmin = -10
 xmax = 10
 ortho = 1
-eps = 1e-8_dp
+eps = 1e-14_dp
 Nq = 64
 
 open(newunit=u, file="ppum_conv.txt", status="replace")
 do i = 1, 10
-    call do_ppum_basis(ppu, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
+    call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
         eps, xq, wq, B, Bp)
     Nb = size(B,2)
     print *, "Nb =", Nb
