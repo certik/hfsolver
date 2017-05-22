@@ -12,6 +12,30 @@ public do_ppum_basis
 
 contains
 
+    elemental function h(r, rc)
+    ! C^3 cutoff function h(r)
+    real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
+    real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
+    real(dp) :: h
+    if (r < rc) then
+        h = 1 + 20*(r/rc)**7-70*(r/rc)**6+84*(r/rc)**5-35*(r/rc)**4
+    else
+        h = 0
+    end if
+    end function
+
+    elemental function hp(r, rc)
+    ! C^3 cutoff function h'(r)
+    real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
+    real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
+    real(dp) :: hp
+    if (r < rc) then
+        hp = 140*r**6/rc**7 - 420*r**5/rc**6 + 420*r**4/rc**5 - 140*r**3/rc**4
+    else
+        hp = 0
+    end if
+    end function
+
     subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, Nenr, alpha, ortho, Nq, &
             eps, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne, penr, Nenr, Nq, ortho
@@ -27,6 +51,7 @@ contains
     real(dp), allocatable :: Sm(:,:), eigs(:), vecs(:,:)
     real(dp), allocatable :: enr(:,:,:), enrp(:,:,:), enrn(:,:,:), enrnp(:,:,:)
     real(dp), allocatable :: mesh(:)
+    real(dp) :: rc
     integer :: i, j, u, bindex, Nb
     integer :: n, k
     k = p+1
@@ -132,9 +157,15 @@ contains
             end where
         end do
         do j = penr+1, Nenr
+            rc = 300._dp
             if (j == Nenr) then
-                enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4)
-                enrp(:,j,i) = -xq*exp(-xq**2/2) / pi**(1._dp/4)
+                if (abs(x0) < 2) then
+                enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4) * h(abs(xq), rc)
+                enrp(:,j,i) = (hp(abs(xq), rc)*sign(1._dp, xq)-xq*h(abs(xq), rc))*exp(-xq**2/2) / pi**(1._dp/4)
+                else
+                    enr(:,j,i) = 0
+                    enrp(:,j,i) = 0
+                end if
             else if (j == Nenr-1) then
                 enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
                 enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) /pi**(1._dp/4)*sqrt(2._dp)
@@ -328,7 +359,7 @@ real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
 
 ppu = 3
 penr = 4
-Nenr = penr+2
+Nenr = penr+1
 Ne = 1
 alpha = 1.5_dp
 xmin = -10
@@ -344,10 +375,10 @@ do i = 1, 10
     Nb = size(B,2)
     print *, "Nb =", Nb
     call lho(xq, wq, B, Bp, eigs, condA, condB)
-    call assert(size(eigs) >= 6)
-    write(u,*) Nb, condA, condB, eigs(:6)
+    call assert(size(eigs) >= 4)
+    write(u,*) Nb, condA, condB, eigs(:4)
 
-    if (Nb > 300) exit
+    if (Nb > 180) exit
     Ne = Ne*2
 end do
 close(u)
