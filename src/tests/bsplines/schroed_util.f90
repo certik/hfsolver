@@ -1,6 +1,6 @@
 module schroed_util
 use types, only: dp
-use linalg, only: eigh
+use linalg, only: eigh, eigvals
 use utils, only: stop_error
 implicit none
 private
@@ -8,12 +8,14 @@ public lho, radial
 
 contains
 
-subroutine lho(Nb, xq, wq, B, Bp)
-integer, intent(in) :: Nb
+subroutine lho(xq, wq, B, Bp, lam, condA, condB)
 real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:)
-real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), lam(:), hq(:)
+real(dp), allocatable, intent(out) :: lam(:)
+real(dp), intent(out) :: condA, condB
+real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), hq(:)
 real(dp) :: En
-integer :: i, j
+integer :: i, j, Nb
+Nb = size(B, 2)
 allocate(hq(size(xq)))
 allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
 print *, "Assembly"
@@ -47,6 +49,14 @@ end do
 
 
 print *, "Eigensolver"
+
+lam = eigvals(Am)
+condA = maxval(abs(lam))/minval(abs(lam))
+print "('cond A: ', es10.2)", condA
+lam = eigvals(Bm)
+condB = maxval(abs(lam))/minval(abs(lam))
+print "('cond B: ', es10.2)", condB
+
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, c)
 
