@@ -171,7 +171,7 @@ contains
             rc = 300._dp
             select case(m)
                 case (1)
-                    if (abs(x0) <= 5) then
+                    if (abs(x0) <= 10) then
                         enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4) &
                             * h(abs(xq), rc)
                         enrp(:,j,i) = (hp(abs(xq), rc)*sign(1._dp, xq) &
@@ -396,7 +396,7 @@ do i = 1, 10
     write(u,*) Nb, condA, condB, eigs(:4)
 
     ! Adjust this to ~250 for a longer convergence study
-    if (Nb > 70) exit
+    if (Nb > 200) exit
     Ne = Ne*2
 end do
 close(u)
