@@ -382,7 +382,7 @@ alpha = 1.5_dp
 xmin = -10
 xmax = 10
 ortho = 1
-eps = 1e-14_dp
+eps = 1e-15_dp
 Nq = 64
 
 open(newunit=u, file="ppum_conv.txt", status="replace")
