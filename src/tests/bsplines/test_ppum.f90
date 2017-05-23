@@ -212,7 +212,7 @@ contains
                 enrn (:,j,i) = enrn (:,j,i) + vecs(k,j)*enr (:,k,i)
                 enrnp(:,j,i) = enrnp(:,j,i) + vecs(k,j)*enrp(:,k,i)
             end do
-            if (abs(eigs(j)) > eps) then
+            if (eigs(j) > eps) then
                 Bactive(j,i) = .true.
                 enrn (:,j,i) = enrn (:,j,i) / sqrt(eigs(j))
                 enrnp(:,j,i) = enrnp(:,j,i) / sqrt(eigs(j))
@@ -382,7 +382,7 @@ alpha = 1.5_dp
 xmin = -10
 xmax = 10
 ortho = 1
-eps = 1e-14_dp
+eps = 1e-15_dp
 Nq = 64
 
 open(newunit=u, file="ppum_conv.txt", status="replace")
