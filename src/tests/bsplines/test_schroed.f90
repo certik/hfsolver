@@ -16,7 +16,7 @@ real(dp) :: xiq(Nq), wtq(Nq), xa, xb, jac, x(Nq)
 real(dp), allocatable :: xq(:), wq(:), hq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), Bpp(:,:)
 real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), lam(:)
-real(dp) :: En
+real(dp) :: En, condA, condB
 integer :: i, j, u, l, Z
 
 allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
@@ -27,7 +27,7 @@ rmin = -10
 rmax = 10
 a = 1
 call construct_basis()
-call lho(Nb, xq, wq, B, Bp)
+call lho(xq, wq, B(:,:Nb), Bp(:,:Nb), lam, condA, condB)
 
 
 rmin = 0
