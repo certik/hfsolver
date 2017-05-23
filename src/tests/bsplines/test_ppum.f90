@@ -212,7 +212,7 @@ contains
                 enrn (:,j,i) = enrn (:,j,i) + vecs(k,j)*enr (:,k,i)
                 enrnp(:,j,i) = enrnp(:,j,i) + vecs(k,j)*enrp(:,k,i)
             end do
-            if (abs(eigs(j)) > eps) then
+            if (eigs(j) > eps) then
                 Bactive(j,i) = .true.
                 enrn (:,j,i) = enrn (:,j,i) / sqrt(eigs(j))
                 enrnp(:,j,i) = enrnp(:,j,i) / sqrt(eigs(j))
