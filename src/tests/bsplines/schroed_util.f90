@@ -4,7 +4,7 @@ use linalg, only: eigh, eigvals
 use utils, only: stop_error
 implicit none
 private
-public lho, radial
+public lho, radial, double_well
 
 contains
 
@@ -23,7 +23,6 @@ print *, "Assembly"
 do i = 1, Nb
     do j = 1, Nb
         ! A
-        ! Both of these work:
         hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)*(xq**2)/2
         Am(i,j) = sum(wq*hq)
 
@@ -113,6 +112,74 @@ print *, "n, energy, exact energy, error"
 do i = 1, min(Nb, 20)
     En = -Z**2/(2._dp*(i+l)**2)
     print "(i4, f30.8, f18.8, es12.2)", i, lam(i), En, abs(lam(i)-En)
+end do
+end subroutine
+
+
+subroutine double_well(xq, wq, B, Bp, lam, condA, condB)
+real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:)
+real(dp), allocatable, intent(out) :: lam(:)
+real(dp), intent(out) :: condA, condB
+real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), hq(:), Vq(:), r(:)
+real(dp) :: r0, V0, Xion(2), L
+integer :: i, j, Nb
+Nb = size(B, 2)
+allocate(hq(size(xq)), Vq(size(xq)), r(size(xq)))
+allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
+L = 6
+Xion = L/2 + [-1, 1]
+r0 = 0.5_dp
+V0 = 16
+Vq = 0
+do i = 1, size(Xion)
+    r = abs((xq-Xion(i)))
+    Vq = Vq -V0*exp(-r**2/r0**2)
+end do
+
+print *, "Assembly"
+! Construct matrices A and B
+do i = 1, Nb
+    do j = 1, Nb
+        ! A
+        hq = Bp(:,i)*Bp(:,j)/2 + B(:,i)*B(:,j)*Vq
+        Am(i,j) = sum(wq*hq)
+
+        ! B
+        hq = B(:,i)*B(:,j)
+        Bm(i,j) = sum(wq*hq)
+    end do
+end do
+
+print *, "Checking symmetry"
+do j = 1, Nb
+    do i = 1, j-1
+        if (max(abs(Am(i,j)), abs(Am(j,i))) > tiny(1._dp)) then
+            if (abs(Am(i,j)-Am(j,i)) / max(abs(Am(i,j)), abs(Am(j,i))) &
+                    > 1e-8_dp) then
+                print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
+                call stop_error("Am not symmetric")
+            end if
+        end if
+        if (abs(Bm(i,j)-Bm(j,i)) > 1e-12_dp) call stop_error("Bm not symmetric")
+   end do
+end do
+
+
+print *, "Eigensolver"
+
+lam = eigvals(Am)
+condA = maxval(abs(lam))/minval(abs(lam))
+print "('cond A: ', es10.2)", condA
+lam = eigvals(Bm)
+condB = maxval(abs(lam))/minval(abs(lam))
+print "('cond B: ', es10.2)", condB
+
+! Solve an eigenproblem
+call eigh(Am, Bm, lam, c)
+
+print *, "n, energy"
+do i = 1, min(Nb, 20)
+    print "(i4, f30.8)", i, lam(i)
 end do
 end subroutine
 

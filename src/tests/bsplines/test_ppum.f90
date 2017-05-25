@@ -379,7 +379,7 @@ use types, only: dp
 use ppum, only: do_ppum_basis
 use linalg, only: eigh
 use utils, only: stop_error, assert
-use schroed_util, only: lho
+use schroed_util, only: double_well
 implicit none
 integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
@@ -392,8 +392,8 @@ penr = 3
 npenr = 1
 Ne = 1
 alpha = 1.5_dp
-xmin = -10
-xmax = 10
+xmin = 0
+xmax = 6
 ortho = 1
 eps = 1e-15_dp
 Nq = 64
@@ -405,7 +405,7 @@ do i = 1, 10
         eps, ft_only, xq, wq, B, Bp)
     Nb = size(B,2)
     print *, "Nb =", Nb
-    call lho(xq, wq, B, Bp, eigs, condA, condB)
+    call double_well(xq, wq, B, Bp, eigs, condA, condB)
     call assert(size(eigs) >= 4)
     write(u,*) Nb, condA, condB, eigs(:4)
 
