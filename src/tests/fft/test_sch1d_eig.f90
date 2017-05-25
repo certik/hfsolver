@@ -32,7 +32,7 @@ integer, parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
     1024]
 real(dp), allocatable :: Xion(:)
 
-L = 5
+L = 6
 !allocate(Xion(2))
 !Xion = L/2 + [-1, 1]
 allocate(Xion(1))
@@ -49,19 +49,19 @@ open(newunit=u, file="sch1d_grid.txt", status="replace")
 write(u, *) Ng
 write(u, *) Xn
 !Vn = gaussian_potential(Xn, 12._dp, L/2)
-r0 = 0.5_dp
-r = abs(Xn-2.5_dp)
-V0 = 16
-Vn = -V0*exp(-r**2/r0**2)
+!r0 = 0.5_dp
+!r = abs(Xn-2.5_dp)
+!V0 = 16
+!Vn = -V0*exp(-r**2/r0**2)
 !alpha = 2
 !Vn = 0
 !do i = 1, size(Xion)
 !    r = abs((Xn-Xion(i)))
 !    Vn = Vn -V0*alpha*erfr(alpha*r)
 !end do
-write(u, *) Vn
+!write(u, *) Vn
 !psi = gaussian_density(Xn, 12._dp, L/2)
-ne = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
+!ne = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
 !ne = 0
 !do i = 1, size(Xion)
 !    do k = -5, 5
@@ -71,7 +71,7 @@ ne = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
 !            alpha*erfr(alpha*r)/(2*pi*r**2))
 !    end do
 !end do
-write(u, *) ne
+!write(u, *) ne
 
 ! Solve Poisson
 call real2fourier(ne, psiG)
@@ -88,7 +88,7 @@ deallocate(ne, G, G2, Xn, Vn, r, psiG)
 
 
 open(newunit=u2, file="pw.txt", status="replace")
-do j = 1, size(Ng_list)
+do j = 1, 15 !size(Ng_list)
     Ng = Ng_list(j)
     allocate(ne(Ng))
     allocate(G(Ng), G2(Ng), psi(Ng))
