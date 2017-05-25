@@ -174,22 +174,10 @@ contains
         end do
         do m = 1, npenr ! loop over non-poly enrichments
             j = m + penr+1 ! total enrichment basis function index
-            rc = 300._dp
             select case(m)
                 case (1)
-                    if (abs(x0) <= 5) then
-                        enr(:,j,i) = exp(-xq**2/2) / pi**(1._dp/4) &
-                            * h(abs(xq), rc)
-                        enrp(:,j,i) = (hp(abs(xq), rc)*sign(1._dp, xq) &
-                            - xq*h(abs(xq), rc)) * exp(-xq**2/2) / pi**(1._dp/4)
-                    else
-                        enr(:,j,i) = 0
-                        enrp(:,j,i) = 0
-                    end if
-                case (2)
-                    enr(:,j,i) = xq*exp(-xq**2/2) / pi**(1._dp/4)*sqrt(2._dp)
-                    enrp(:,j,i) = (1-xq**2)*exp(-xq**2/2) &
-                        / pi**(1._dp/4)*sqrt(2._dp)
+                    enr(:,j,i) = enrq(:,m)
+                    enrp(:,j,i) = denrq(:,m)
                 case default
                     call stop_error("non-poly enrichment index not implemented")
             end select
