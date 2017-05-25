@@ -94,7 +94,7 @@ do j = 1, 30 !size(Ng_list)
     end do
     !call load_potential(Xn, .true., Vn)
 
-    nev = min(6, Ng-1)
+    nev = min(4, Ng-1)
     ncv = min(160, Ng)
     allocate(v(Ng,ncv), d(ncv))
     call eig(Ng, nev, ncv, "SA", av, d, v)
