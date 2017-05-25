@@ -426,7 +426,7 @@ Nq = 64
 ft_only = .false.
 
 open(newunit=u, file="ppum_conv.txt", status="replace")
-do i = 1, 10
+do i = 1, 15
     call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
         eps, ft_only, xq, wq, B, Bp)
     Nb = size(B,2)
@@ -436,7 +436,7 @@ do i = 1, 10
     write(u,*) Nb, condA, condB, eigs(:4)
 
     ! Adjust this to ~250 for a longer convergence study
-    if (Nb > 70) exit
+    if (Nb > 100) exit
     Ne = Ne*2
 end do
 close(u)
