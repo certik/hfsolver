@@ -33,32 +33,29 @@ integer, parameter :: Ng_list(*) = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, &
 real(dp), allocatable :: Xion(:)
 
 L = 6
-!allocate(Xion(2))
-!Xion = L/2 + [-1, 1]
-allocate(Xion(1))
-Xion = L/2 - 1e-4_dp
+allocate(Xion(2))
+Xion = L/2 + [-1, 1]
+!allocate(Xion(1))
+!Xion = L/2 - 1e-4_dp
 
-Ng = 1024*8
+Ng = 1024
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng))
 allocate(Xn(Ng), Vn(Ng), r(Ng), psiG(Ng))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-open(newunit=u, file="sch1d_grid.txt", status="replace")
-write(u, *) Ng
-write(u, *) Xn
+!open(newunit=u, file="sch1d_grid.txt", status="replace")
+!write(u, *) Ng
+!write(u, *) Xn
 !Vn = gaussian_potential(Xn, 12._dp, L/2)
-!r0 = 0.5_dp
-!r = abs(Xn-2.5_dp)
-!V0 = 16
-!Vn = -V0*exp(-r**2/r0**2)
-!alpha = 2
-!Vn = 0
-!do i = 1, size(Xion)
-!    r = abs((Xn-Xion(i)))
-!    Vn = Vn -V0*alpha*erfr(alpha*r)
-!end do
+r0 = 0.5_dp
+V0 = 16
+Vn = 0
+do i = 1, size(Xion)
+    r = abs((Xn-Xion(i)))
+    Vn = Vn -V0*exp(-r**2/r0**2)
+end do
 !write(u, *) Vn
 !psi = gaussian_density(Xn, 12._dp, L/2)
 !ne = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
@@ -74,30 +71,35 @@ write(u, *) Xn
 !write(u, *) ne
 
 ! Solve Poisson
-call real2fourier(ne, psiG)
-psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
-call fourier2real(psiG, Vn)
+!call real2fourier(ne, psiG)
+!psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
+!call fourier2real(psiG, Vn)
 
-write(u, *) Vn
-r = abs(Xn-L/2)
-!write(u, *) -V0*alpha*erfr(alpha*r)
-write(u,*) -V0*exp(-r**2/r0**2)
-close(u)
+!write(u, *) Vn
+!r = abs(Xn-L/2)
+!!write(u, *) -V0*alpha*erfr(alpha*r)
+!write(u,*) -V0*exp(-r**2/r0**2)
+!close(u)
 
 deallocate(ne, G, G2, Xn, Vn, r, psiG)
 
 
 open(newunit=u2, file="pw.txt", status="replace")
-do j = 1, 15 !size(Ng_list)
+do j = 1, 30 !size(Ng_list)
     Ng = Ng_list(j)
     allocate(ne(Ng))
     allocate(G(Ng), G2(Ng), psi(Ng))
     allocate(psiG(Ng))
-    allocate(Xn(Ng), Vn(Ng))
+    allocate(Xn(Ng), Vn(Ng), r(Ng))
 
     call real_space_vectors(L, Xn)
     call reciprocal_space_vectors(L, G, G2)
-    call load_potential(Xn, .true., Vn)
+    Vn = 0
+    do i = 1, size(Xion)
+        r = abs((Xn-Xion(i)))
+        Vn = Vn -V0*exp(-r**2/r0**2)
+    end do
+    !call load_potential(Xn, .true., Vn)
 
     nev = min(6, Ng-1)
     ncv = min(160, Ng)
@@ -121,7 +123,7 @@ do j = 1, 15 !size(Ng_list)
 
     write(u2,*) Ng, L, d(:nev)
 
-    deallocate(ne, G, G2, psi, psiG, Xn, Vn, v, d)
+    deallocate(ne, G, G2, psi, psiG, Xn, Vn, v, d, r)
 end do
 close(u)
 
