@@ -37,7 +37,7 @@ contains
     end function
 
     subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
-            eps, xq, wq, B, Bp)
+            eps, ft_only, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne
     integer, intent(in) :: penr ! polynomial order of the poly enrichment, e.g.
         ! penr = 3 means cubic polynomials (i.e. 4 basis functions spanned by:
@@ -47,12 +47,13 @@ contains
         ! polynomial basis/enrichments of the order penr.
     integer, intent(in) :: Nq, ortho
     real(dp), intent(in) :: xmin, xmax, alpha, eps
+    logical, intent(in) :: ft_only
     real(dp), allocatable, intent(out) :: xq(:), wq(:), B(:,:), Bp(:,:)
     logical, allocatable :: Bactive(:,:)
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
     real(dp) :: xa, xb, jac, x0
-    real(dp), allocatable :: t(:), xiq(:), wtq(:), x(:)
+    real(dp), allocatable :: t(:), xiq(:), wtq(:), x(:), hq(:)
     real(dp), allocatable :: W(:,:), Wp(:,:), Wpp(:,:), S(:), Sp(:), Spp(:)
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
     real(dp), allocatable :: Sm(:,:), eigs(:), vecs(:,:)
@@ -102,6 +103,7 @@ contains
     allocate(eigs(Nenr))
     allocate(vecs(Nenr,Nenr))
     allocate(Bactive(Nenr,Ne))
+    allocate(hq(Nq_total))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -198,9 +200,19 @@ contains
     print *, "Orthogonalization (eigs per element):"
     Bactive = .false.
     do i = 1, Ne
+        dx = (xmax-xmin)/Ne*(alpha-1)/2
+        rmin = (xmax-xmin)/Ne * (i-1) + xmin
+        rmax = (xmax-xmin)/Ne * i + xmin
+        if (.not. ft_only) then
+            rmin = rmin - dx
+            rmax = rmax + dx
+        end if
         do j = 1, Nenr
         do k = 1, Nenr
-            Sm(j,k) = sum(enr(:,j,i)*enr(:,k,i)*wq)
+            hq = enr(:,j,i)*enr(:,k,i)*wq
+            where (xq < rmin) hq = 0
+            where (xq > rmax) hq = 0
+            Sm(j,k) = sum(hq)
         end do
         end do
         call eigh(Sm, eigs, vecs)
@@ -373,6 +385,7 @@ integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
 real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
+logical :: ft_only
 
 ppu = 3
 penr = 3
@@ -384,11 +397,12 @@ xmax = 10
 ortho = 1
 eps = 1e-15_dp
 Nq = 64
+ft_only = .false.
 
 open(newunit=u, file="ppum_conv.txt", status="replace")
 do i = 1, 10
     call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
-        eps, xq, wq, B, Bp)
+        eps, ft_only, xq, wq, B, Bp)
     Nb = size(B,2)
     print *, "Nb =", Nb
     call lho(xq, wq, B, Bp, eigs, condA, condB)
