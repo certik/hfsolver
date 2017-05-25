@@ -105,8 +105,8 @@ contains
     allocate(vecs(Nenr,Nenr))
     allocate(Bactive(Nenr,Ne))
     allocate(hq(Nq_total))
-    allocate(enrq(Nq_total,Nenr))
-    allocate(denrq(Nq_total,Nenr))
+    allocate(enrq(Nq_total,npenr))
+    allocate(denrq(Nq_total,npenr))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -174,13 +174,9 @@ contains
         end do
         do m = 1, npenr ! loop over non-poly enrichments
             j = m + penr+1 ! total enrichment basis function index
-            select case(m)
-                case (1)
-                    enr(:,j,i) = enrq(:,m)
-                    enrp(:,j,i) = denrq(:,m)
-                case default
-                    call stop_error("non-poly enrichment index not implemented")
-            end select
+            call assert(m <= size(enrq,2))
+            enr(:,j,i) = enrq(:,m)
+            enrp(:,j,i) = denrq(:,m)
             where (xq < rmin .or. xq > rmax)
                 enr(:,j,i) = 0
                 enrp(:,j,i) = 0
