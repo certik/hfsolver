@@ -47,6 +47,7 @@ allocate(psi(Ng))
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
 open(newunit=u, file="enr.txt", status="replace")
+write(u, *) Ng
 write(u, *) Xn
 r0 = 0.5_dp
 V0 = 16

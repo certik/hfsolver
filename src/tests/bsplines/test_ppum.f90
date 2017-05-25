@@ -6,6 +6,7 @@ use mesh, only: meshexp
 use quadrature, only: gauss_pts, gauss_wts
 use utils, only: stop_error, assert
 use linalg, only: eigh
+use splines, only: spline3pars, iixmin, poly3, dpoly3
 implicit none
 private
 public do_ppum_basis
@@ -58,7 +59,7 @@ contains
     real(dp), allocatable :: wi(:,:), wip(:,:), wipp(:,:)
     real(dp), allocatable :: Sm(:,:), eigs(:), vecs(:,:)
     real(dp), allocatable :: enr(:,:,:), enrp(:,:,:), enrn(:,:,:), enrnp(:,:,:)
-    real(dp), allocatable :: mesh(:)
+    real(dp), allocatable :: mesh(:), enrq(:,:), denrq(:,:)
     real(dp) :: rc
     integer :: i, j, u, bindex, Nb
     integer :: n, k, m, Nenr
@@ -104,6 +105,8 @@ contains
     allocate(vecs(Nenr,Nenr))
     allocate(Bactive(Nenr,Ne))
     allocate(hq(Nq_total))
+    allocate(enrq(Nq_total,Nenr))
+    allocate(denrq(Nq_total,Nenr))
 
     ! Loop over the mesh, and constract a global quadrature rule. Integrals of a
     ! function hq evaluated at the points xq are calculated using: sum(wq*hq)
@@ -150,6 +153,7 @@ contains
     ! Construct enrichment functions enr(x)
     enr = 0
     enrp = 0
+    call load_enrichment(xq, [-1._dp, 1._dp], enrq, denrq)
     do i = 1, Ne
         dx = (xmax-xmin)/Ne*(alpha-1)/2
         rmin = (xmax-xmin)/Ne * (i-1) + xmin - dx
@@ -371,6 +375,40 @@ contains
             call stop_error("n is too high")
     end select
     end function
+
+    subroutine load_enrichment(xq, Xion_rel, enrq, denrq)
+    real(dp), intent(in) :: xq(:), Xion_rel(:)
+    real(dp), intent(out) :: enrq(:,:), denrq(:,:) ! (:,i) i-th enrichment fn
+    real(dp), allocatable :: Xn(:), fn(:), c(:,:)
+    integer :: u, n, ip, i, j, k, Nenr, iqx
+    Nenr = size(enrq,2)
+    open(newunit=u, file="../fft/enr.txt", status="old")
+    read(u, *) n
+    allocate(Xn(n), fn(n))
+    allocate(c(0:4, n-1))
+    read(u, *) Xn
+    enrq = 0
+    denrq = 0
+    do i = 1, Nenr
+        read(u, *) fn ! Load the enrichment function
+        ! Interpolate using cubic splines
+        call spline3pars(Xn, fn, [2, 2], [0._dp, 0._dp], c)
+        do k = 1, size(Xion_rel)
+            ip = 0
+            do j = 1, size(xq)
+                ip = iixmin(xq(j)-Xion_rel(k), Xn, ip)
+                enrq (j,i) = enrq (j,i) +  poly3(xq(j)-Xion_rel(k), c(:, ip))
+                denrq(j,i) = denrq(j,i) + dpoly3(xq(j)-Xion_rel(k), c(:, ip))
+            end do
+        end do
+    end do
+    close(u)
+    open(newunit=u, file="enrq.txt", status="replace")
+    write(u,*) xq
+    write(u,*) enrq(:,1)
+    write(u,*) denrq(:,1)
+    close(u)
+    end subroutine
 
 end module
 
