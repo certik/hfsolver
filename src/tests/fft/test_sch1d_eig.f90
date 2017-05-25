@@ -107,6 +107,7 @@ do j = 1, 30 !size(Ng_list)
     call eig(Ng, nev, ncv, "SA", av, d, v)
     print *, "n  eig  eig_integral"
     open(newunit=u, file="sch1d_psi.txt", status="replace")
+    write(u, *) Xn
     do i = 1, nev
         psi = v(:,i)
         ne = real(psi*conjg(psi), dp)
