@@ -37,7 +37,7 @@ contains
     end if
     end function
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
+    subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, npenr, Xion_rel, alpha, ortho, Nq, &
             eps, ft_only, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne
     integer, intent(in) :: penr ! polynomial order of the poly enrichment, e.g.
@@ -47,7 +47,7 @@ contains
         ! npenr = 2 means two non-polynomial enrichments will be added to the
         ! polynomial basis/enrichments of the order penr.
     integer, intent(in) :: Nq, ortho
-    real(dp), intent(in) :: xmin, xmax, alpha, eps
+    real(dp), intent(in) :: xmin, xmax, alpha, eps, Xion_rel(:)
     logical, intent(in) :: ft_only
     real(dp), allocatable, intent(out) :: xq(:), wq(:), B(:,:), Bp(:,:)
     logical, allocatable :: Bactive(:,:)
@@ -153,7 +153,7 @@ contains
     ! Construct enrichment functions enr(x)
     enr = 0
     enrp = 0
-    call load_enrichment(xq, [-1._dp, 1._dp], enrq, denrq)
+    call load_enrichment(xq, Xion_rel, enrq, denrq)
     do i = 1, Ne
         dx = (xmax-xmin)/Ne*(alpha-1)/2
         rmin = (xmax-xmin)/Ne * (i-1) + xmin - dx
@@ -406,7 +406,7 @@ implicit none
 integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
 real(dp), allocatable :: xq(:), wq(:)
-real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
+real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:), Xion_rel(:)
 logical :: ft_only
 
 ppu = 3
@@ -420,14 +420,16 @@ ortho = 1
 eps = 1e-15_dp
 Nq = 64
 ft_only = .false.
+allocate(Xion_rel(1))
+Xion_rel = [-1, 1]
 
 open(newunit=u, file="ppum_conv.txt", status="replace")
 do i = 1, 15
-    call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
+    call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, Xion_rel, alpha, ortho, Nq, &
         eps, ft_only, xq, wq, B, Bp)
     Nb = size(B,2)
     print *, "Nb =", Nb
-    call double_well(xq, wq, B, Bp, eigs, condA, condB)
+    call double_well(xq, wq, Xion_rel, B, Bp, eigs, condA, condB)
     call assert(size(eigs) >= 1)
     write(u,*) Nb, condA, condB, eigs(:1)
 

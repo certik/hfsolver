@@ -116,18 +116,18 @@ end do
 end subroutine
 
 
-subroutine double_well(xq, wq, B, Bp, lam, condA, condB)
-real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:)
+subroutine double_well(xq, wq, Xion_rel, B, Bp, lam, condA, condB)
+real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:), Xion_rel(:)
 real(dp), allocatable, intent(out) :: lam(:)
 real(dp), intent(out) :: condA, condB
 real(dp), allocatable :: Am(:,:), Bm(:,:), c(:,:), hq(:), Vq(:), r(:)
-real(dp) :: r0, V0, Xion(2), L
+real(dp) :: r0, V0, Xion(size(Xion_rel)), L
 integer :: i, j, Nb
 Nb = size(B, 2)
 allocate(hq(size(xq)), Vq(size(xq)), r(size(xq)))
 allocate(Am(Nb,Nb), Bm(Nb,Nb), c(Nb,Nb), lam(Nb))
 L = 6
-Xion = L/2 + [-1, 1]
+Xion = L/2 + Xion_rel
 r0 = 0.5_dp
 V0 = 16
 Vq = 0
