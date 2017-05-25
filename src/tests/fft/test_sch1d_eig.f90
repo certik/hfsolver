@@ -42,46 +42,38 @@ Ng = 1024
 allocate(ne(Ng))
 allocate(G(Ng), G2(Ng))
 allocate(Xn(Ng), Vn(Ng), r(Ng), psiG(Ng))
+allocate(psi(Ng))
 
 call real_space_vectors(L, Xn)
 call reciprocal_space_vectors(L, G, G2)
-!open(newunit=u, file="sch1d_grid.txt", status="replace")
-!write(u, *) Ng
-!write(u, *) Xn
-!Vn = gaussian_potential(Xn, 12._dp, L/2)
+open(newunit=u, file="enr.txt", status="replace")
+write(u, *) Xn
 r0 = 0.5_dp
 V0 = 16
-Vn = 0
-do i = 1, size(Xion)
-    r = abs((Xn-Xion(i)))
-    Vn = Vn -V0*exp(-r**2/r0**2)
+r = abs((Xn-L/2))
+Vn = -V0*exp(-r**2/r0**2)
+write(u, *) Vn
+
+nev = min(6, Ng-1)
+ncv = min(160, Ng)
+allocate(v(Ng,ncv), d(ncv))
+call eig(Ng, nev, ncv, "SA", av, d, v)
+print *, "n  eig  eig_integral"
+do i = 1, nev
+    psi = v(:,i)
+    ne = real(psi*conjg(psi), dp)
+    psi_norm = integral(L, ne)
+    psi = sqrt(nelec / psi_norm) * psi
+
+    ne = real(psi*conjg(psi), dp)
+    call real2fourier(psi, psiG)
+    E_tot = 1._dp/2 * integralG(G2*abs(psiG)**2, L) + integral(L, Vn*ne)
+    print *, i, d(i), E_tot
+    write(u, *) real(psi, dp)
 end do
-!write(u, *) Vn
-!psi = gaussian_density(Xn, 12._dp, L/2)
-!ne = V0*(2*r**2 - r0**2)*exp(-r**2/r0**2)/(2*pi*r0**4)
-!ne = 0
-!do i = 1, size(Xion)
-!    do k = -5, 5
-!        r = abs((Xn-Xion(i)+k*L))
-!        ne = ne + V0*(-alpha**3*exp(-alpha**2*r**2)/pi**(3./2) - &
-!            alpha*exp(-alpha**2*r**2)/(pi**(3./2)*r**2) + &
-!            alpha*erfr(alpha*r)/(2*pi*r**2))
-!    end do
-!end do
-!write(u, *) ne
+close(u)
 
-! Solve Poisson
-!call real2fourier(ne, psiG)
-!psiG(1) = 0; psiG(2:) = 4*pi*psiG(2:) / G2(2:)
-!call fourier2real(psiG, Vn)
-
-!write(u, *) Vn
-!r = abs(Xn-L/2)
-!!write(u, *) -V0*alpha*erfr(alpha*r)
-!write(u,*) -V0*exp(-r**2/r0**2)
-!close(u)
-
-deallocate(ne, G, G2, Xn, Vn, r, psiG)
+deallocate(ne, G, G2, Xn, Vn, r, psiG, psi, v, d)
 
 
 open(newunit=u2, file="pw.txt", status="replace")
