@@ -428,11 +428,11 @@ do i = 1, 15
     Nb = size(B,2)
     print *, "Nb =", Nb
     call double_well(xq, wq, B, Bp, eigs, condA, condB)
-    call assert(size(eigs) >= 4)
-    write(u,*) Nb, condA, condB, eigs(:4)
+    call assert(size(eigs) >= 1)
+    write(u,*) Nb, condA, condB, eigs(:1)
 
     ! Adjust this to ~250 for a longer convergence study
-    if (Nb > 100) exit
+    if (Nb > 200) exit
     Ne = Ne*2
 end do
 close(u)
