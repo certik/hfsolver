@@ -168,7 +168,7 @@ contains
         end do
         do m = 1, npenr ! loop over non-poly enrichments
             j = m + penr+1 ! total enrichment basis function index
-            rc = 300._dp
+            rc = 10._dp
             select case(m)
                 case (1)
                     if (abs(x0) <= 10) then
@@ -378,7 +378,7 @@ ppu = 3
 penr = 3
 npenr = 1
 Ne = 1
-alpha = 1.5_dp
+alpha = 1.3_dp
 xmin = -10
 xmax = 10
 ortho = 1
