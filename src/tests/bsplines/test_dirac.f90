@@ -7,7 +7,7 @@ use linalg, only: eigh
 use utils, only: stop_error
 implicit none
 
-integer, parameter :: n = 30, k = 6, Nq=7
+integer, parameter :: n = 80, k = 6, Nq=64
 integer, parameter :: N_intervals = n-k+1
 integer, parameter :: Nq_total = Nq*N_intervals, Nb=n-1
 real(dp) :: t(n+k), rmin, rmax, a
@@ -18,7 +18,7 @@ real(dp), allocatable :: Bipp(:), Bjpp(:)
 real(dp), allocatable :: Vq(:), Vqp(:)
 real(dp), allocatable :: Am(:,:), Bm(:,:), sol(:,:), lam(:)
 real(dp), allocatable :: solsP(:,:), solsQ(:,:)
-real(dp) :: En, c
+real(dp) :: En, c, beta, rc
 integer :: i, j, kappa, Z, l, relat, u
 
 allocate(Am(2*Nb,2*Nb), Bm(2*Nb,2*Nb), sol(2*Nb,2*Nb), lam(2*Nb))
@@ -29,15 +29,17 @@ allocate(Bipp(Nq_total), Bjpp(Nq_total), Vqp(Nq_total))
 allocate(solsP(Nq_total,Nb))
 allocate(solsQ(Nq_total,Nb))
 
-rmin = 1e-15_dp
-rmax = 10
+rmin = 1e-10_dp
 rmin = 0
 rmax = 10
-a = 6e5
-a = 1e4
-Z = 83
-kappa = 2
+a = 6e7
+a = 1e5
+Z = 92
+kappa = 1
 c = 137.03599907_dp
+beta = sqrt(kappa**2 - (Z/c)**2)
+beta = 2*beta
+rc = 1e-1_dp
 
 t(:k-1) = rmin
 t(k:n+1) = meshexp(rmin, rmax, a, N_intervals)
@@ -66,10 +68,16 @@ print *, "Evaluating basis functions"
 ! Evaluate basis functions and their derivatives on quadrature grid
 ! Skip the first and last B-spline (that's why Nb=n-2).
 do i = 1, Nb
-    B(:,i)   = bspline     (t, i, k, xq)
-    Bp(:,i)  = bspline_der (t, i, k, xq)
-    Bpp(:,i) = bspline_der2(t, i, k, xq)
+    if (i < Nb) then
+        B(:,i)   = bspline     (t, i, k, xq)
+        Bp(:,i)  = bspline_der (t, i, k, xq)
+        Bpp(:,i) = bspline_der2(t, i, k, xq)
+    else
+        B(:,i)   = xq**beta * h(xq, rc)
+        Bp(:,i)  = beta*xq**(beta-1) * h(xq, rc) + xq**beta * hp(xq, rc)
+    end if
 end do
+print *, Nb
 
 print *, "Assembly"
 ! Construct matrices A and B
@@ -113,7 +121,7 @@ do j = 1, 2*Nb
             if (abs(Am(i,j)-Am(j,i)) / max(abs(Am(i,j)), abs(Am(j,i))) &
                     > 1e-8_dp) then
                 print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
-                call stop_error("Am not symmetric")
+                !call stop_error("Am not symmetric")
             end if
         end if
         if (abs(Bm(i,j)-Bm(j,i)) > 1e-12_dp) call stop_error("Bm not symmetric")
@@ -124,6 +132,8 @@ end do
 print *, "Eigensolver"
 ! Solve an eigenproblem
 call eigh(Am, Bm, lam, sol)
+print *, sol(:3, 1)
+print *, sol(Nb-3:Nb, 1)
 
 print *, "n, energy, exact energy, error"
 do i = 1, Nb
@@ -181,5 +191,29 @@ else
     E_nl = c**2/sqrt(1+Z**2/(n + skappa + beta)**2/c**2) - c**2
 end if
 end function
+
+    elemental function h(r, rc)
+    ! C^3 cutoff function h(r)
+    real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
+    real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
+    real(dp) :: h
+    if (r < rc) then
+        h = 1 + 20*(r/rc)**7-70*(r/rc)**6+84*(r/rc)**5-35*(r/rc)**4
+    else
+        h = 0
+    end if
+    end function
+
+    elemental function hp(r, rc)
+    ! C^3 cutoff function h'(r)
+    real(dp), intent(in) :: r  ! Point at which to evaluate, must be r >= 0
+    real(dp), intent(in) :: rc ! Cutoff radius; h(r) = 0 for r >= rc
+    real(dp) :: hp
+    if (r < rc) then
+        hp = 140*r**6/rc**7 - 420*r**5/rc**6 + 420*r**4/rc**5 - 140*r**3/rc**4
+    else
+        hp = 0
+    end if
+    end function
 
 end program
