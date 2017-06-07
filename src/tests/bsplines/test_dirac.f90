@@ -84,7 +84,7 @@ do i = 1, Nb
         Vq = -Z/xq
         Vqp = Z/xq**2
         ! A11
-        hq = -c**2*(Bi*xq**2*Bjpp +2*(Bi*xq*Bjp)-kappa*(kappa+1)*Bi*Bj) &
+        hq = -c**2*(-Bip*xq**2*Bjp -kappa*(kappa+1)*Bi*Bj) &
             +c**4*Bi*xq**2*Bj+Bi*xq**2*Vq**2*Bj+2*c**2*Bi*xq**2*Vq*Bj
         Am(i,j) = sum(wq*hq)
         ! A12
@@ -94,7 +94,7 @@ do i = 1, Nb
         hq = c*(2*Bi*xq**2*Vq*Bjp+2*(1+kappa)*Bi*xq*Vq*Bj+Bi*xq**2*Vqp*Bj)
         Am(i+Nb,j) = sum(wq*hq)
         ! A22
-        hq = -c**2*(Bi*xq**2*Bjpp +2*(Bi*xq*Bjp)-(-kappa)*(-kappa+1)*Bi*Bj) &
+        hq = -c**2*(-Bip*xq**2*Bjp -(-kappa)*(-kappa+1)*Bi*Bj) &
             +c**4*Bi*xq**2*Bj+Bi*xq**2*Vq**2*Bj-2*c**2*Bi*xq**2*Vq*Bj
         Am(i+Nb,j+Nb) = sum(wq*hq)
 
