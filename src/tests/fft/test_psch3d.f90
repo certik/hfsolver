@@ -1,6 +1,6 @@
 program test_psch3d
 use types, only: dp
-use constants, only: Ha2eV, i_, density2gcm3, u2au, s2au, K2au
+use constants, only: Ha2eV, density2gcm3, u2au, s2au, K2au, pi
 use fourier, only: dft, idft, fft, fft_vectorized, fft_pass, fft_pass_inplace, &
         fft_vectorized_inplace, calculate_factors, ifft_pass, fft2_inplace, &
         fft3_inplace, ifft3_inplace
@@ -11,7 +11,7 @@ use ofdft, only: read_pseudo
 use pofdft_fft, only: pfft3_init, preal2fourier, pfourier2real, &
     real_space_vectors, reciprocal_space_vectors, calculate_myxyz, &
     pintegral, pintegralG, free_energy, free_energy_min, &
-    radial_potential_fourier, psum, pmaxval, collate
+    radial_potential_fourier, psum, pmaxval, collate, poisson_kernel
 use openmp, only: omp_get_wtime
 use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
     mpi_comm_size, mpi_init, mpi_comm_split, MPI_INTEGER, &
@@ -19,27 +19,25 @@ use mpi2, only: mpi_finalize, MPI_COMM_WORLD, mpi_comm_rank, &
 use md, only: positions_bcc, positions_fcc
 use arpack, only: peig, eig
 use pksdft_fft, only: solve_schroedinger
+use mesh, only: meshexp
 implicit none
 
 complex(dp), dimension(:,:,:), allocatable :: neG, VenG, psiG, psi, tmp
-real(dp), dimension(:,:,:), allocatable :: G2, Hn, Htot, HtotG, Ven0G, ne, Ven
-real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), R(:), Ven_rad(:), &
-    current(:,:,:,:), tmp_global(:,:,:), eigs(:), orbitals(:,:,:,:), &
-    cutfn(:,:,:)
+real(dp), dimension(:,:,:), allocatable :: G2, Htot, HtotG, Ven0G, ne, Ven
+real(dp), allocatable :: G(:,:,:,:), X(:,:,:,:), Xion(:,:), &
+    current(:,:,:,:), eigs(:), orbitals(:,:,:,:), cutfn(:,:,:)
 complex(dp), allocatable :: dpsi(:,:,:,:)
-real(dp) :: L(3), Z, omega
+real(dp) :: L(3)
 integer :: i
 integer :: Ng(3)
 integer :: LNPU(3)
-integer :: natom, u2
-integer :: Lmul
+integer :: natom
 logical :: velocity_gauge
-real(dp) :: T_eV, T_au, Etot, Ediff, V0, mu, &
-    dt, psi_norm, t, &
-    alpha, rho, Ekin, Epot, Etot_last
+real(dp) :: T_eV, T_au, V0, &
+    dt, &
+    alpha, rho, r0, r, G2cut, G2cut2, Ecut
 real(dp), allocatable :: m(:)
-real(dp) :: t1, t2, eps
-integer :: nev, ncv
+integer :: nev, ncv, n, j, k, u, DOFs
 
 !  parallel variables
 integer :: comm_all, commy, commz, nproc, ierr, nsub(3), Ng_local(3)
@@ -49,7 +47,7 @@ integer :: myxyz(3) ! myid, converted to the (x, y, z) box, starts from 0
 rho = 0.01_dp / density2gcm3  ! g/cc
 T_eV = 50._dp
 T_au = T_ev / Ha2eV
-natom = 1
+natom = 2
 dt = 1e-4_dp
 alpha = 137
 allocate(m(natom))
@@ -57,21 +55,31 @@ m = 2._dp * u2au ! Using Argon mass in atomic mass units [u]
 velocity_gauge = .true. ! velocity or length gauge?
 
 L = (sum(m) / rho)**(1._dp/3)
-Lmul = 1
-L = L * Lmul
+L = [6, 5, 5]
 rho = sum(m) / product(L)
 
 call mpi_init(ierr)
 comm_all  = MPI_COMM_WORLD
 call mpi_comm_rank(comm_all, myid, ierr)
 call mpi_comm_size(comm_all, nproc, ierr)
+Ecut = 30
+G2cut = 2*Ecut
+G2cut2 = 4*G2cut
+Ng(1) = int(2*sqrt(G2cut2) * L(1) / (2*pi) + 1)
+call adjust_Ng(Ng(1))
+Ng(2) = int(2*sqrt(G2cut2) * L(2) / (2*pi) + 1)
+call adjust_Ng(Ng(2))
+Ng(3) = int(2*sqrt(G2cut2) * L(3) / (2*pi) + 1)
+call adjust_Ng(Ng(3))
 if (myid == 0) then
     if (command_argument_count() == 0) then
         call factor(nproc, LNPU)
         nsub(3) = (2**(LNPU(1)/2))*(3**(LNPU(2)/2))*(5**(LNPU(3)/2))
         nsub(2) = nproc / nsub(3)
         nsub(1) = 1
-        Ng = 4 * Lmul
+
+        !Ng = 32
+        !Ng = 64
     else
         if (command_argument_count() /= 6) then
             print *, "Usage:"
@@ -119,11 +127,9 @@ call mpi_comm_split(comm_all, myxyz(3), 0, commy, ierr)
 call mpi_comm_split(comm_all, myxyz(2), 0, commz, ierr)
 
 
-allocate(tmp_global(Ng(1), Ng(2), Ng(3)))
 allocate(ne(Ng_local(1), Ng_local(2), Ng_local(3)))
 allocate(neG(Ng_local(1), Ng_local(2), Ng_local(3)))
 call allocate_mold(G2, ne)
-call allocate_mold(Hn, ne)
 call allocate_mold(Htot, ne)
 call allocate_mold(HtotG, ne)
 call allocate_mold(Ven, ne)
@@ -138,33 +144,38 @@ call allocate_mold(G, X)
 call allocate_mold(current, X)
 if (myid == 0) print *, "Load initial position"
 allocate(Xion(3, natom))
-! For now assume a box, until positions_bcc can accept a vector L(:)
-! And radial_potential_fourier
-call assert(abs(L(2)-L(1)) < 1e-15_dp)
-call assert(abs(L(3)-L(1)) < 1e-15_dp)
-!call positions_fcc(Xion, L(1))
-Xion(:, 1) = L/2
+Xion(:,1) = L/2
+Xion(:,2) = L/2
+Xion(1,:) = Xion(1,:) + [-1, 1]
 call real_space_vectors(L, X, Ng, myxyz)
 call reciprocal_space_vectors(L, G, G2, Ng, myxyz)
 if (myid == 0) print *, "Radial nuclear potential FFT"
-call read_pseudo("../fem/D.pseudo", R, Ven_rad, Z, Ediff)
-call radial_potential_fourier(R, Ven_rad, L, Z, G2, Ven0G, V0)
-if (myid == 0) print *, "    Done."
-
-VenG = 0
-do i = 1, natom
-    VenG = VenG - Ven0G * exp(-i_ * &
-        (G(:,:,:,1)*Xion(1,i) + G(:,:,:,2)*Xion(2,i) + G(:,:,:,3)*Xion(3,i)))
+V0 = 16
+r0 = 0.5_dp
+!Ven_rad = -V0 * exp(-R**2/r0**2)
+ne = 0
+Ven = 0
+do k = 1, Ng_local(3)
+do j = 1, Ng_local(2)
+do i = 1, Ng_local(1)
+    do n = 1, natom
+        r = sqrt(sum((X(i,j,k,:)-Xion(:,n))**2))
+        ne(i,j,k) = ne(i,j,k)+ V0*(2*(r/r0)**2 - 3)*exp(-(r/r0)**2)/(2*pi*r0**2)
+        Ven(i,j,k) = Ven(i,j,k) -V0 * exp(-r**2/r0**2)
+    end do
 end do
+end do
+end do
+!call preal2fourier(ne, neG, commy, commz, Ng, nsub)
+!call poisson_kernel(myid, size(neG), neG, G2, VenG)
+!open(newunit=u, file="Ven.txt", status="replace")
+!write(u,*) X(:,Ng/2,Ng/2,1)
+!write(u,*) Ven(:,Ng/2,Ng/2)
+!call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
+!write(u,*) Ven(:,Ng/2,Ng/2)
+!close(u)
+!stop "OK"
 
-call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
-call collate(comm_all, myid, nsub, 0, Ven, tmp_global)
-if (myid == 0) then
-    open(newunit=u2, file="sch_pot.txt", status="replace")
-    write(u2,*) tmp_global
-    close(u2)
-end if
-omega = 1.123_dp
 !do k = 1, Ng_local(3)
 !do j = 1, Ng_local(2)
 !do i = 1, Ng_local(1)
@@ -172,67 +183,27 @@ omega = 1.123_dp
 !end do
 !end do
 !end do
-Hn = Ven
 
-if (myid == 0) print *, "IT minimization:"
-ne = natom / product(L)
-psi = sqrt(ne)
-
-t = 0
-dt = 2e-1_dp
-
-eps = 1e-20_dp
-Etot_last = -1e9_dp
-call cpu_time(t1)
-i = 0
-do
-    i = i + 1
-    t = t + dt
-!    if (myid == 0) print *, "iter =", i, "time =", t
-    psi = psi * exp(-(Hn)*dt/2)
-    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    psiG = psiG * exp(-G2*dt/2)
-    call pfourier2real(psiG, psi, commy, commz, Ng, nsub)
-    psi = psi * exp(-(Hn)*dt/2)
-    ne = abs(psi)**2
-    psi_norm = pintegral(comm_all, L, ne, Ng)
-!    if (myid == 0) print *, "Initial norm of psi:", psi_norm
-    psi = sqrt(natom / psi_norm) * psi
-    ne = abs(psi)**2
-    psi_norm = pintegral(comm_all, L, ne, Ng)
-!    if (myid == 0) print *, "norm of psi:", psi_norm
-
-    mu = 1._dp / natom * pintegral(comm_all, L, ne * Hn, Ng)
-    call preal2fourier(psi, psiG, commy, commz, Ng, nsub)
-    Ekin = 1._dp/2 * pintegralG(comm_all, L, G2*abs(psiG)**2)
-    Epot = pintegral(comm_all, L, Hn*ne, Ng)
-    Etot = Ekin + Epot
-    if (myid == 0) then
-!        print *, mu
-!        print *, "Summary of energies [a.u.]:"
-!        print "('    Etot = ', f14.8, ' a.u. = ', f14.8, ' eV')", Etot, Etot*Ha2eV
-!        print *, "Exact:", 3*omega/2
-        print *, i, Etot, dt
-    end if
-    if (abs(Etot_last - Etot) < eps .and. i > 3) then
-        dt = dt/10
-        i = 1
-    end if
-    Etot_last = Etot
-    if (i > 20000 .or. dt < 1e-12_dp) then
-        exit
-    end if
-end do
-call cpu_time(t2)
-if (myid == 0) print *, "IT Time:", t2-t1
-
-if (myid == 0) print *, "Arpack"
+allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
+call preal2fourier(Ven, VenG, commy, commz, Ng, nsub)
+where (G2 > G2cut2)
+    cutfn = 0
+elsewhere
+    cutfn = 1
+end where
+VenG = VenG * cutfn
+call pfourier2real(VenG, Ven, commy, commz, Ng, nsub)
 
 nev = 4
-ncv = 64
+ncv = 30
 allocate(eigs(nev), orbitals(Ng_local(1),Ng_local(2),Ng_local(3),nev))
-allocate(cutfn(Ng_local(1),Ng_local(2),Ng_local(3)))
-cutfn = 1
+where (G2 > G2cut)
+    cutfn = 0
+elsewhere
+    cutfn = 1
+end where
+DOFs = psum(comm_all, cutfn)
+if (myid == 0) print *, "Eigensolver"
 call solve_schroedinger(myid, comm_all, commy, commz, Ng, nsub, Ven, &
         L, G2, cutfn, nev, ncv, eigs, orbitals)
 if (myid == 0) then
@@ -240,13 +211,26 @@ if (myid == 0) then
     do i = 1, nev
         print *, i, eigs(i)
     end do
-    print *, "Arpack vs IT:"
-    print *, abs(eigs(1) - Etot)
-    call assert(abs(eigs(1) - Etot) < 1e-12_dp)
 end if
 
+if (myid == 0) then
+    print *, "LINE:"
+    print *, Ng, Ecut, DOFs, eigs(:nev)
+end if
 if (myid == 0) print *, "Done"
 
 call mpi_finalize(ierr)
+
+contains
+
+    subroutine adjust_Ng(Ng)
+    integer, intent(inout) :: Ng
+    integer :: LNPU(3)
+    do while (.true.)
+        call factor(Ng, LNPU)
+        if ((2**LNPU(1))*(3**LNPU(2))*(5**LNPU(3)) == Ng) return
+        Ng = Ng + 1
+    end do
+    end subroutine
 
 end program
