@@ -14,11 +14,12 @@ public sfem
 
 contains
 
-subroutine sfem(Ne, p, Nq, L, Nb, kappa, a_, c, Z, eigs, squared)
+subroutine sfem(Ne, p, Nq, L, Nb, kappa, a_, c, Z, eigs, squared, condA, condB)
 integer, intent(in) :: Ne, p, Nq, kappa
 real(dp), intent(in) :: L, a_, c, Z
 integer, intent(out) :: Nb
 real(dp), allocatable, intent(out) :: eigs(:)
+real(dp), intent(out) :: condA, condB
 logical, intent(in) :: squared
 
 integer :: Nn
@@ -70,6 +71,12 @@ if (squared) then
 else
     call assemble_rdirac(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
 end if
+eigs = eigvals(A)
+condA = maxval(abs(eigs))/minval(abs(eigs))
+print "('cond A: ', es10.2)", condA
+eigs = eigvals(B)
+condB = maxval(abs(eigs))/minval(abs(eigs))
+print "('cond B: ', es10.2)", condB
 call eigh(A, B, eigs, sol)
 j = 1
 do while (eigs(j) < 0)
@@ -353,7 +360,7 @@ implicit none
 
 integer :: Ne, p, Nq, DOFs, i, j, kappa, u
 real(dp), allocatable :: eigs(:)
-real(dp) :: L, a, c, Z
+real(dp) :: L, a, c, Z, condA, condB
 logical :: squared
 
 Nq = 64
@@ -364,11 +371,12 @@ kappa = 2
 c = 137.03599907_dp
 squared = .false.
 
-open(newunit=u, file="rdirac1.txt", status="replace")
+open(newunit=u, file="rdirac3.txt", status="replace")
 do p = 1, 10
     Ne = 2
     do j = 1, 10
-        call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared)
+        call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared, condA, &
+            condB)
         print *, "Ne:", Ne
         print *, "p:", p
         print *, "Nq:", Nq
@@ -377,7 +385,7 @@ do p = 1, 10
         do i = 1, 4
             print *, i, eigs(i)
         end do
-        write(u,*) DOFs, p, Ne, Nq, L, eigs(:4)
+        write(u,*) DOFs, p, Ne, Nq, L, condA, condB, eigs(:4)
 
         if (DOFs > 1000) exit
         Ne = Ne * 2
