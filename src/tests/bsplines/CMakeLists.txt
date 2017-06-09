@@ -11,5 +11,5 @@ target_link_libraries(radial_util hfsolver ${LIBS})
 
 addtest(test_bsplines)
 addtest2(test_ppum radial_util)
-addtest(test_dirac)
+addtest(test_dirac radial_util)
 addtest2(test_schroed radial_util)
