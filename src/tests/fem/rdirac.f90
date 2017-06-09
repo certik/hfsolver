@@ -145,7 +145,6 @@ real(dp) hq(size(xiq))        ! integrand at quadrature points
 real(dp) x(size(xiq))                    ! point in domain
 real(dp) :: n, k
 real(dp), dimension(size(xiq)) :: Bi, Bj, Bip, Bjp
-real(dp) :: l, lb
 
 n = 0
 k = 1000
@@ -185,8 +184,6 @@ do m1 = 1, 2
                     Bj = phihq(:,be)
                     Bip = dphihq(:,al)/jac
                     Bjp = dphihq(:,be)/jac
-                    l = kappa
-                    lb = -kappa
                     if (m1 == 1 .and. m2 == 1) then
                         hq = c**2*Bip*Bjp &
                             + Bi*Bj*((Vq+c**2)**2+c**2*(kappa*(kappa+1)/x**2))
