@@ -36,7 +36,8 @@ contains
     end if
     end function
 
-    subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
+    subroutine do_ppum_basis(p, xmin, xmax, a, Ne, penr, npenr, alpha, &
+            ortho, Nq, &
             eps, ft_only, xq, wq, B, Bp)
     integer, intent(in) :: p, Ne
     integer, intent(in) :: penr ! polynomial order of the poly enrichment, e.g.
@@ -46,7 +47,7 @@ contains
         ! npenr = 2 means two non-polynomial enrichments will be added to the
         ! polynomial basis/enrichments of the order penr.
     integer, intent(in) :: Nq, ortho
-    real(dp), intent(in) :: xmin, xmax, alpha, eps
+    real(dp), intent(in) :: xmin, xmax, alpha, eps, a
     logical, intent(in) :: ft_only
     real(dp), allocatable, intent(out) :: xq(:), wq(:), B(:,:), Bp(:,:)
     logical, allocatable :: Bactive(:,:)
@@ -379,39 +380,46 @@ use types, only: dp
 use dirac_ppum_m, only: do_ppum_basis
 use linalg, only: eigh
 use utils, only: stop_error, assert
-use radial_util, only: lho
+use radial_util, only: lho, radial_dirac
 implicit none
-integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
-real(dp) :: alpha, xmin, xmax, eps, condA, condB
+integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb, kappa, Z
+real(dp) :: alpha, xmin, xmax, eps, condA, condB, c, a
 real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
 logical :: ft_only
 
 ppu = 3
-penr = 3
-npenr = 1
-Ne = 1
+penr = 5
+npenr = 0
+Ne = 10
 alpha = 1.5_dp
-xmin = -10
+xmin = 0
 xmax = 10
 ortho = 1
 eps = 1e-15_dp
 Nq = 64
 ft_only = .false.
 
-open(newunit=u, file="ppum_conv.txt", status="replace")
+a = 1e4
+Z = 83
+kappa = 2
+c = 137.03599907_dp
+
+open(newunit=u, file="dirac_ppum_conv.txt", status="replace")
 do i = 1, 10
-    call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
+    call do_ppum_basis(ppu, xmin, xmax, a, Ne, penr, npenr, alpha, ortho, Nq, &
         eps, ft_only, xq, wq, B, Bp)
     Nb = size(B,2)
     print *, "Nb =", Nb
-    call lho(xq, wq, B, Bp, eigs, condA, condB)
-    call assert(size(eigs) >= 4)
-    write(u,*) Nb, condA, condB, eigs(:4)
+    !call lho(xq, wq, B, Bp, eigs, condA, condB)
+    call radial_dirac(Nb, xq, wq, B, Bp, Z, kappa, c)
+    !call assert(size(eigs) >= 4)
+    !write(u,*) Nb, condA, condB, eigs(:4)
 
     ! Adjust this to ~250 for a longer convergence study
     if (Nb > 70) exit
     Ne = Ne*2
+    exit
 end do
 close(u)
 
