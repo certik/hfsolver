@@ -237,13 +237,13 @@ integer :: Ne, p, Nq, DOFs, i, kappa
 real(dp), allocatable :: eigs(:)
 real(dp) :: L, a, c, Z
 
-Ne = 4
-p = 10
+Ne = 10
+p = 40
 Nq = 64
-L = 10
+L = 20
 a = 1e4
 Z = 92
-kappa = 2
+kappa = -1
 c = 137.03599907_dp
 call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs)
 print *, "Ne:", Ne
