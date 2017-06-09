@@ -356,8 +356,6 @@ real(dp), allocatable :: eigs(:)
 real(dp) :: L, a, c, Z
 logical :: squared
 
-Ne = 1
-p = 3
 Nq = 64
 L = 20
 a = 1e6
@@ -367,20 +365,23 @@ c = 137.03599907_dp
 squared = .false.
 
 open(newunit=u, file="rdirac1.txt", status="replace")
-do j = 1, 10
-    call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared)
-    print *, "Ne:", Ne
-    print *, "p:", p
-    print *, "Nq:", Nq
-    print *, "DOFs:", DOFs
-    call assert(size(eigs) >= 6)
-    do i = 1, 6
-        print *, i, eigs(i)
-    end do
-    write(u,*) DOFs, p, Ne, Nq, L, eigs(:6)
+do p = 1, 10
+    Ne = 2
+    do j = 1, 10
+        call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared)
+        print *, "Ne:", Ne
+        print *, "p:", p
+        print *, "Nq:", Nq
+        print *, "DOFs:", DOFs
+        call assert(size(eigs) >= 4)
+        do i = 1, 4
+            print *, i, eigs(i)
+        end do
+        write(u,*) DOFs, p, Ne, Nq, L, eigs(:4)
 
-    if (DOFs > 1000) exit
-    Ne = Ne * 2
+        if (DOFs > 1000) exit
+        Ne = Ne * 2
+    end do
 end do
 close(u)
 
