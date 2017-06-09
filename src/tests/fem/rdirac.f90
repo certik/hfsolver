@@ -77,7 +77,7 @@ do i = 1, min(20,Nb)
         relat = 2
     end if
     En = E_nl(c, l_+i, l_, real(Z, dp), relat)
-    !eigs(i) = sqrt(eigs(i)) - c**2
+    eigs(i) = sqrt(eigs(i)) - c**2
     print "(i4, f30.8, f18.8, es12.2)", i, eigs(i), En, abs(eigs(i)-En)
 end do
 end subroutine
@@ -243,7 +243,7 @@ Nq = 64
 L = 20
 a = 1e4
 Z = 92
-kappa = 1
+kappa = -1
 c = 137.03599907_dp
 call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs)
 print *, "Ne:", Ne
