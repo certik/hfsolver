@@ -1,4 +1,4 @@
-module schroed_util
+module radial_util
 use types, only: dp
 use linalg, only: eigh, eigvals
 use utils, only: stop_error

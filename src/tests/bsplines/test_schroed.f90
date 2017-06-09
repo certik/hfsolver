@@ -5,7 +5,7 @@ use mesh, only: meshexp
 use quadrature, only: gauss_pts, gauss_wts
 use linalg, only: eigh
 use utils, only: stop_error
-use schroed_util, only: lho, radial
+use radial_util, only: lho, radial
 implicit none
 
 integer, parameter :: n = 30, k = 6, Nq=7

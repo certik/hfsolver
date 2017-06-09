@@ -379,7 +379,7 @@ use types, only: dp
 use ppum, only: do_ppum_basis
 use linalg, only: eigh
 use utils, only: stop_error, assert
-use schroed_util, only: lho
+use radial_util, only: lho
 implicit none
 integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
