@@ -14,11 +14,12 @@ public sfem
 
 contains
 
-subroutine sfem(Ne, p, Nq, L, Nb, kappa, a_, c, Z, eigs)
+subroutine sfem(Ne, p, Nq, L, Nb, kappa, a_, c, Z, eigs, squared)
 integer, intent(in) :: Ne, p, Nq, kappa
 real(dp), intent(in) :: L, a_, c, Z
 integer, intent(out) :: Nb
 real(dp), allocatable, intent(out) :: eigs(:)
+logical, intent(in) :: squared
 
 integer :: Nn
 ! xe(i) is the 'x' coordinate of the i-th mesh node
@@ -64,8 +65,11 @@ allocate(fullc(Nn))
 
 Vq = -Z/xq
 
-!call assemble_rdirac_squared(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
-call assemble_rdirac(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
+if (squared) then
+    call assemble_rdirac_squared(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
+else
+    call assemble_rdirac(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
+end if
 call eigh(A, B, eigs, sol)
 j = 1
 do while (eigs(j) < 0)
@@ -82,8 +86,11 @@ do i = 1, min(20,Nb)
         relat = 2
     end if
     En = E_nl(c, l_+i, l_, real(Z, dp), relat)
-    !eigs(i) = sqrt(eigs(i)) - c**2
-    eigs(i) = eigs(i+j-1) - c**2
+    if (squared) then
+        eigs(i) = sqrt(eigs(i+j-1)) - c**2
+    else
+        eigs(i) = eigs(i+j-1) - c**2
+    end if
     print "(i4, f30.8, f18.8, es12.2)", i, eigs(i), En, abs(eigs(i)-En)
 end do
 end subroutine
@@ -345,16 +352,18 @@ implicit none
 integer :: Ne, p, Nq, DOFs, i, kappa
 real(dp), allocatable :: eigs(:)
 real(dp) :: L, a, c, Z
+logical :: squared
 
 Ne = 10
-p = 40
+p = 50
 Nq = 64
 L = 20
-a = 1e4
+a = 1e6
 Z = 92
-kappa = -1
+kappa = 2
 c = 137.03599907_dp
-call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs)
+squared = .false.
+call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared)
 print *, "Ne:", Ne
 print *, "p:", p
 print *, "Nq:", Nq
