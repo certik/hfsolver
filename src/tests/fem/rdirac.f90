@@ -89,9 +89,10 @@ do i = 1, min(20,Nb)
     if (squared) then
         eigs(i) = sqrt(eigs(i+j-1)) - c**2
     else
+        if (i+j-1 > Nb) exit
         eigs(i) = eigs(i+j-1) - c**2
     end if
-    print "(i4, f30.8, f18.8, es12.2)", i, eigs(i), En, abs(eigs(i)-En)
+    print "(i4, f25.14, f25.14, es12.2)", i, eigs(i), En, abs(eigs(i)-En)
 end do
 end subroutine
 
@@ -347,15 +348,16 @@ program rdirac
 
 use types, only: dp
 use rdirac_assembly, only: sfem
+use utils, only: assert
 implicit none
 
-integer :: Ne, p, Nq, DOFs, i, kappa
+integer :: Ne, p, Nq, DOFs, i, j, kappa, u
 real(dp), allocatable :: eigs(:)
 real(dp) :: L, a, c, Z
 logical :: squared
 
-Ne = 10
-p = 50
+Ne = 1
+p = 3
 Nq = 64
 L = 20
 a = 1e6
@@ -363,14 +365,24 @@ Z = 92
 kappa = 2
 c = 137.03599907_dp
 squared = .false.
-call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared)
-print *, "Ne:", Ne
-print *, "p:", p
-print *, "Nq:", Nq
-print *, "DOFs:", DOFs
-do i = 1, 6
-    print *, i, eigs(i)
+
+open(newunit=u, file="rdirac1.txt", status="replace")
+do j = 1, 10
+    call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared)
+    print *, "Ne:", Ne
+    print *, "p:", p
+    print *, "Nq:", Nq
+    print *, "DOFs:", DOFs
+    call assert(size(eigs) >= 6)
+    do i = 1, 6
+        print *, i, eigs(i)
+    end do
+    write(u,*) DOFs, p, Ne, Nq, L, eigs(:6)
+
+    if (DOFs > 1000) exit
+    Ne = Ne * 2
 end do
+close(u)
 
 
 end program
