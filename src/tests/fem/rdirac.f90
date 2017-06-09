@@ -64,8 +64,13 @@ allocate(fullc(Nn))
 
 Vq = -Z/xq
 
-call assemble_rdirac_squared(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
+!call assemble_rdirac_squared(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
+call assemble_rdirac(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
 call eigh(A, B, eigs, sol)
+j = 1
+do while (eigs(j) < 0)
+  j = j + 1
+end do
 
 print *, "n, energy, exact energy, error"
 do i = 1, min(20,Nb)
@@ -77,7 +82,8 @@ do i = 1, min(20,Nb)
         relat = 2
     end if
     En = E_nl(c, l_+i, l_, real(Z, dp), relat)
-    eigs(i) = sqrt(eigs(i)) - c**2
+    !eigs(i) = sqrt(eigs(i)) - c**2
+    eigs(i) = eigs(i+j-1) - c**2
     print "(i4, f30.8, f18.8, es12.2)", i, eigs(i), En, abs(eigs(i)-En)
 end do
 end subroutine
@@ -108,6 +114,112 @@ else
     E_nl = c**2/sqrt(1+Z**2/(n + skappa + beta)**2/c**2) - c**2
 end if
 end function
+
+subroutine assemble_rdirac(V,c,kappa,xin,xe,ib,xiq,wtq,Am,Bm)
+! forms system equation matrices corresponding to the Dirac eigenproblem
+! subject to boundary conditions consistent with basis specified by ib
+! Both Dirac components are on the same mesh.
+real(dp), intent(in) :: V(:,:)   ! V(x) at quadrature points:
+   ! V(i,j) = value at ith point in jth element
+real(dp), intent(in) :: c ! speed of light
+integer, intent(in) :: kappa     ! kappa
+real(dp), intent(in):: xin(:)       ! parent basis nodes
+real(dp), intent(in):: xe(:)
+integer, intent(in):: ib(:,:,:)     ! basis connectivity: ib(i,j,k) = index of
+    ! basis function associated with local basis function i of element j of
+    ! mesh k. 0 = no associated basis fn.
+real(dp), intent(in):: xiq(:)       ! quadrature points
+real(dp), intent(in):: wtq(:)       ! quadrature weights
+real(dp), intent(out):: Am(:,:)     ! LHS matrix: Am c = lam Bm c
+real(dp), intent(out):: Bm(:,:)     ! RHS matrix: Am c = lam Bm c
+integer Ne, Nb              ! number of elements, nodes, basis functions
+integer p                     ! order of FE/SE basis
+integer e                     ! element index
+integer i,j                   ! basis fn indices
+integer :: m1, m2
+integer al,be                 ! "alpha", "beta": local basis fn indices
+integer iq                    ! quadrature point index
+real(dp) xa,xb                ! element boundary node coordinates
+real(dp) jac                  ! Jacobian of transformation from parent coords xi in [-1,1]
+                              ! to coords x in [xa,xb]: x = (xb-xa)/2 xi + (xb+xa)/2
+real(dp) phihq(size(xiq),size(xin)),dphihq(size(xiq),size(xin))   ! parent basis fns and derivs
+   ! at quadrature points: phihq(i,j) = value of jth function at ith quadrature point
+real(dp) Vq(size(xiq))
+real(dp) Vqx(size(xiq))
+real(dp) hq(size(xiq))        ! integrand at quadrature points
+real(dp) x(size(xiq))                    ! point in domain
+real(dp) :: n, k
+real(dp), dimension(size(xiq)) :: Bi, Bj, Bip, Bjp
+
+n = 0
+k = 1000
+
+! initializations
+Ne= size(xe) - 1
+Nb=maxval(ib)
+p=size(xin)-1
+if (size(Am,1)/=Nb .or. size(Bm,1)/=Nb) call stop_error("Error: size of Am and/or Bm inconsistent with Nb.")
+! tabulate parent basis and derivatives at quadrature points
+do al = 1, p+1
+   do iq =1, size(xiq)
+      phihq(iq, al) = phih(xin, al, xiq(iq))
+      dphihq(iq, al) = dphih(xin, al, xiq(iq))
+   end do
+end do
+
+! accumulate Am and Bm matrix elements
+Am=0; Bm=0
+do m1 = 1, 2
+    do m2 = 1, 2
+        do e = 1, Ne
+            xa = xe(e)
+            xb = xe(e+1)
+            jac = (xb-xa)/2  ! affine mapping
+            x = (xiq(:)+1) * jac + xa ! affine mapping
+            Vq = V(:, e)
+            Vqx = Vq*x ! Potential times r
+            ! compute matrix elements (integrals transformed to [-1,1])
+            do be = 1, p+1
+                j = ib(be, e, m2)
+                if (j == 0) cycle    ! omit boundary basis fns for Dirichlet BCs
+                do al = 1, p+1
+                    i = ib(al, e, m1)
+                    if (i == 0) cycle! omit boundary basis fns for Dirichlet BCs
+                    Bi = phihq(:,al)
+                    Bj = phihq(:,be)
+                    Bip = dphihq(:,al)/jac
+                    Bjp = dphihq(:,be)/jac
+                    if (m1 == 1 .and. m2 == 1) then
+                        hq = Bi*Bj*(Vq+c**2)
+                    else if (m1 == 1 .and. m2 == 2) then
+                        hq = Bi*c*(-Bjp + kappa/x*Bj)
+                    else if (m1 == 2 .and. m2 == 1) then
+                        hq = Bi*c*(+Bjp + kappa/x*Bj)
+                    else if (m1 == 2 .and. m2 == 2) then
+                        hq = Bi*Bj*(Vq-c**2)
+                    end if
+                    Am(i,j) = Am(i,j) + sum(wtq*hq*jac)
+                    if (m1 == m2) then
+                        Bm(i,j) = Bm(i,j) + sum(wtq*Bi*Bj*jac)
+                    end if
+                end do
+            end do
+        end do
+    end do
+end do
+! check symmetry
+print *, "Checking symmetry"
+do j=1,Nb
+    do i=1,j-1
+        if (abs(Am(i,j)-Am(j,i)) / (max(Am(i,j), Am(j,i))+tiny(1._dp)) &
+                > 1e-8_dp .and. abs(Am(i,j)-Am(j,i)) > 1e-8_dp) then
+            print *, i, j, Am(i,j)-Am(j,i), Am(i,j), Am(j,i)
+            call stop_error("Am not symmetric")
+        end if
+        if (abs(Bm(i,j)-Bm(j,i)) > 1e-12_dp) call stop_error("Bm not symmetric")
+   end do
+end do
+end subroutine
 
 
 subroutine assemble_rdirac_squared(V,c,kappa,xin,xe,ib,xiq,wtq,Am,Bm)
