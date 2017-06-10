@@ -30,7 +30,7 @@ real(dp), allocatable :: xin(:), xiq(:), wtq(:), A(:, :), B(:, :), sol(:, :), &
     fullc(:), phipuq(:,:), dphipuq(:,:), xinpu(:), &
     xq(:,:)
 integer, allocatable :: ib(:,:,:), in(:,:,:)
-real(dp) :: En
+real(dp) :: En, alpha
 integer :: i, j, l_, relat
 
 Nn = Ne*p+1
@@ -64,7 +64,10 @@ Nb = maxval(ib)
 allocate(A(Nb, Nb), B(Nb, Nb), sol(Nb, Nb), eigs(Nb))
 allocate(fullc(Nn))
 
-Vq = -Z/xq
+!Vq = -Z/xq
+alpha = 1e3_dp
+Vq = -Z*erf(alpha*xq)/xq
+
 
 if (squared) then
     call assemble_rdirac_squared(Vq,c,kappa,xin,xe,ib,xiq,wtq,A,B)
