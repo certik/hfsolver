@@ -57,7 +57,7 @@ forall(i=1:size(xiq), j=1:size(xinpu))  phipuq(i, j) =  phih(xinpu, j, xiq(i))
 forall(i=1:size(xiq), j=1:size(xinpu)) dphipuq(i, j) = dphih(xinpu, j, xiq(i))
 
 allocate(in(p+1,Ne,2),ib(p+1,Ne,2))
-call define_connect_n([1,2],[1,2],Ne,p,2,in,ib)
+call define_connect_n([1,1],[1,1],Ne,p,2,in,ib)
 
 Nb = maxval(ib)
 
