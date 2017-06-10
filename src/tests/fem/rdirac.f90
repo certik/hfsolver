@@ -369,11 +369,11 @@ a = 1e6
 Z = 92
 kappa = 2
 c = 137.03599907_dp
-squared = .false.
+squared = .true.
 
-open(newunit=u, file="rdirac3.txt", status="replace")
+open(newunit=u, file="rdirac2.txt", status="replace")
 do p = 1, 10
-    Ne = 2
+    Ne = 4
     do j = 1, 10
         call sfem(Ne, p, Nq, L, DOFs, kappa, a, c, Z, eigs, squared, condA, &
             condB)
