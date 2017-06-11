@@ -17,6 +17,7 @@ real(dp), allocatable :: xq(:), wq(:)
 real(dp), allocatable :: B(:,:), Bp(:,:), Bpp(:,:)
 real(dp) :: c
 integer :: i, kappa, Z
+logical :: solvePQ
 
 allocate(xq(Nq_total), wq(Nq_total))
 allocate(B(Nq_total, Nb), Bp(Nq_total, Nb), Bpp(Nq_total, Nb))
@@ -30,6 +31,7 @@ a = 1e4
 Z = 83
 kappa = 2
 c = 137.03599907_dp
+solvePQ = .false.
 
 t(:k-1) = rmin
 t(k:n+1) = meshexp(rmin, rmax, a, N_intervals)
@@ -63,6 +65,6 @@ do i = 1, Nb
     Bpp(:,i) = bspline_der2(t, i, k, xq)
 end do
 
-call radial_dirac(Nb, xq, wq, B, Bp, Z, kappa, c)
+call radial_dirac(Nb, xq, wq, B, Bp, Z, kappa, c, solvePQ)
 
 end program

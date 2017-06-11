@@ -117,9 +117,10 @@ end do
 end subroutine
 
 
-subroutine radial_dirac(Nb, xq, wq, B, Bp, Z, kappa, c)
+subroutine radial_dirac(Nb, xq, wq, B, Bp, Z, kappa, c, solvePQ)
 integer, intent(in) :: Nb, Z, kappa
 real(dp), intent(in) :: xq(:), wq(:),  B(:,:), Bp(:,:), c
+logical, intent(in) :: solvePQ ! .true. solve for P/Q, otherwise for g/f
 real(dp), allocatable :: Am(:,:), Bm(:,:), sol(:,:), lam(:), hq(:)
 real(dp), allocatable :: Bi(:), Bj(:), Bip(:), Bjp(:)
 real(dp), allocatable :: Vq(:), Vqp(:)
@@ -143,22 +144,43 @@ do i = 1, Nb
         Vq = -Z/xq
         Vqp = Z/xq**2
         ! A11
-        hq = -c**2*(-Bip*xq**2*Bjp -kappa*(kappa+1)*Bi*Bj) &
-            +c**4*Bi*xq**2*Bj+Bi*xq**2*Vq**2*Bj+2*c**2*Bi*xq**2*Vq*Bj
+        if (solvePQ) then
+            hq = c**2*Bip*Bjp+Bi*Bj*((Vq+c**2)**2+c**2*(kappa*(kappa+1)/xq**2))
+        else
+            hq = -c**2*(-Bip*xq**2*Bjp -kappa*(kappa+1)*Bi*Bj) &
+                +c**4*Bi*xq**2*Bj+Bi*xq**2*Vq**2*Bj+2*c**2*Bi*xq**2*Vq*Bj
+        end if
         Am(i,j) = sum(wq*hq)
         ! A12
-        hq = -c*(2*Bi*xq**2*Vq*Bjp+2*(1-kappa)*Bi*xq*Vq*Bj+Bi*xq**2*Vqp*Bj)
+        if (solvePQ) then
+            hq = c*Vq*(+Bip*Bj-Bi*Bjp + 2*kappa/xq*Bi*Bj)
+        else
+            hq = -c*(2*Bi*xq**2*Vq*Bjp+2*(1-kappa)*Bi*xq*Vq*Bj+Bi*xq**2*Vqp*Bj)
+        end if
         Am(i,j+Nb) = sum(wq*hq)
         ! A21
-        hq = c*(2*Bi*xq**2*Vq*Bjp+2*(1+kappa)*Bi*xq*Vq*Bj+Bi*xq**2*Vqp*Bj)
+        if (solvePQ) then
+            hq = c*Vq*(-Bip*Bj+Bi*Bjp + 2*kappa/xq*Bi*Bj)
+        else
+            hq = c*(2*Bi*xq**2*Vq*Bjp+2*(1+kappa)*Bi*xq*Vq*Bj+Bi*xq**2*Vqp*Bj)
+        end if
         Am(i+Nb,j) = sum(wq*hq)
         ! A22
-        hq = -c**2*(-Bip*xq**2*Bjp -(-kappa)*(-kappa+1)*Bi*Bj) &
-            +c**4*Bi*xq**2*Bj+Bi*xq**2*Vq**2*Bj-2*c**2*Bi*xq**2*Vq*Bj
+        if (solvePQ) then
+            hq = c**2*Bip*Bjp+Bi*Bj*((Vq-c**2)**2+ &
+                c**2*(-kappa*(-kappa+1)/xq**2))
+        else
+            hq = -c**2*(-Bip*xq**2*Bjp -(-kappa)*(-kappa+1)*Bi*Bj) &
+                +c**4*Bi*xq**2*Bj+Bi*xq**2*Vq**2*Bj-2*c**2*Bi*xq**2*Vq*Bj
+        end if
         Am(i+Nb,j+Nb) = sum(wq*hq)
 
         ! B11
-        hq = B(:,i)*B(:,j)*xq**2
+        if (solvePQ) then
+            hq = B(:,i)*B(:,j)
+        else
+            hq = B(:,i)*B(:,j)*xq**2
+        end if
         Bm(i,j) = sum(wq*hq)
         ! B22
         Bm(i+Nb,j+Nb) = Bm(i,j)
