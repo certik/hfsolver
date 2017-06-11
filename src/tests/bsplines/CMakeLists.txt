@@ -7,7 +7,7 @@ macro(ADDTEST2 name)
 endmacro(ADDTEST2)
 
 add_library(radial_util radial_util.f90)
-target_link_libraries(radial_util hfsolver ${LIBS})
+target_link_libraries(radial_util hfsolver ${LIBS} lapack)
 
 addtest(test_bsplines)
 addtest2(test_ppum radial_util)
