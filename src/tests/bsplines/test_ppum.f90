@@ -168,7 +168,7 @@ contains
         end do
         do m = 1, npenr ! loop over non-poly enrichments
             j = m + penr+1 ! total enrichment basis function index
-            rc = 300._dp
+            rc = 5._dp
             select case(m)
                 case (1)
                     if (abs(x0) <= 5) then
