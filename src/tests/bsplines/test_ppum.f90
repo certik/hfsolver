@@ -37,7 +37,7 @@ contains
     end function
 
     subroutine do_ppum_basis(p, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
-            eps, xq, wq, B, Bp)
+            eps, xq, wq, B, Bp, Slumped)
     integer, intent(in) :: p, Ne
     integer, intent(in) :: penr ! polynomial order of the poly enrichment, e.g.
         ! penr = 3 means cubic polynomials (i.e. 4 basis functions spanned by:
@@ -48,6 +48,7 @@ contains
     integer, intent(in) :: Nq, ortho
     real(dp), intent(in) :: xmin, xmax, alpha, eps
     real(dp), allocatable, intent(out) :: xq(:), wq(:), B(:,:), Bp(:,:)
+    real(dp), allocatable, intent(out) :: Slumped(:,:,:)
     logical, allocatable :: Bactive(:,:)
     integer ::  N_intervals, Nq_total
     real(dp) :: rmin, rmax, dx
@@ -261,6 +262,23 @@ contains
     end do
     call assert(Nb == count(Bactive))
 
+    ! Compute the lumped matrix:
+    allocate(Slumped(Nenr,Nenr,Ne))
+    ! Loop over patches
+    do i = 1, Ne
+        ! Loop over enrichment
+        do j = 1, Nenr
+        do k = 1, Nenr
+            if (Bactive(j,i) .and. Bactive(k,i)) then
+                Slumped(j,k,i) = sum(enr(:,j,i)*wi(:,i)*enr(:,k,i)*wq)
+            else
+                ! TODO: we need to remove these columns/rows from the matrix
+                Slumped(j,k,i) = -1
+            end if
+        end do
+        end do
+    end do
+
     !open(newunit=u, file="pu.txt", status="replace")
     !write(u,*) xq
     !do i = 1, Ne
@@ -372,7 +390,7 @@ implicit none
 integer :: ppu, Ne, penr, npenr, Nq, Nq_total, i, j, u, ortho, Nb
 real(dp) :: alpha, xmin, xmax, eps, condA, condB
 real(dp), allocatable :: xq(:), wq(:)
-real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:)
+real(dp), allocatable :: B(:,:), Bp(:,:), eigs(:), Slumped(:,:,:)
 
 ppu = 3
 penr = 3
@@ -388,7 +406,7 @@ Nq = 64
 open(newunit=u, file="ppum_conv.txt", status="replace")
 do i = 1, 10
     call do_ppum_basis(ppu, xmin, xmax, Ne, penr, npenr, alpha, ortho, Nq, &
-        eps, xq, wq, B, Bp)
+        eps, xq, wq, B, Bp, Slumped)
     Nb = size(B,2)
     print *, "Nb =", Nb
     call lho(xq, wq, B, Bp, eigs, condA, condB)
