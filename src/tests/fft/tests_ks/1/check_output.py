@@ -13,7 +13,7 @@ occ_ref = array(Dref["md"][0]["occupation"])
 
 eig_err = abs(eigs-eigs_ref).max()
 occ_err = abs(occ-occ_ref).max()
-print "Eigs error:", eig_err
-print "Occupation error:", occ_err
+print("Eigs error:", eig_err)
+print("Occupation error:", occ_err)
 assert eig_err < 1e-6
 assert occ_err < 1e-12
